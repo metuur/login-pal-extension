@@ -4,31 +4,41 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node scripts/dev.mjs",
+    "dev": "vite",
+    "dev-ext": "node scripts/dev.mjs",
     "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --root .",
     "test:browser": "node tests/browser/run.mjs",
     "check": "npm run typecheck && npm test && npm run build",
-    "lint": "prettier --check src scripts tests public package.json tsconfig.json",
-    "format": "prettier --write src scripts tests public package.json tsconfig.json"
+    "lint": "prettier --check src scripts tests public package.json tsconfig.json preview vite.config.ts",
+    "format": "prettier --write src scripts tests public package.json tsconfig.json preview vite.config.ts",
+    "predev": "node scripts/prepare-preview.mjs",
+    "build:web": "node scripts/prepare-preview.mjs && vite build",
+    "start": "vite preview"
   },
   "dependencies": {
     "@fontsource/geist": "5.3.0",
     "@fontsource/inter": "5.3.0",
     "@fontsource/jetbrains-mono": "5.3.0",
-    "papaparse": "5.7.0"
+    "papaparse": "5.7.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
   },
   "devDependencies": {
     "@types/chrome": "0.3.4",
     "@types/jsdom": "30.0.0",
     "@types/node": "26.6.4",
     "@types/papaparse": "5.5.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
     "esbuild": "0.28.2",
     "jsdom": "29.1.1",
     "playwright": "1.63.0",
     "prettier": "3.9.9",
     "typescript": "7.0.2",
+    "vite": "8.3.2",
     "vitest": "4.1.11"
   }
 }

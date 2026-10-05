@@ -9,3 +9,9 @@ test-results/
 playwright-report/
 graphify-out/
 .codebase-memory/
+dist-web/
+.preview-assets/
+
+dist-dev/
+.dev-dist-next/
+.dev-dist-old/

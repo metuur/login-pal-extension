@@ -47,7 +47,11 @@ No application server, synchronization, telemetry, remote fonts, or runtime CDN 
 
 ## Build and verify
 
-For development, run `npm run dev`. It builds `dist` immediately and watches `src`, `public`, build scripts, and package/TypeScript configuration for changes. This includes regenerating the manifest version and copying changed static assets. Failed builds retry on the next save. Press Ctrl+C to stop. Load `dist` as an unpacked extension, then click Reload in `chrome://extensions` after a rebuild. This command builds the extension; it does not run a localhost web app or automatically reload Chrome.
+Run `npm run dev` for the React + TypeScript localhost SPA at http://127.0.0.1:5173. Vite serves source modules and applies hot reload as you edit. The React workspace opens the actual extension Settings and Popup views with an isolated local browser adapter. CSV imports, groups, and exports work with separate preview data. Host permissions are simulated; filling another website requires the installed Chrome extension.
+
+Run `npm run build:web` to compile the SPA into `dist-web/`, then `npm run start` to serve that compiled app at http://127.0.0.1:4174. `start` does not watch or compile source files.
+
+`npm run build` builds the Chrome extension into `dist/`. `npm run dev-ext` watches and rebuilds that extension; reload it manually in Chrome after changes.
 
 Use Node.js 22 or newer and npm. The lockfile pins dependencies; the validated environment is recorded in [verification](docs/verification/account-login-assistant.md).
 

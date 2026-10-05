@@ -1,0 +1,1 @@
+Local React development SPA only. Reuse actual extension TypeScript views and domain/worker services through an isolated browser adapter. Never imply localhost can autofill other tabs or grant extension permissions. Preview storage is separate from the installed extension. Use only synthetic data. Production extension builds must not include this adapter or React shell.
