@@ -1,8 +1,45 @@
 import { build } from 'esbuild';
-import { cp, mkdir, rm } from 'node:fs/promises';
+import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+
+const { version } = JSON.parse(await readFile('package.json', 'utf8'));
+if (
+  typeof version !== 'string' ||
+  !/^(0|[1-9]\d*)(\.(0|[1-9]\d*)){0,3}$/.test(version) ||
+  version.split('.').some((part) => Number(part) > 65535) ||
+  version.split('.').every((part) => Number(part) === 0)
+) {
+  throw new Error(
+    'package.json version must be a Chrome-compatible numeric version (1–4 components, 0–65535, not all zero).',
+  );
+}
+const manifest = {
+  manifest_version: 3,
+  name: 'OneChat DEV Login Assistant',
+  description: 'A local encrypted account catalog for authorized QA login pages.',
+  minimum_chrome_version: '120',
+  permissions: ['storage', 'scripting', 'activeTab', 'alarms'],
+  optional_host_permissions: ['https://*/*'],
+  background: {
+    service_worker: 'background.js',
+  },
+  action: {
+    default_title: 'OneChat DEV Login Assistant',
+    default_popup: 'popup.html',
+  },
+  options_ui: {
+    page: 'options.html',
+    open_in_tab: true,
+  },
+  incognito: 'not_allowed',
+  content_security_policy: {
+    extension_pages: "script-src 'self'; object-src 'none'; connect-src 'none'; base-uri 'none'",
+  },
+};
+
 await rm('dist', { recursive: true, force: true });
 await mkdir('dist', { recursive: true });
 await cp('public', 'dist', { recursive: true, filter: (source) => !source.endsWith('AGENTS.md') });
+await writeFile('dist/manifest.json', JSON.stringify({ ...manifest, version }, null, 2) + '\n');
 await mkdir('dist/fonts', { recursive: true });
 for (const font of ['geist', 'inter', 'jetbrains-mono']) {
   for (const weight of font === 'jetbrains-mono' ? [400, 500] : [400, 500, 600, 700]) {

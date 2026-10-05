@@ -52,6 +52,8 @@ try {
   const extension = join(temp, 'extension');
   await cp(resolve('dist'), extension, { recursive: true });
   const manifest = JSON.parse(await readFile(join(extension, 'manifest.json'), 'utf8'));
+  const packageInfo = JSON.parse(await readFile('package.json', 'utf8'));
+  check(manifest.version === packageInfo.version, 'Generated manifest uses the package version');
   check(
     !manifest.host_permissions && manifest.optional_host_permissions?.length === 1,
     'Shipping manifest has optional host access only',
@@ -76,6 +78,15 @@ try {
   const popup = await context.newPage();
   popup.on('pageerror', (e) => errors.push(e.message));
   await popup.goto(base + 'popup.html');
+  for (const page of [popup, options]) {
+    const credit = page.locator('.version-footer');
+    await credit.waitFor();
+    const text = await credit.innerText();
+    check(
+      text.includes(`v${packageInfo.version}`) && text.includes('crafter by metuur'),
+      `${page === popup ? 'Popup' : 'Settings'} footer shows the installed version and credit`,
+    );
+  }
   const send = async (command, page = options) => {
     const response = await page.evaluate((c) => chrome.runtime.sendMessage(c), command);
     assert.ok(response?.ok, `${command.type} should succeed: ${response?.error ?? 'no reply'}`);

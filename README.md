@@ -58,3 +58,5 @@ npm run test:browser
 `check` runs TypeScript, focused tests, and the build. The browser harness requires `openssl` and creates an isolated Chromium profile and local HTTPS fixture, then removes them. It never uses your browser profile or real accounts. Its disposable extension copy grants localhost access to bypass a headless permission dialog; the shipping manifest retains optional-only host access.
 
 Build output is `dist/`. Browser evidence and synthetic UI screenshots are written to `artifacts/`. Local font licenses are bundled in `dist/fonts/`. See [the completed task plan](docs/tasks/account-login-assistant.md) for requirement and commit traceability.
+
+The build generates `dist/manifest.json`; `package.json` is the single source of its version. Use a Chrome-compatible numeric release version (no prerelease suffix). The popup and settings footer display the generated manifest version with “crafter by metuur”.

@@ -17,6 +17,7 @@ import {
   slashSearch,
   title,
   vaultForm,
+  versionFooter,
 } from '../ui/common';
 
 const app = document.querySelector<HTMLElement>('#app')!;
@@ -50,7 +51,7 @@ header.append(top);
 const strip = el('div', 'profile-strip');
 header.append(strip);
 const footer = el('footer', 'app-footer');
-app.replaceChildren(header, status, body, footer);
+app.replaceChildren(header, status, body, footer, versionFooter());
 const search = searchBox((value) => {
   query = value;
   page = 0;

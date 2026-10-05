@@ -495,6 +495,22 @@ input::placeholder {
   padding: 10px 12px;
   flex-shrink: 0;
 }
+.version-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 4px 12px 7px;
+  background: white;
+  color: #64748b;
+  font-size: 10px;
+  line-height: 1.4;
+}
+.version-footer > span + span::before {
+  content: '·';
+  margin-right: 8px;
+}
 .notice {
   font-size: 11px;
   padding: 9px 10px;

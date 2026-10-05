@@ -1,5 +1,14 @@
 import type { AccountSummary, AppState, Command, Reply } from '../shared/types';
 
+export function versionFooter(): HTMLElement {
+  const footer = el('div', 'version-footer');
+  footer.append(
+    el('span', '', `v${chrome.runtime.getManifest().version}`),
+    el('span', '', 'crafter by metuur'),
+  );
+  return footer;
+}
+
 export function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
   className = '',

@@ -18,6 +18,7 @@ import {
   sectionLabel,
   slashSearch,
   vaultForm,
+  versionFooter,
 } from '../ui/common';
 
 const app = document.querySelector<HTMLElement>('#app')!;
@@ -47,7 +48,7 @@ header.append(headerLine);
 const status = liveRegion(),
   content = el('div', 'options-body stack'),
   footer = el('footer', 'app-footer');
-app.replaceChildren(header, status, content, footer);
+app.replaceChildren(header, status, content, footer, versionFooter());
 const rawSource = new URL(location.href).searchParams.get('sourceTab');
 const sourceTab = rawSource !== null && /^\d+$/.test(rawSource) ? Number(rawSource) : undefined;
 let state: AppState | undefined,
