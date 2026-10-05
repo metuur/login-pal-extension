@@ -1,4 +1,4 @@
-import type { FillResult, LoginProfile, Route } from '../shared/types';
+import type { FieldMatch, FillResult, LoginProfile, Route } from '../shared/types';
 
 export function routeMatches(route: Route, href: string): boolean {
   try {
@@ -35,11 +35,55 @@ export function successVisible(profile: LoginProfile, doc: Document): boolean {
     return false;
   }
 }
-function targets(profile: LoginProfile, doc: Document): [HTMLInputElement, HTMLInputElement] {
+function candidates(doc: Document, mode: FieldMatch, value: string, password: boolean): Element[] {
+  if (mode === 'css') return [...doc.querySelectorAll(value)];
+  const normalize = (text: string) => text.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+  return [...doc.querySelectorAll('input')].filter((input) => {
+    if (
+      !(password ? input.type === 'password' : ['text', 'email'].includes(input.type)) ||
+      input.matches(':disabled') ||
+      input.readOnly ||
+      !visible(input, doc)
+    )
+      return false;
+    switch (mode) {
+      case 'id':
+        return input.id === value;
+      case 'name':
+        return input.name === value;
+      case 'autocomplete':
+        return (input.getAttribute('autocomplete') ?? '')
+          .toLowerCase()
+          .split(/\s+/)
+          .includes(value.toLowerCase());
+      case 'placeholder':
+        return normalize(input.placeholder) === normalize(value);
+      case 'aria-label':
+        return normalize(input.getAttribute('aria-label') ?? '') === normalize(value);
+      case 'label': {
+        const labels = [...(input.labels ?? [])]
+          .filter((label) => visible(label, doc))
+          .map((label) => label.textContent ?? '');
+        const labelled = (input.getAttribute('aria-labelledby') ?? '')
+          .split(/\s+/)
+          .map((id) => doc.getElementById(id))
+          .filter((node): node is HTMLElement => !!node && visible(node, doc));
+        if (labelled.length) labels.push(labelled.map((node) => node.textContent ?? '').join(' '));
+        return labels.some((label) => normalize(label) === normalize(value));
+      }
+      default:
+        return false;
+    }
+  });
+}
+export function loginFields(
+  profile: LoginProfile,
+  doc: Document,
+): [HTMLInputElement, HTMLInputElement] {
   if (!routeMatches(profile.login, doc.location.href))
     throw new Error('The current page is not the configured login page.');
-  const username = doc.querySelectorAll(profile.usernameSelector),
-    password = doc.querySelectorAll(profile.passwordSelector);
+  const username = candidates(doc, profile.usernameMatch ?? 'css', profile.usernameSelector, false),
+    password = candidates(doc, profile.passwordMatch ?? 'css', profile.passwordSelector, true);
   const Input = doc.defaultView!.HTMLInputElement;
   if (
     username.length !== 1 ||
@@ -67,7 +111,7 @@ function targets(profile: LoginProfile, doc: Document): [HTMLInputElement, HTMLI
 /** @spec R-5.2 R-5.3 R-6.4 */
 export function inspectFields(profile: LoginProfile, doc: Document = document): FillResult {
   try {
-    targets(profile, doc);
+    loginFields(profile, doc);
     return { ok: true, baseline: successVisible(profile, doc) };
   } catch {
     return { ok: false, error: 'Check the page URL and unique, visible login field selectors.' };
@@ -88,17 +132,17 @@ export function fillFields(
     'value',
   )!.set!;
   try {
-    fields = targets(profile, doc);
+    fields = loginFields(profile, doc);
     if (successVisible(profile, doc)) throw new Error('Already successful');
     for (let i = 0; i < 2; i++) {
-      const current = targets(profile, doc);
+      const current = loginFields(profile, doc);
       if (current[0] !== fields[0] || current[1] !== fields[1]) throw new Error('Inputs changed');
       setter.call(fields[i], values[i]);
       written[i] = true;
       fields[i].dispatchEvent(new doc.defaultView!.Event('input', { bubbles: true }));
       fields[i].dispatchEvent(new doc.defaultView!.Event('change', { bubbles: true }));
     }
-    const current = targets(profile, doc);
+    const current = loginFields(profile, doc);
     if (
       current[0] !== fields[0] ||
       current[1] !== fields[1] ||

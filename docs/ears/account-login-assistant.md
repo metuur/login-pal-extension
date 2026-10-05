@@ -1,5 +1,10 @@
 # Account Login Assistant — EARS Specifications
 
+## Input matching expansion (2026-10-05)
+
+Username and password can independently match by CSS (legacy default), exact id/name, autocomplete token, placeholder, visible associated label including aria-labelledby, or aria-label. Text labels normalize whitespace/case; id/name remain exact. Non-CSS candidates must be visible, writable, supported inputs; ambiguity aborts. Revalidate the same input identities before each write. Editing filled inputs cancels login attribution for every match mode. Route/permission restrictions and manual submission remain.
+
+
 ## Named CSV groups — current scope (2026-10-05)
 
 The user expanded the single-catalog design to named CSV groups. Each group owns independent encrypted storage/key, accounts, URL rule, login profile, history, preview, write queue and Undo. Existing data remains in the default Imported accounts group. UI requests carry the selected group ID; content observations route only to the owning live attempt. New explicit fills supersede attempts across groups in the same tab. Duplicate account IDs across groups are valid. Merge, Replace, Purge and Reset affect only the selected group. Permission removal must retain hosts used by another group. Group names are editable and required (1–80 characters, unique ignoring case); at most 50 groups. Upload another CSV defaults to Merge within the selected group. A packaged sample CSV contains headers and three synthetic rows. This supersedes all historical single-profile/single-catalog scope below.

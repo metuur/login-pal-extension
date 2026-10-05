@@ -13,6 +13,8 @@ export interface Route {
 export interface CatalogRule extends Route {
   pathMatch: 'exact' | 'prefix';
 }
+export type FieldMatch =
+  'css' | 'id' | 'name' | 'autocomplete' | 'placeholder' | 'label' | 'aria-label';
 export interface LoginProfile {
   id: string;
   revision: number;
@@ -21,6 +23,8 @@ export interface LoginProfile {
   login: Route;
   usernameSelector: string;
   passwordSelector: string;
+  usernameMatch?: FieldMatch;
+  passwordMatch?: FieldMatch;
   success: { kind: 'url'; route: Route } | { kind: 'element'; route: Route; selector: string };
 }
 export interface ProfileInput {
@@ -28,6 +32,8 @@ export interface ProfileInput {
   loginUrl: string;
   usernameSelector: string;
   passwordSelector: string;
+  usernameMatch?: FieldMatch;
+  passwordMatch?: FieldMatch;
   successKind: 'url' | 'element';
   successUrl: string;
   successSelector?: string;

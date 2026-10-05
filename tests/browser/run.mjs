@@ -15,7 +15,7 @@ const check = (condition, label) => {
   assert.ok(condition, label);
   results.push(label);
 };
-const fixture = `<!doctype html><html><head><meta charset="utf-8"><link rel="icon" href="data:,"><title>Local synthetic login</title></head><body><h1>QA fixture</h1><form id="form"><label>Username<input id="username" type="email"></label><label>Password<input id="password" type="password"></label><button id="login">Login</button><p id="error"></p></form><script>document.querySelector('form').addEventListener('submit',event=>{event.preventDefault();const flow=new URL(location.href).searchParams.get('flow');if(flow==='fail'){document.querySelector('#error').textContent='Authentication rejected';return;}if(flow==='element'){const marker=document.createElement('div');marker.id='logged-in-user';marker.textContent='Authenticated fixture';document.body.append(marker);return;}if(flow==='spa'){history.pushState({},'', '/dashboard');document.body.textContent='Authenticated fixture';return;}location.href='/dashboard';});</script></body></html>`;
+const fixture = `<!doctype html><html><head><meta charset="utf-8"><link rel="icon" href="data:,"><title>Local synthetic login</title></head><body><h1>QA fixture</h1><form id="form"><label>Username<input id="username" type="email"></label><label>Password<input id="password" type="password" autocomplete="current-password"></label><button id="login">Login</button><p id="error"></p></form><script>document.querySelector('form').addEventListener('submit',event=>{event.preventDefault();const flow=new URL(location.href).searchParams.get('flow');if(flow==='fail'){document.querySelector('#error').textContent='Authentication rejected';return;}if(flow==='element'){const marker=document.createElement('div');marker.id='logged-in-user';marker.textContent='Authenticated fixture';document.body.append(marker);return;}if(flow==='spa'){history.pushState({},'', '/dashboard');document.body.textContent='Authenticated fixture';return;}location.href='/dashboard';});</script></body></html>`;
 try {
   execFileSync(
     'openssl',
@@ -311,6 +311,30 @@ try {
     (await options.locator('body').innerText()).includes('Merge'),
     'Settings renders account import modes',
   );
+  await options.locator('#profile').evaluate((node) => {
+    node.open = true;
+  });
+  await options
+    .getByRole('combobox', { name: 'Username match method', exact: true })
+    .selectOption('label');
+  await options.getByLabel('Username match value', { exact: true }).fill('Username');
+  await options
+    .getByRole('combobox', { name: 'Password match method', exact: true })
+    .selectOption('autocomplete');
+  await options.getByLabel('Password match value', { exact: true }).fill('current-password');
+  await options.getByRole('button', { name: 'Save & authorize website', exact: true }).click();
+  await options.getByText('Website profile saved.', { exact: true }).waitFor();
+  await site.goto(origin + '/login');
+  await send({ type: 'FILL', accountId: 'ACC-1234', tabId }, popup);
+  check(
+    (await site.locator('#username').inputValue()) === 'john@example.test',
+    'Label and autocomplete matching configured in Settings fills the browser form',
+  );
+  await site.locator('#username').fill('edited@example.test');
+  await site.locator('#login').click();
+  await options.locator('.options-body').evaluate((node) => {
+    node.scrollTop = 0;
+  });
   const downloadEvent = options.waitForEvent('download');
   await options.getByRole('link', { name: 'Download sample CSV (3 rows)', exact: true }).click();
   const download = await downloadEvent;

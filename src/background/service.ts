@@ -62,6 +62,7 @@ const SAFE_ERRORS = new Set<string>([
   'Success URL must differ from the login URL.',
   'Enter a valid field selector.',
   'Choose distinct username and password fields.',
+  'Choose a supported field matching method.',
   'Enter a profile name and import a catalog first.',
   'Unable to unlock vault.',
   'Vault exceeds the 5 MiB encrypted storage limit.',

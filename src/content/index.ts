@@ -6,7 +6,7 @@ import type {
   LoginProfile,
   Reply,
 } from '../shared/types';
-import { fillFields, inspectFields, routeMatches, successVisible } from './fields';
+import { fillFields, inspectFields, loginFields, routeMatches, successVisible } from './fields';
 
 const scope = globalThis as typeof globalThis & { __oneChatContent?: boolean };
 if (window === window.top && !scope.__oneChatContent) {
@@ -22,6 +22,12 @@ if (window === window.top && !scope.__oneChatContent) {
   }
   function track(attempt: Attempt, profile: LoginProfile) {
     stopTracking();
+    let tracked: HTMLInputElement[] = [];
+    try {
+      tracked = loginFields(profile, document);
+    } catch {
+      /* Success pages need no login inputs. */
+    }
     let stopped = false,
       busy = false;
     const cleanup = () => {
@@ -41,7 +47,10 @@ if (window === window.top && !scope.__oneChatContent) {
       const node = event.target;
       if (node instanceof Element) {
         try {
-          if (node.matches(profile.usernameSelector) || node.matches(profile.passwordSelector))
+          if (
+            tracked.includes(node as HTMLInputElement) ||
+            loginFields(profile, document).includes(node as HTMLInputElement)
+          )
             cancel();
         } catch {
           cancel();

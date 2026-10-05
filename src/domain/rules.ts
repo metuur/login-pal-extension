@@ -89,7 +89,12 @@ export function validateProfile(
   };
   const usernameSelector = selector(input.usernameSelector),
     passwordSelector = selector(input.passwordSelector);
-  if (usernameSelector === passwordSelector)
+  const modes = ['css', 'id', 'name', 'autocomplete', 'placeholder', 'label', 'aria-label'];
+  const usernameMatch = input.usernameMatch ?? 'css';
+  const passwordMatch = input.passwordMatch ?? 'css';
+  if (!modes.includes(usernameMatch) || !modes.includes(passwordMatch))
+    throw new Error('Choose a supported field matching method.');
+  if (usernameMatch === passwordMatch && usernameSelector === passwordSelector)
     throw new Error('Choose distinct username and password fields.');
   if (
     typeof input.name !== 'string' ||
@@ -107,6 +112,8 @@ export function validateProfile(
     login,
     usernameSelector,
     passwordSelector,
+    usernameMatch,
+    passwordMatch,
     success:
       input.successKind === 'url'
         ? { kind: 'url', route: success }

@@ -1,5 +1,10 @@
 # Account Login Assistant verification
 
+## Expanded input matching (2026-10-05)
+
+Passed 67 focused tests, TypeScript and build; 56 browser checks passed. Six new non-CSS methods fill correctly in DOM tests, including label/aria-labelledby normalization and ambiguity rejection. The browser harness configures visible-label username matching and autocomplete password matching through Settings and fills the real fixture form. Existing CSS-based profiles remain compatible. Tracking regression passed after adapting edit detection to resolved input elements.
+
+
 ## Named CSV groups revision (2026-10-05)
 
 Passed TypeScript, formatting, build, 60 focused tests and 55 browser checks. Group tests cover duplicate IDs across groups, independent domains, merge/replace/purge isolation, restart, cross-group preview rejection, name uniqueness/rename, unauthorized enumeration, and shared-host permission preservation. Browser checks create a named group, import a file, use Upload another CSV to merge, confirm group-specific purge, and download the three-row sample. Existing data remains under Imported accounts.

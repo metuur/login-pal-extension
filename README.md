@@ -13,7 +13,7 @@ The repository's `dist` folder is also directly loadable after building. This is
 1. Open the extension. A local catalog is created automatically, ready for CSV import.
 2. Open Settings, name the selected CSV group (or choose **Create new group**), and choose a CSV. Use **Download sample CSV (3 rows)** for the supported format. Enter the required **Target authorized URL pattern**, for example `https://qa.example.com/*`. This example is illustrative; use your own authorized site.
 3. Keep **Merge & Update** to add/update accounts by ID while preserving omitted accounts in that group. **Upload another CSV** automatically selects Merge for the same group. Choose **Wipe & Replace** to replace only the selected group’s dataset. Verify the file, review counts and errors, then confirm the import. Invalid rows are excluded; Replace can therefore remove existing accounts corresponding to invalid rows.
-4. Configure the login profile: a name, exact HTTPS login URL, username/password CSS selectors, and a reliable success URL or visible element at its configured URL. Save and authorize the requested host permission. Importing alone does not authorize autofill.
+4. Configure the login profile: a name, exact HTTPS login URL, username/password matching rules, and a reliable success URL or visible element at its configured URL. Save and authorize the requested host permission. Importing alone does not authorize autofill.
 5. Visit the exact login page, open the popup, search by account ID, username, or metadata, select an account, review it, and choose Autofill. Submit the site's Login button yourself.
 
 “Recent” means the fields were filled successfully. “Last successful” updates only after the configured success condition is observed within two minutes. A failed login leaves the previous successful account unchanged. Editing filled values cancels attribution.
@@ -62,3 +62,7 @@ npm run test:browser
 Build output is `dist/`. Browser evidence and synthetic UI screenshots are written to `artifacts/`. Local font licenses are bundled in `dist/fonts/`. See [the completed task plan](docs/tasks/account-login-assistant.md) for requirement and commit traceability.
 
 The build generates `dist/manifest.json`; `package.json` is the single source of its version. Use a Chrome-compatible numeric release version (no prerelease suffix). The popup and settings footer display the generated manifest version with “crafter by metuur”.
+
+## Match username and password inputs
+
+Each field has its own match method in Settings → Login profile. Existing profiles default to CSS. Choose CSS selector, exact input ID, exact input name, autocomplete token (such as `username` / `current-password`), placeholder, visible associated label, or `aria-label`. Label matching includes visible `aria-labelledby` text. Text comparisons ignore case and repeated whitespace; ID and name comparisons remain exact. Non-CSS methods consider visible, writable inputs of the correct type only. Ambiguous results abort filling. CSS may use comma-separated alternatives, but the combined selector must identify exactly one input. No form submission occurs.

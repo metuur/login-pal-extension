@@ -1,4 +1,11 @@
-import type { AppState, ImportMode, ImportPreview, ProfileInput, Route } from '../shared/types';
+import type {
+  AppState,
+  ImportMode,
+  ImportPreview,
+  ProfileInput,
+  Route,
+  FieldMatch,
+} from '../shared/types';
 import { parseRule, validateProfile } from '../domain/rules';
 import {
   accountRow,
@@ -214,8 +221,36 @@ const profileName = field('Profile name'),
   successSelector = field('Visible success element CSS selector');
 for (const f of [profileName, login, usernameSelector, passwordSelector, successUrl])
   f.input.required = true;
-usernameSelector.input.placeholder = 'input[name="username"]';
-passwordSelector.input.placeholder = 'input[type="password"]';
+function matchingControl(label: string, target: ReturnType<typeof field>, password: boolean) {
+  const wrap = el('label', 'field');
+  const select = el('select');
+  select.setAttribute('aria-label', `${label} match method`);
+  const choices = [
+    ['css', 'CSS selector', password ? 'input[type="password"]' : 'input[name="username"]'],
+    ['id', 'Input ID', password ? 'password' : 'email'],
+    ['name', 'Input name', password ? 'password' : 'username'],
+    ['autocomplete', 'Autocomplete token', password ? 'current-password' : 'username'],
+    ['placeholder', 'Placeholder text', password ? 'Enter password' : 'Email address'],
+    ['label', 'Visible label text', password ? 'Password' : 'Email'],
+    ['aria-label', 'Accessible label (aria-label)', password ? 'Password' : 'Username'],
+  ];
+  for (const [value, text] of choices) {
+    const option = el('option', '', text);
+    option.value = value;
+    select.append(option);
+  }
+  wrap.append(el('span', 'field-label', `${label} match method`), select);
+  const update = () => {
+    target.wrap.querySelector('.field-label')!.textContent =
+      select.value === 'css' ? `${label} field CSS selector` : `${label} match value`;
+    target.input.placeholder = choices.find((c) => c[0] === select.value)![2];
+  };
+  select.addEventListener('change', update);
+  update();
+  return { wrap, select, update };
+}
+const usernameMatch = matchingControl('Username', usernameSelector, false);
+const passwordMatch = matchingControl('Password', passwordSelector, true);
 const kind = el('select');
 kind.setAttribute('aria-label', 'Success detection');
 for (const [value, label] of [
@@ -243,8 +278,15 @@ profileForm.append(
   ),
   profileName.wrap,
   login.wrap,
+  usernameMatch.wrap,
   usernameSelector.wrap,
+  passwordMatch.wrap,
   passwordSelector.wrap,
+  el(
+    'p',
+    'subtle',
+    'ID/name match exactly. Text labels and placeholders ignore case and extra spaces. Each method must resolve to one visible, writable input. CSS supports alternatives separated by commas, but must match exactly one input.',
+  ),
   kindLabel,
   successUrl.wrap,
   successSelector.wrap,
@@ -259,6 +301,10 @@ function populateProfile() {
   const p = state?.profile;
   profileName.input.value = p?.name ?? '';
   login.input.value = p ? routeUrl(p.login) : '';
+  usernameMatch.select.value = p?.usernameMatch ?? 'css';
+  passwordMatch.select.value = p?.passwordMatch ?? 'css';
+  usernameMatch.update();
+  passwordMatch.update();
   usernameSelector.input.value = p?.usernameSelector ?? '';
   passwordSelector.input.value = p?.passwordSelector ?? '';
   kind.value = p?.success.kind ?? 'url';
@@ -594,6 +640,8 @@ profileForm.addEventListener('submit', (event) => {
   const profile: ProfileInput = {
     name: profileName.input.value,
     loginUrl: login.input.value,
+    usernameMatch: usernameMatch.select.value as FieldMatch,
+    passwordMatch: passwordMatch.select.value as FieldMatch,
     usernameSelector: usernameSelector.input.value,
     passwordSelector: passwordSelector.input.value,
     successKind: kind.value === 'element' ? 'element' : 'url',
@@ -617,8 +665,8 @@ profileForm.addEventListener('submit', (event) => {
     return;
   }
   try {
-    document.querySelectorAll(profile.usernameSelector);
-    document.querySelectorAll(profile.passwordSelector);
+    if (profile.usernameMatch === 'css') document.querySelectorAll(profile.usernameSelector);
+    if (profile.passwordMatch === 'css') document.querySelectorAll(profile.passwordSelector);
     if (profile.successKind === 'element') document.querySelectorAll(profile.successSelector!);
   } catch {
     message(

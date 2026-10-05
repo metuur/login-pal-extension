@@ -1,5 +1,5 @@
 {
-  "passed": 55,
+  "passed": 56,
   "checks": [
     "Generated manifest uses the package version",
     "Shipping manifest has optional host access only",
@@ -38,6 +38,7 @@
     "Settings Undo action restores the deleted account",
     "Popup renders the branded interface",
     "Settings renders account import modes",
+    "Label and autocomplete matching configured in Settings fills the browser form",
     "Sample download has required headers and three synthetic rows",
     "Creating another CSV group preserves the original group",
     "CSV group stores its own URL and duplicate account ID",
@@ -59,7 +60,7 @@
   ],
   "search": {
     "accounts": 10000,
-    "inputToRenderedResultsMs": 40.5,
+    "inputToRenderedResultsMs": 41.900000005960464,
     "thresholdMs": 200
   },
   "browser": "153.0.8010.12",
