@@ -2,6 +2,9 @@ import type { AppState, ImportMode, ImportPreview, ProfileInput, Route } from '.
 import { parseRule, validateProfile } from '../domain/rules';
 import {
   accountRow,
+  groupPicker,
+  currentGroup,
+  chooseGroup,
   button,
   confirmDialog,
   el,
@@ -47,7 +50,8 @@ header.append(headerLine);
 const status = liveRegion(),
   content = el('div', 'options-body stack'),
   footer = el('footer', 'app-footer');
-app.replaceChildren(header, status, content, footer, versionFooter());
+const groupBar = el('div', 'group-bar');
+app.replaceChildren(header, groupBar, status, content, footer, versionFooter());
 const rawSource = new URL(location.href).searchParams.get('sourceTab');
 const sourceTab = rawSource !== null && /^\d+$/.test(rawSource) ? Number(rawSource) : undefined;
 let state: AppState | undefined,
@@ -63,6 +67,35 @@ let state: AppState | undefined,
   deletedId = '';
 const importPanel = el('section', 'import-panel panel stack');
 importPanel.id = 'import';
+const groupName = field('CSV group name');
+groupName.input.maxLength = 80;
+groupName.input.placeholder = 'QA Platform X';
+const groupActions = el('div', 'actions');
+groupActions.append(
+  button('Save group name', () =>
+    mutate(async () => {
+      await request({ type: 'RENAME_GROUP', name: groupName.input.value });
+      message(status, 'Group name saved.');
+    }),
+  ),
+  button('Create new group', () =>
+    mutate(async () => {
+      const group = await request<{ id: string }>({
+        type: 'CREATE_GROUP',
+        name: groupName.input.value,
+      });
+      chooseGroup(group.id);
+      mounted = false;
+      file = undefined;
+      fileInput.value = '';
+      fileName.textContent = 'Choose an account CSV';
+      invalidatePreview();
+      query = '';
+      page = 0;
+      message(status, 'Group created. Choose its CSV and authorized URL.');
+    }),
+  ),
+);
 const importHeading = sectionLabel('↥ Import CSV dataset');
 const step = el('span', 'step', 'Step 1 of 2');
 importHeading.append(step);
@@ -77,6 +110,23 @@ const fileCard = el('div', 'file-card');
 const fileText = el('div', 'grow');
 fileText.append(fileName, fileInfo);
 const change = button('Choose file', () => fileInput.click());
+const another = button('Upload another CSV', () => {
+  mode = 'merge';
+  modeWrap.querySelectorAll<HTMLInputElement>('input').forEach((radio) => {
+    radio.checked = radio.value === 'merge';
+  });
+  modeExplanation.textContent =
+    'Adds and updates matching IDs in this group. Existing accounts absent from this file are preserved.';
+  invalidatePreview();
+  fileInput.value = '';
+  file = undefined;
+  fileName.textContent = 'Choose an account CSV';
+  change.textContent = 'Choose file';
+  fileInput.click();
+});
+const sample = el('a', 'sample-link', 'Download sample CSV (3 rows)');
+sample.href = chrome.runtime.getURL('sample-accounts.csv');
+sample.download = 'sample-accounts.csv';
 const fileIcon = el('div', 'avatar');
 fileIcon.append(icon('upload'));
 fileCard.append(fileIcon, fileText, change, fileInput);
@@ -110,7 +160,7 @@ for (const [value, label] of [
     modeExplanation.textContent =
       value === 'merge'
         ? 'Adds and updates matching IDs. Accounts absent from this file are preserved.'
-        : 'Replaces the entire catalog. Accounts missing from valid incoming rows are removed.';
+        : 'Replaces accounts in this CSV group only. Accounts missing from valid incoming rows are removed.';
   });
   wrap.append(radio, el('span', '', label));
   modeWrap.append(wrap);
@@ -120,7 +170,11 @@ const verify = button('Verify accounts', verifyImport, 'primary');
 const importError = liveRegion();
 importPanel.append(
   importHeading,
+  groupName.wrap,
+  groupActions,
   fileCard,
+  another,
+  sample,
   target.wrap,
   el(
     'p',
@@ -238,6 +292,11 @@ async function verifyImport() {
     message(importError, 'Choose a CSV file first.', true);
     return;
   }
+  if (!groupName.input.value.trim()) {
+    message(importError, 'Enter a name for this CSV group.', true);
+    groupName.input.focus();
+    return;
+  }
   if (!target.input.value.trim()) {
     message(importError, 'Enter the HTTPS URL to match.', true);
     target.input.focus();
@@ -251,6 +310,9 @@ async function verifyImport() {
   setBusy(true);
   const chosen = file;
   try {
+    if (groupName.input.value.trim() !== state?.groupName) {
+      await request({ type: 'RENAME_GROUP', name: groupName.input.value });
+    }
     const bytes = new Uint8Array(await chosen.arrayBuffer());
     preview = await request<ImportPreview>({
       type: 'PREVIEW_IMPORT',
@@ -278,7 +340,10 @@ function showPreview() {
   step.textContent = 'Step 2 of 2';
   verify.hidden = true;
   fileInfo.textContent = `${((file?.size ?? 0) / 1024).toFixed(1)} KiB · ${p.valid} valid rows`;
-  previewBox.replaceChildren(el('h2', '', 'Review import'), el('p', 'mono wrap', p.rule));
+  previewBox.replaceChildren(
+    el('h2', '', `Review import into ${state?.groupName ?? 'this group'}`),
+    el('p', 'mono wrap', p.rule),
+  );
   const counts = el('div', 'import-counts');
   for (const [label, value] of [
     ['Found', p.found],
@@ -377,16 +442,16 @@ function updateAccounts() {
   const s = state;
   listHeading.replaceChildren(el('span', '', `Indexed accounts (${s.total})`));
   const purge = button(
-    'Purge All',
+    'Purge group',
     () =>
       confirmDialog(
-        'Purge all accounts?',
-        `Permanently remove all ${s.total} accounts, including those outside this filter? This cannot be undone. Your vault setup and profile are kept.`,
-        'Purge all accounts',
+        `Purge ${s.groupName ?? 'this group'}?`,
+        `Permanently remove all ${s.total} accounts from “${s.groupName ?? 'this group'}”, including those outside this filter? Other CSV groups are untouched. This cannot be undone.`,
+        'Purge this group',
         async () => {
           await request({ type: 'PURGE' });
           invalidatePreview();
-          message(status, 'All accounts were removed.');
+          message(status, 'Accounts in this CSV group were removed.');
           await refresh();
         },
       ),
@@ -605,6 +670,22 @@ function render() {
   const s = state;
   badge.textContent = s.migrationRequired ? 'Migration needed' : `${s.total} accounts`;
   badge.className = s.migrationRequired ? 'pill' : 'pill authorized';
+  groupBar.replaceChildren(
+    groupPicker(
+      s,
+      () => {
+        mounted = false;
+        query = '';
+        page = 0;
+        file = undefined;
+        fileInput.value = '';
+        fileName.textContent = 'Choose an account CSV';
+        invalidatePreview();
+        void refresh();
+      },
+      () => busy,
+    ),
+  );
   footer.replaceChildren();
   if (s.migrationRequired) {
     mounted = false;
@@ -624,6 +705,7 @@ function render() {
     return;
   }
   if (!mounted) {
+    groupName.input.value = s.groupName ?? 'Imported accounts';
     target.input.value = s.rule ?? '';
     populateProfile();
     const security = el('div', 'notice encryption');

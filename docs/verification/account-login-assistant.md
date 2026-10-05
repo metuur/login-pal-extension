@@ -1,5 +1,10 @@
 # Account Login Assistant verification
 
+## Named CSV groups revision (2026-10-05)
+
+Passed TypeScript, formatting, build, 60 focused tests and 55 browser checks. Group tests cover duplicate IDs across groups, independent domains, merge/replace/purge isolation, restart, cross-group preview rejection, name uniqueness/rename, unauthorized enumeration, and shared-host permission preservation. Browser checks create a named group, import a file, use Upload another CSV to merge, confirm group-specific purge, and download the three-row sample. Existing data remains under Imported accounts.
+
+
 ## Current synthetic-data revision (2026-10-05)
 
 Lock removal passed TypeScript, 57 focused tests, formatting, build, and 49 real-browser checks. New installations open automatically; restart retains access. Legacy migration tests verify wrong-password preservation and one-time conversion without account loss. The key is now persisted beside the encrypted snapshot, so local storage is not user-password protected. The historical password-lock results below describe the earlier release and are superseded for this revision. Current browser evidence is in browser-report.json.

@@ -1,5 +1,5 @@
 {
-  "passed": 49,
+  "passed": 55,
   "checks": [
     "Generated manifest uses the package version",
     "Shipping manifest has optional host access only",
@@ -38,6 +38,12 @@
     "Settings Undo action restores the deleted account",
     "Popup renders the branded interface",
     "Settings renders account import modes",
+    "Sample download has required headers and three synthetic rows",
+    "Creating another CSV group preserves the original group",
+    "CSV group stores its own URL and duplicate account ID",
+    "Upload another CSV merges into the selected group",
+    "Purge confirmation names the selected CSV group",
+    "Group purge preserves accounts in other CSV groups",
     "Cancelling purge preserves the catalog",
     "Confirmed settings purge empties accounts while preserving vault setup",
     "10,000-account search renders within 200 ms after input",
@@ -53,7 +59,7 @@
   ],
   "search": {
     "accounts": 10000,
-    "inputToRenderedResultsMs": 64.5,
+    "inputToRenderedResultsMs": 40.5,
     "thresholdMs": 200
   },
   "browser": "153.0.8010.12",

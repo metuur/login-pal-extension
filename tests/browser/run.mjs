@@ -311,13 +311,90 @@ try {
     (await options.locator('body').innerText()).includes('Merge'),
     'Settings renders account import modes',
   );
-  await options.getByRole('button', { name: 'Purge All', exact: true }).click();
+  const downloadEvent = options.waitForEvent('download');
+  await options.getByRole('link', { name: 'Download sample CSV (3 rows)', exact: true }).click();
+  const download = await downloadEvent;
+  const samplePath = await download.path();
+  const sampleCsv = await readFile(samplePath, 'utf8');
+  check(
+    sampleCsv.trim().split('\n').length === 4 &&
+      sampleCsv.startsWith('account_id,username,password,'),
+    'Sample download has required headers and three synthetic rows',
+  );
+  await options.getByLabel('CSV group name', { exact: true }).fill('Performance');
+  await options.getByRole('button', { name: 'Create new group', exact: true }).click();
+  await options
+    .getByRole('combobox', { name: 'CSV group', exact: true })
+    .selectOption({ label: 'Performance' });
+  await options
+    .getByText('Group created. Choose its CSV and authorized URL.', { exact: true })
+    .waitFor();
+  const groupId = await options
+    .getByRole('combobox', { name: 'CSV group', exact: true })
+    .inputValue();
+  await options
+    .getByLabel('Target authorized URL pattern *', { exact: true })
+    .fill('https://performance.example.test/*');
+  await options.locator('#csv-file').setInputFiles({
+    name: 'performance.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(
+      'account_id,username,password\nACC-1234,performance@example.test,synthetic-perf',
+    ),
+  });
+  await options.getByRole('button', { name: 'Verify accounts', exact: true }).click();
+  await options.getByRole('button', { name: 'Import 1 valid accounts', exact: true }).click();
+  await waitState((s) => s.total === 3, 'Creating another CSV group preserves the original group');
+  const groupState = () => send({ type: 'STATE', groupId });
+  for (let i = 0; i < 30 && (await groupState()).total !== 1; i++)
+    await new Promise((r) => setTimeout(r, 100));
+  check(
+    (await groupState()).total === 1 &&
+      (await groupState()).rule === 'https://performance.example.test/*',
+    'CSV group stores its own URL and duplicate account ID',
+  );
+  const chooserEvent = options.waitForEvent('filechooser');
+  await options.getByRole('button', { name: 'Upload another CSV', exact: true }).click();
+  const chooser = await chooserEvent;
+  const extraPath = join(temp, 'additional.csv');
+  await writeFile(
+    extraPath,
+    'account_id,username,password\nPERF-2,extra@example.test,synthetic-extra',
+  );
+  await chooser.setFiles(extraPath);
+  await options.getByRole('button', { name: 'Verify accounts', exact: true }).click();
+  await options.getByRole('button', { name: 'Import 1 valid accounts', exact: true }).click();
+  for (let i = 0; i < 30 && (await groupState()).total !== 2; i++)
+    await new Promise((r) => setTimeout(r, 100));
+  check((await groupState()).total === 2, 'Upload another CSV merges into the selected group');
+  await options.locator('.options-body').evaluate((node) => {
+    node.scrollTop = 0;
+  });
+  await options.setViewportSize({ width: 430, height: 648 });
+  await options.screenshot({ path: 'artifacts/group-settings.png', fullPage: true });
+  await options.getByRole('button', { name: 'Purge group', exact: true }).click();
+  check(
+    (await options.getByRole('dialog').innerText()).includes('Performance'),
+    'Purge confirmation names the selected CSV group',
+  );
+  await options.getByRole('button', { name: 'Purge this group', exact: true }).click();
+  for (let i = 0; i < 30 && (await groupState()).total !== 0; i++)
+    await new Promise((r) => setTimeout(r, 100));
+  check(
+    (await groupState()).total === 0 && (await state()).total === 3,
+    'Group purge preserves accounts in other CSV groups',
+  );
+  await options.getByRole('combobox', { name: 'CSV group', exact: true }).selectOption('default');
+  await options.getByLabel('CSV group name', { exact: true }).fill('QA Platform X');
+  await options.getByRole('button', { name: 'Save group name', exact: true }).click();
+  await options.getByText('Group name saved.', { exact: true }).waitFor();
+  await options.getByRole('button', { name: 'Purge group', exact: true }).click();
   await options.getByRole('button', { name: 'Cancel', exact: true }).click();
   check((await state()).total === 3, 'Cancelling purge preserves the catalog');
-  await options.getByRole('button', { name: 'Purge All', exact: true }).click();
+  await options.getByRole('button', { name: 'Purge group', exact: true }).click();
   await options
     .getByRole('dialog')
-    .getByRole('button', { name: 'Purge all accounts', exact: true })
+    .getByRole('button', { name: 'Purge this group', exact: true })
     .click();
   await waitState(
     (s) => s.total === 0 && s.initialized,

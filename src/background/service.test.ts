@@ -1,3 +1,4 @@
+import { GroupService } from './groups';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { AssistantService } from './service';
 import type { AppState, Command, ImportPreview, Reply } from '../shared/types';
@@ -388,5 +389,122 @@ describe('worker credential and transaction boundary', () => {
     }
     expect((await state(service)).lastSuccessful?.accountId).toBe('A');
     expect((session.unlockedSession as { attempts: unknown[] }).attempts).toHaveLength(0);
+  });
+});
+
+describe('named CSV groups', () => {
+  async function run<T = AppState>(
+    service: GroupService,
+    data: Record<string, unknown>,
+  ): Promise<T> {
+    const result = await service.handle(data, sender);
+    if (!result.ok) throw new Error(result.error);
+    return result.data as T;
+  }
+  async function ingest(
+    service: GroupService,
+    groupId: string,
+    ids: string[],
+    mode = 'merge',
+    rule = 'https://qa.example.com/*',
+  ) {
+    const p = await run<ImportPreview>(service, {
+      type: 'PREVIEW_IMPORT',
+      groupId,
+      mode,
+      rule,
+      bytes: [
+        ...new TextEncoder().encode(
+          'account_id,username,password\n' +
+            ids.map((id) => `${id},synthetic@example.test,synthetic-only`).join('\n'),
+        ),
+      ],
+    });
+    await run(service, { type: 'COMMIT_IMPORT', groupId, token: p.token });
+  }
+  it('isolates duplicate IDs, merge, replace, purge, domains and restart by group', async () => {
+    let service = new GroupService();
+    await service.ready;
+    const group = await run<{ id: string }>(service, { type: 'CREATE_GROUP', name: 'Performance' });
+    await ingest(service, 'default', ['A']);
+    await ingest(service, group.id, ['A'], 'merge', 'https://performance.example.com/*');
+    await ingest(service, 'default', ['B']);
+    expect((await run(service, { type: 'STATE' })).total).toBe(2);
+    expect((await run(service, { type: 'STATE', groupId: group.id })).total).toBe(1);
+    expect((await run(service, { type: 'STATE', groupId: group.id })).rule).toBe(
+      'https://performance.example.com/*',
+    );
+    await ingest(service, 'default', ['C'], 'replace');
+    expect((await run(service, { type: 'STATE', groupId: group.id })).accounts[0].accountId).toBe(
+      'A',
+    );
+    await run(service, { type: 'PURGE', groupId: 'default' });
+    expect((await run(service, { type: 'STATE', groupId: group.id })).total).toBe(1);
+    session = {};
+    service = new GroupService();
+    await service.ready;
+    expect((await run(service, { type: 'STATE', groupId: group.id })).total).toBe(1);
+    expect((await run(service, { type: 'STATE' })).total).toBe(0);
+  });
+  it('preserves a shared host permission when another group still uses it', async () => {
+    const service = new GroupService();
+    await service.ready;
+    const group = await run<{ id: string }>(service, { type: 'CREATE_GROUP', name: 'Second QA' });
+    for (const groupId of ['default', group.id]) {
+      await ingest(service, groupId, ['A']);
+      await run(service, {
+        type: 'SAVE_PROFILE',
+        groupId,
+        profile: {
+          name: 'QA',
+          loginUrl: 'https://qa.example.com/login',
+          usernameSelector: '#user',
+          passwordSelector: '#password',
+          successKind: 'url',
+          successUrl: 'https://qa.example.com/done',
+        },
+      });
+    }
+    vi.mocked(chrome.permissions.remove).mockClear();
+    await run(service, { type: 'RESET', groupId: 'default' });
+    expect(chrome.permissions.remove).not.toHaveBeenCalled();
+    expect((await run(service, { type: 'STATE', groupId: group.id })).profile?.name).toBe('QA');
+    expect((await run(service, { type: 'STATE', groupId: group.id })).total).toBe(1);
+  });
+  it('rejects cross-group preview tokens and unauthorized group enumeration', async () => {
+    const service = new GroupService();
+    await service.ready;
+    const group = await run<{ id: string }>(service, { type: 'CREATE_GROUP', name: 'Platform B' });
+    const p = await run<ImportPreview>(service, {
+      type: 'PREVIEW_IMPORT',
+      groupId: 'default',
+      mode: 'merge',
+      rule: 'https://qa.example.com/*',
+      bytes: [
+        ...new TextEncoder().encode('account_id,username,password\nA,demo@example.test,synthetic'),
+      ],
+    });
+    expect(
+      (await service.handle({ type: 'COMMIT_IMPORT', groupId: group.id, token: p.token }, sender))
+        .ok,
+    ).toBe(false);
+    expect(
+      (
+        await service.handle({ type: 'STATE', groupId: group.id }, {
+          id: 'test',
+          url: 'https://qa.example.com',
+          tab: { id: 1 },
+          frameId: 0,
+          documentId: 'doc',
+        } as chrome.runtime.MessageSender)
+      ).ok,
+    ).toBe(false);
+    expect((await service.handle({ type: 'CREATE_GROUP', name: 'platform b' }, sender)).ok).toBe(
+      false,
+    );
+    await run(service, { type: 'RENAME_GROUP', groupId: group.id, name: 'QA Platform X' });
+    expect((await run(service, { type: 'STATE', groupId: group.id })).groupName).toBe(
+      'QA Platform X',
+    );
   });
 });

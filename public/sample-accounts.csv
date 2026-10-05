@@ -1,0 +1,4 @@
+account_id,username,password,customer_name,account_type,environment,role
+QA-001,alex@example.test,synthetic-demo-001,Acme Corp,Premium,QA,Admin
+QA-002,sam@example.test,synthetic-demo-002,Contoso,Basic,QA,Support
+QA-003,jordan@example.test,synthetic-demo-003,Platform J,Trial,Performance,Analyst

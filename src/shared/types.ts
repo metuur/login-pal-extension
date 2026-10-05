@@ -93,7 +93,14 @@ export interface Attempt {
   expiresAt: number;
   acknowledged?: boolean;
 }
+export interface CsvGroup {
+  id: string;
+  name: string;
+}
 export interface AppState {
+  groups?: CsvGroup[];
+  groupId?: string;
+  groupName?: string;
   initialized: boolean;
   migrationRequired: boolean;
   profile: LoginProfile | null;
@@ -113,6 +120,8 @@ export interface AppState {
   version: string;
 }
 export type Command =
+  | { type: 'CREATE_GROUP'; name: string }
+  | { type: 'RENAME_GROUP'; name: string }
   | { type: 'STATE'; query?: string; page?: number; tabId?: number }
   | { type: 'MIGRATE'; password: string }
   | { type: 'RESET' | 'UNDO' | 'PURGE' }

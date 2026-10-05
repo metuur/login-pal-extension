@@ -98,6 +98,7 @@ describe('password-free accessible views', () => {
     await Promise.resolve();
     expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
       type: 'MIGRATE',
+      groupId: 'default',
       password: 'old synthetic password',
     });
     expect(form.querySelectorAll('input')).toHaveLength(1);

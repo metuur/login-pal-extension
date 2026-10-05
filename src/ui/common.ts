@@ -1,5 +1,38 @@
 import type { AccountSummary, AppState, Command, Reply } from '../shared/types';
 
+let selectedGroup =
+  typeof location === 'undefined'
+    ? 'default'
+    : (new URL(location.href).searchParams.get('group') ?? 'default');
+export function currentGroup() {
+  return selectedGroup;
+}
+export function chooseGroup(id: string) {
+  selectedGroup = id;
+}
+export function groupPicker(state: AppState, onChange: () => void, isBusy: () => boolean) {
+  const wrap = el('label', 'group-picker');
+  wrap.append(el('span', 'subtle', 'CSV group'));
+  const select = el('select');
+  select.setAttribute('aria-label', 'CSV group');
+  for (const group of state.groups ?? [{ id: 'default', name: 'Imported accounts' }]) {
+    const option = el('option', '', group.name);
+    option.value = group.id;
+    select.append(option);
+  }
+  select.value = currentGroup();
+  select.addEventListener('change', () => {
+    if (isBusy()) {
+      select.value = currentGroup();
+      return;
+    }
+    chooseGroup(select.value);
+    onChange();
+  });
+  wrap.append(select);
+  return wrap;
+}
+
 export function versionFooter(): HTMLElement {
   const footer = el('div', 'version-footer');
   footer.append(
@@ -68,7 +101,7 @@ export function iconButton(name: Parameters<typeof icon>[0], label: string, acti
 export async function request<T = void>(command: Command): Promise<T> {
   let reply: Reply<T>;
   try {
-    reply = (await chrome.runtime.sendMessage(command)) as Reply<T>;
+    reply = (await chrome.runtime.sendMessage({ ...command, groupId: selectedGroup })) as Reply<T>;
   } catch {
     throw new Error('The extension is unavailable. Reopen it and try again.');
   }
@@ -271,12 +304,12 @@ export function confirmDialog(
 }
 export function resetButton(done: () => Promise<void>) {
   return button(
-    'Reset vault',
+    'Reset group',
     () =>
       confirmDialog(
-        'Reset this vault?',
-        'This permanently deletes all accounts, history, profile settings and website permission. There is no Undo.',
-        'Delete vault',
+        'Reset this CSV group?',
+        'This permanently deletes this group’s accounts, history and profile settings. Other groups are untouched. There is no Undo.',
+        'Reset group',
         async () => {
           await request({ type: 'RESET' });
           await done();

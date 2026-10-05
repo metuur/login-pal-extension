@@ -25,8 +25,7 @@ import { parseRule, formatRule, matchesRule, matchesRoute, validateProfile } fro
 import { parseCsv } from '../domain/csv';
 import { planImport } from '../domain/import';
 import { searchAccounts } from '../domain/search';
-const SESSION = 'unlockedSession',
-  REGISTRATION = 'login-assistant';
+
 const bytes = (value: unknown) => new TextEncoder().encode(JSON.stringify(value)).length;
 const empty = (): VaultPayload => ({
   schemaVersion: 1,
@@ -87,26 +86,59 @@ export class AssistantService {
   private preview: Preview | null = null;
   private tail: Promise<unknown> = Promise.resolve();
   readonly ready: Promise<void>;
-  constructor() {
+  private readonly registration: string;
+  private readonly sessionKey: string;
+  constructor(
+    readonly groupId = 'default',
+    private readonly releaseHost?: (host: string) => Promise<void>,
+  ) {
+    this.registration = groupId === 'default' ? 'login-assistant' : `login-assistant-${groupId}`;
+    this.sessionKey = groupId === 'default' ? 'unlockedSession' : `group:${groupId}:session`;
     this.ready = this.initialize();
   }
+  private key(name: string) {
+    return this.groupId === 'default' ? name : `group:${this.groupId}:${name}`;
+  }
+  private async readLocal(names: string[]) {
+    const data = await chrome.storage.local.get(names.map((name) => this.key(name)));
+    return Object.fromEntries(names.map((name) => [name, data[this.key(name)]]));
+  }
+  private async saveLocal(data: Record<string, unknown>) {
+    await chrome.storage.local.set(
+      Object.fromEntries(Object.entries(data).map(([name, value]) => [this.key(name), value])),
+    );
+  }
+  private async removeLocal(names: string[]) {
+    await chrome.storage.local.remove(names.map((name) => this.key(name)));
+  }
+  private async removeHost(host: string) {
+    if (this.releaseHost) await this.releaseHost(host);
+    else await chrome.permissions.remove({ origins: [host] });
+  }
+  ownsAttempt(token?: string, tabId?: number) {
+    return !!this.session?.attempts.some((a) => (token ? a.token === token : a.tabId === tabId));
+  }
+  authorizedHost() {
+    return this.profile ? this.host(this.profile) : null;
+  }
+
   private async initialize() {
     await Promise.all([
       chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' }),
       chrome.storage.session.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' }),
     ]);
     const [local, temporary] = await Promise.all([
-      chrome.storage.local.get(['vault', 'profile', 'catalogKey']),
-      chrome.storage.session.get(SESSION),
+      this.readLocal(['vault', 'profile', 'catalogKey']),
+      chrome.storage.session.get(this.sessionKey),
     ]);
     this.envelope = (local.vault as Envelope | undefined) ?? null;
     this.profile = (local.profile as LoginProfile | undefined) ?? null;
-    const previous = temporary[SESSION] as Session | undefined;
+    const previous = temporary[this.sessionKey] as Session | undefined;
     const key = typeof local.catalogKey === 'string' ? local.catalogKey : previous?.key;
     if (this.envelope && key) {
       this.payload = await decryptVault(this.envelope, key);
       this.session = { key, attempts: previous?.attempts ?? [], undo: previous?.undo ?? null };
-      await chrome.storage.local.set({ catalogKey: key });
+      await this.saveLocal({ catalogKey: key });
       await this.persistSession();
     } else if (!this.envelope) {
       await this.createCatalog();
@@ -118,7 +150,7 @@ export class AssistantService {
     const key = await deriveVaultKey(crypto.randomUUID(), salt);
     const payload = empty();
     const envelope = await encryptVault(payload, key, salt);
-    await chrome.storage.local.set({ vault: envelope, catalogKey: key });
+    await this.saveLocal({ vault: envelope, catalogKey: key });
     this.envelope = envelope;
     this.payload = payload;
     this.session = { key, attempts: [], undo: null };
@@ -133,15 +165,15 @@ export class AssistantService {
   }
   private async persistSession(generation = this.generation) {
     if (!this.session) return;
-    await chrome.storage.session.set({ [SESSION]: this.session });
-    if (generation !== this.generation) await chrome.storage.session.remove(SESSION);
+    await chrome.storage.session.set({ [this.sessionKey]: this.session });
+    if (generation !== this.generation) await chrome.storage.session.remove(this.sessionKey);
   }
   async invalidateSession() {
     ++this.generation;
     this.session = null;
     this.payload = null;
     this.preview = null;
-    await chrome.storage.session.remove(SESSION);
+    await chrome.storage.session.remove(this.sessionKey);
   }
   // Serialized callers publish one authenticated snapshot; reset can invalidate work mid-flight.
   private async write(next: VaultPayload, accountMutation = false, stillValid = () => true) {
@@ -154,9 +186,9 @@ export class AssistantService {
     if (bytes(envelope) > 5 * 1024 * 1024) throw new Error('Vault size limit.');
     this.assert(generation);
     if (!stillValid()) throw new Error('Cancelled.');
-    await chrome.storage.local.set({ vault: envelope });
+    await this.saveLocal({ vault: envelope });
     if (generation !== this.generation || !this.session || !stillValid()) {
-      await chrome.storage.local.set({ vault: oldEnvelope });
+      await this.saveLocal({ vault: oldEnvelope });
       throw new Error('Cancelled.');
     }
     this.envelope = envelope;
@@ -291,7 +323,7 @@ export class AssistantService {
         throw new Error('No legacy catalog to migrate.');
       const key = await deriveVaultKey(command.password, this.envelope.salt);
       const payload = await decryptVault(this.envelope, key);
-      await chrome.storage.local.set({ catalogKey: key });
+      await this.saveLocal({ catalogKey: key });
       this.payload = payload;
       this.session = { key, attempts: [], undo: null };
       await this.persistSession();
@@ -300,11 +332,15 @@ export class AssistantService {
     }
     if (command.type === 'RESET') {
       await this.invalidateSession();
-      await chrome.scripting.unregisterContentScripts();
-      const permissions = await chrome.permissions.getAll();
-      if (permissions.origins?.length)
-        await chrome.permissions.remove({ origins: permissions.origins });
-      await chrome.storage.local.remove(['vault', 'profile', 'catalogKey']);
+      const registered = await chrome.scripting.getRegisteredContentScripts({
+        ids: [this.registration],
+      });
+      if (registered.length)
+        await chrome.scripting.unregisterContentScripts({ ids: [this.registration] });
+      const oldHost = this.authorizedHost();
+      this.profile = null;
+      if (oldHost) await this.removeHost(oldHost);
+      await this.removeLocal(['vault', 'profile', 'catalogKey']);
       this.envelope = null;
       this.profile = null;
       await this.createCatalog();
@@ -402,23 +438,25 @@ export class AssistantService {
       } catch (error) {
         // A user-gesture permission request happens in the UI before validation here.
         // Keep only the existing profile's grant when that save cannot complete.
-        const granted = await chrome.permissions.getAll();
-        const unused = (granted.origins ?? []).filter(
-          (origin) => !this.profile || origin !== this.host(this.profile),
-        );
-        if (unused.length) await chrome.permissions.remove({ origins: unused });
+        try {
+          const url = new URL(command.profile.loginUrl);
+          const candidate = `${url.protocol}//${url.hostname}/*`;
+          if (candidate !== this.authorizedHost()) await this.removeHost(candidate);
+        } catch {
+          /* Invalid profile input has no usable host grant. */
+        }
         const registrations = await chrome.scripting.getRegisteredContentScripts({
-          ids: [REGISTRATION],
+          ids: [this.registration],
         });
         if (registrations.length)
-          await chrome.scripting.unregisterContentScripts({ ids: [REGISTRATION] });
+          await chrome.scripting.unregisterContentScripts({ ids: [this.registration] });
         if (
           this.profile &&
           (await chrome.permissions.contains({ origins: [this.host(this.profile)] }))
         )
           await chrome.scripting.registerContentScripts([
             {
-              id: REGISTRATION,
+              id: this.registration,
               matches: [this.host(this.profile)],
               js: ['content.js'],
               allFrames: false,
@@ -466,13 +504,13 @@ export class AssistantService {
     this.preview = null;
     await this.persistSession();
     const registrations = await chrome.scripting.getRegisteredContentScripts({
-      ids: [REGISTRATION],
+      ids: [this.registration],
     });
     if (registrations.length)
-      await chrome.scripting.unregisterContentScripts({ ids: [REGISTRATION] });
+      await chrome.scripting.unregisterContentScripts({ ids: [this.registration] });
     await chrome.scripting.registerContentScripts([
       {
-        id: REGISTRATION,
+        id: this.registration,
         matches: [this.host(next)],
         js: ['content.js'],
         allFrames: false,
@@ -482,11 +520,11 @@ export class AssistantService {
       },
     ]);
     this.assert(generation);
-    await chrome.storage.local.set({ profile: next });
+    await this.saveLocal({ profile: next });
     this.assert(generation);
     this.profile = next;
     if (previous && this.host(previous) !== this.host(next))
-      await chrome.permissions.remove({ origins: [this.host(previous)] });
+      await this.removeHost(this.host(previous));
     this.notify();
   }
   private async targetTab(id?: number) {

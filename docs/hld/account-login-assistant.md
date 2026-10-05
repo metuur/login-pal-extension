@@ -1,5 +1,10 @@
 # Account Login Assistant — High-Level Design
 
+## Named CSV groups — current scope (2026-10-05)
+
+The user expanded the single-catalog design to named CSV groups. Each group owns independent encrypted storage/key, accounts, URL rule, login profile, history, preview, write queue and Undo. Existing data remains in the default Imported accounts group. UI requests carry the selected group ID; content observations route only to the owning live attempt. New explicit fills supersede attempts across groups in the same tab. Duplicate account IDs across groups are valid. Merge, Replace, Purge and Reset affect only the selected group. Permission removal must retain hosts used by another group. Group names are editable and required (1–80 characters, unique ignoring case); at most 50 groups. Upload another CSV defaults to Merge within the selected group. A packaged sample CSV contains headers and three synthetic rows. This supersedes all historical single-profile/single-catalog scope below.
+
+
 ## Synthetic-data mode — supersedes password-lock requirements (2026-10-05)
 
 The user removed the lock feature for synthetic-only data. New installations create a ready-to-use local catalog automatically. No setup password, lock button, idle timer, TOUCH renewal, startup lock, or alarms permission remains. The snapshot retains AES-GCM but persists its key in trusted local storage; this does not provide user-password protection. Existing encrypted catalogs migrate once with their old key/session or previous password, preserving data on failure. Reset clears old state and creates an empty ready catalog. Origin authorization, explicit filling, password-free summaries, transactional imports, and attempt/Undo expiry remain. Historical locked-state instructions below are superseded by this amendment.

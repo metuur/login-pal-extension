@@ -1,5 +1,5 @@
-import { AssistantService } from './service';
-const service = new AssistantService();
+import { GroupService } from './groups';
+const service = new GroupService();
 chrome.runtime.onMessage.addListener((message: unknown, sender, respond) => {
   void service
     .handle(message, sender)

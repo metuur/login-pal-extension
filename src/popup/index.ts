@@ -1,6 +1,9 @@
 import type { AccountSummary, AppState } from '../shared/types';
 import {
   accountRow,
+  groupPicker,
+  currentGroup,
+  chooseGroup,
   button,
   el,
   featuredHeading,
@@ -38,6 +41,7 @@ let tabId: number | undefined,
 async function openOptions(section = 'accounts') {
   const url = new URL(chrome.runtime.getURL('options.html'));
   if (tabId !== undefined) url.searchParams.set('sourceTab', String(tabId));
+  url.searchParams.set('group', currentGroup());
   url.hash = section;
   await chrome.tabs.create({ url: url.href });
 }
@@ -50,7 +54,8 @@ header.append(top);
 const strip = el('div', 'profile-strip');
 header.append(strip);
 const footer = el('footer', 'app-footer');
-app.replaceChildren(header, status, body, footer, versionFooter());
+const groupBar = el('div', 'group-bar');
+app.replaceChildren(header, groupBar, status, body, footer, versionFooter());
 const search = searchBox((value) => {
   query = value;
   page = 0;
@@ -106,6 +111,17 @@ function render(resultsOnly = false) {
       'span',
       s.authorized ? 'pill authorized' : 'pill',
       s.migrationRequired ? 'Migration needed' : s.authorized ? '● Authorized' : 'Not authorized',
+    ),
+  );
+  groupBar.replaceChildren(
+    groupPicker(
+      s,
+      () => {
+        query = '';
+        page = 0;
+        void refresh();
+      },
+      () => busy,
     ),
   );
   footer.replaceChildren();

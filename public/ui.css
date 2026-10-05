@@ -511,6 +511,27 @@ input::placeholder {
   content: '·';
   margin-right: 8px;
 }
+.group-bar {
+  padding: 7px 12px;
+  background: white;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+.group-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.group-picker > span {
+  white-space: nowrap;
+}
+.group-picker select {
+  padding: 5px 8px;
+}
+.sample-link {
+  color: #4f46e5;
+  font-size: 11px;
+}
 .notice {
   font-size: 11px;
   padding: 9px 10px;
