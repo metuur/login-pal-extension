@@ -8,7 +8,9 @@ Use three tabs: Import CSV, Indexed accounts, and Login page setup. Keep the CSV
 
 Simply reducing spacing would still leave three independent workflows stacked together. Collapsible sections would still allow the page to grow indefinitely. Tabs make the current task explicit and keep navigation available.
 
-Settings retains a compact 430px maximum width. In the local development preview, settings and the main account-search page share that same container width, so navigation does not resize the app. This follows the user's width correction after reviewing the initial tabbed layout. Profile fields stack within the compact container. The account-search popup keeps its existing width.
+Settings opened at a compact 430px maximum width, matching the main account-search page so navigation did not resize the app.
+
+Superseded on 2026-10-05: settings now uses an 880px maximum width. Settings opens as a full browser tab from the popup's config icon, where a 430px column left most of the window empty and squeezed the two-column profile grid that `@media (min-width: 560px)` already enables. At 880px that grid gets roughly 407px per column, so the CSS selector fields show their full value. The header's back arrow is removed — the tab strip is the only navigation settings needs. The account-search popup keeps its existing 380px width.
 
 ## Import and help
 

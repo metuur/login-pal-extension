@@ -67,7 +67,7 @@ npm run test:browser
 
 Build output is `dist/`. Browser evidence and synthetic UI screenshots are written to `artifacts/`. Local font licenses are bundled in `dist/fonts/`. See [the completed task plan](docs/tasks/account-login-assistant.md) for requirement and commit traceability.
 
-The build generates `dist/manifest.json`; `package.json` is the single source of its version. Use a Chrome-compatible numeric release version (no prerelease suffix). The popup and settings footer display the generated manifest version with “crafter by metuur”.
+The build generates `dist/manifest.json`; `package.json` is the single source of its version. Use a Chrome-compatible numeric release version (no prerelease suffix). The popup and settings footer display the generated manifest version with “Crafted by metuur”.
 
 ## Match username and password inputs
 

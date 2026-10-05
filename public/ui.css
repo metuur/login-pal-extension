@@ -44,12 +44,11 @@ body {
 }
 body.popup {
   width: 380px;
-  max-width: 100vw;
 }
 body.popup #app {
   display: flex;
   flex-direction: column;
-  max-height: min(600px, 100dvh);
+  max-height: 600px;
   overflow: hidden;
 }
 body.options {
@@ -62,7 +61,7 @@ body.options {
   display: flex;
   flex-direction: column;
   max-height: calc(100dvh - 48px);
-  max-width: 430px;
+  max-width: 880px;
   margin: 0 auto;
   background: white;
   border: 1px solid #e2e8f0;

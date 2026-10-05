@@ -17,7 +17,6 @@ import {
   el,
   field,
   icon,
-  iconButton,
   liveRegion,
   message,
   pagination,
@@ -44,16 +43,7 @@ title.append(
 brand.append(logo, title);
 const badge = el('span', 'pill authorized');
 const version = el('span', 'version mono', `v${chrome.runtime.getManifest().version}`);
-headerLine.append(
-  iconButton('back', 'Back to overview', () => {
-    selectTab('import');
-    location.hash = '';
-    window.scrollTo({ top: 0 });
-  }),
-  brand,
-  version,
-  badge,
-);
+headerLine.append(brand, version, badge);
 header.append(headerLine);
 const status = liveRegion(),
   content = el('div', 'options-body stack'),

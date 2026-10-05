@@ -160,4 +160,4 @@ Moderate for the documented MVP. Confidence increases after browser tests exerci
 
 ## Available-height constraint
 
-Per the user’s layout correction, both popup and settings panels fit within 600px or the available viewport, whichever is smaller. Settings subtracts its outer spacing. Header and footer remain visible while the central content scrolls internally.
+Per the user’s layout correction, both popup and settings panels fit within 600px. Settings, which renders in a tab, also yields to a smaller viewport and subtracts its outer spacing; the popup uses a fixed cap because viewport units collapse a Chrome action popup. Header and footer remain visible while the central content scrolls internally.

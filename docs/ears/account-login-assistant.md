@@ -157,7 +157,7 @@ Status: Planning baseline accepted through the user’s request to continue plan
 | --- | --- |
 | R-8.1 | THE SYSTEM SHALL use the supplied screen.png and code.html light slate/white/indigo visual style, taking precedence over the conflicting dark palette in DESIGN.md. |
 | R-8.2 | THE SYSTEM SHALL present the reference's compact branded header, authorized-profile strip, featured account card, search, rounded account rows, and count/Lock footer using the tokens defined in the LLD. |
-| R-8.3 | THE SYSTEM SHALL target a 380px-wide popup with height capped at the smaller of 600px and the available viewport, with accessible internal vertical scrolling, excluding the reference's outer presentation canvas and fixed 884px minimum height. |
+| R-8.3 | THE SYSTEM SHALL target a 380px-wide popup with height capped at a fixed 600px (never a viewport-relative value, which collapses a Chrome action popup), with accessible internal vertical scrolling, excluding the reference's outer presentation canvas and fixed 884px minimum height. |
 | R-8.4 | THE SYSTEM SHALL load popup styles, fonts, icons, and scripts from packaged local assets without runtime CDN, Google Fonts, or inline demo scripts. |
 | R-8.5 | WHEN rendering accounts, badges, counts, timestamps, and authorization indicators, THE SYSTEM SHALL derive them from actual vault/profile/tab state rather than reference placeholders. |
 | R-8.6 | THE SYSTEM SHALL label last-successful history distinctly from recent accounts and search results, preserving selection confirmation before autofill for list results. |

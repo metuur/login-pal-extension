@@ -37,7 +37,7 @@ export function versionFooter(): HTMLElement {
   const footer = el('div', 'version-footer');
   footer.append(
     el('span', '', `v${chrome.runtime.getManifest().version}`),
-    el('span', '', 'crafter by metuur'),
+    el('span', '', 'Crafted by metuur'),
   );
   return footer;
 }

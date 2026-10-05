@@ -161,7 +161,7 @@ Implement local CSS and packaged icons/fonts; do not execute or ship the referen
 | Radius | 4px small badges, 8px controls, 12px account cards, pill status |
 | Depth | Thin borders and subtle shadows; avoid heavy elevation |
 
-Target a 380px-wide popup with a viewport capped at 600px high and a vertically scrollable content area. Keep the footer reachable without horizontal scrolling; verify the layout at 360px and 420px widths and increased text size. Do not copy the reference's 884px body minimum, centered presentation canvas, blanket text-selection suppression, zoom disabling, or globally hidden scrollbars. Preserve visible keyboard focus, accessible names, text truncation with access to full account details, and reduced-motion preferences. Decorative icons may be 16px but icon-button hit areas must be at least 28px.
+Target a 380px-wide popup capped at a fixed 600px high with a vertically scrollable content area. Size the popup in absolute units only: Chrome resolves vw/dvh against the popup frame it is still sizing, so a viewport-relative cap collapses the popup to an empty box. Keep the footer reachable without horizontal scrolling; verify the layout at 380px and 420px widths and increased text size. Do not copy the reference's 884px body minimum, centered presentation canvas, blanket text-selection suppression, zoom disabling, or globally hidden scrollbars. Preserve visible keyboard focus, accessible names, text truncation with access to full account details, and reduced-motion preferences. Decorative icons may be 16px but icon-button hit areas must be at least 28px.
 
 Component mapping:
 
@@ -271,4 +271,4 @@ These sources support platform boundaries. Encryption parameters, timeout values
 
 ## Available-height constraint
 
-Per the user’s layout correction, both popup and settings panels fit within 600px or the available viewport, whichever is smaller. Settings subtracts its outer spacing. Header and footer remain visible while the central content scrolls internally.
+Per the user’s layout correction, both popup and settings panels fit within 600px. Settings, which renders in a tab, also yields to a smaller viewport and subtracts its outer spacing; the popup uses a fixed cap because viewport units collapse a Chrome action popup. Header and footer remain visible while the central content scrolls internally.

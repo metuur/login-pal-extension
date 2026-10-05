@@ -341,7 +341,7 @@ The integrated acceptance task follows the focused story checks; it adds cross-c
   - why: Preserve the user's chosen look in the actual extension viewport.
   - acceptance: R-8.1 — THE SYSTEM SHALL use the supplied screen.png and code.html light slate/white/indigo visual style, taking precedence over the conflicting dark palette in DESIGN.md.
   - acceptance: R-8.2 — THE SYSTEM SHALL present the reference's compact branded header, authorized-profile strip, featured account card, search, rounded account rows, and count/Lock footer using the tokens defined in the LLD.
-  - acceptance: R-8.3 — THE SYSTEM SHALL target a 380px-wide popup with height capped at the smaller of 600px and the available viewport, with accessible internal vertical scrolling, excluding the reference's outer presentation canvas and fixed 884px minimum height.
+  - acceptance: R-8.3 — THE SYSTEM SHALL target a 380px-wide popup with height capped at a fixed 600px (never a viewport-relative value, which collapses a Chrome action popup), with accessible internal vertical scrolling, excluding the reference's outer presentation canvas and fixed 884px minimum height.
   - acceptance: R-8.4 — THE SYSTEM SHALL load popup styles, fonts, icons, and scripts from packaged local assets without runtime CDN, Google Fonts, or inline demo scripts.
   - verify: Compare synthetic reference state to screen.png: light surfaces, indigo CTA, header/strip/card/list/footer, typography and spacing; verify 380px width/600px cap, scroll behavior, packaged assets, and no CDN requests.
   - landed: `2e73dd9`, `f9963bc` — `src/popup/index.ts`, `src/ui/common.ts`, `src/ui/common.test.ts`, `public/popup.html`, `public/ui.css`, `tests/browser/run.mjs`.
@@ -369,7 +369,7 @@ The integrated acceptance task follows the focused story checks; it adds cross-c
 - [x] 8.5 Check every popup state for usability and visual fidelity (deps: 8.3, 8.4, est: ~35m) (mutex: popup)
   - why: Maintain the reference quality when data or application state differs from the sample.
   - acceptance: R-8.10 — THE SYSTEM SHALL apply the supplied style to locked, empty, unauthorized, loading, error, and confirmation states with visible focus, accessible labels, reduced-motion support, and usable long-content layouts.
-  - verify: Inspect locked, empty, unauthorized, loading, error, confirmation, and long-content views at 360/380/420px; test keyboard, accessible names, focus visibility, increased text size, and reduced motion.
+  - verify: Inspect locked, empty, unauthorized, loading, error, confirmation, and long-content views at 380/420px; test keyboard, accessible names, focus visibility, increased text size, and reduced motion.
   - landed: `2e73dd9`, `f9963bc` — `src/popup/index.ts`, `src/ui/common.ts`, `src/ui/common.test.ts`, `public/popup.html`, `public/ui.css`, `tests/browser/run.mjs`.
 
 ## Unit 9: Settings page and account management

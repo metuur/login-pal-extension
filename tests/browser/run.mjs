@@ -639,13 +639,29 @@ try {
     'Extension UI loads no remote assets or application services',
   );
   check(errors.length === 0, 'Extension pages have no uncaught browser errors');
-  for (const width of [360, 380, 420]) {
+  // A Chrome action popup sizes its frame to the 380px content, so it is never
+  // rendered narrower than that. Viewport-relative caps collapse the real popup.
+  for (const width of [380, 420, 800]) {
     await popup.setViewportSize({ width, height: 600 });
     check(
-      await popup.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+      await popup.evaluate(
+        () =>
+          document.body.scrollWidth <= document.body.clientWidth &&
+          document.body.clientWidth === 380,
+      ),
       `Popup has no horizontal overflow at ${width}px`,
     );
   }
+  await popup.setViewportSize({ width: 20, height: 20 });
+  check(
+    await popup.evaluate(
+      () =>
+        document.body.getBoundingClientRect().width === 380 &&
+        document.querySelector('#app').getBoundingClientRect().height > 100,
+    ),
+    'Popup keeps its 380px frame and content height when the viewport reports a collapsed size',
+  );
+  await popup.setViewportSize({ width: 380, height: 600 });
   await popup.emulateMedia({ reducedMotion: 'reduce' });
   check(
     await popup.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches),
