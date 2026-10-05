@@ -12,8 +12,10 @@ if (
     'package.json version must be a Chrome-compatible numeric version (1–4 components, 0–65535, not all zero).',
   );
 }
+const icons = Object.fromEntries([16, 32, 48, 128].map((size) => [size, `icon-${size}.png`]));
 const manifest = {
   manifest_version: 3,
+  icons,
   name: 'OneChat DEV Login Assistant',
   description: 'A local encrypted account catalog for authorized QA login pages.',
   minimum_chrome_version: '120',
@@ -24,6 +26,7 @@ const manifest = {
   },
   action: {
     default_title: 'OneChat DEV Login Assistant',
+    default_icon: icons,
     default_popup: 'popup.html',
   },
   options_ui: {
