@@ -180,7 +180,7 @@ export function accountRow(
   content.append(metadata(account));
   const act = management
     ? iconButton('trash', `Delete ${account.accountId}`, action)
-    : button('Select ↗', action, 'select-button');
+    : button('Fill it…', action, 'select-button');
   row.append(avatar, content, act);
   return row;
 }

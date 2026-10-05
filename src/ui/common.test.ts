@@ -86,7 +86,7 @@ describe('password-free accessible views', () => {
     document.body.append(row, metadata(account));
     expect(document.querySelector('img,script')).toBeNull();
     expect(document.body.textContent).toContain(account.metadata.customer_name);
-    expect(row.querySelector('button')?.textContent).toBe('Select ↗');
+    expect(row.querySelector('button')?.textContent).toBe('Fill it…');
     expect(row.querySelector('details')?.textContent).toContain('demo@example.test');
   });
   it('uses a distinct named delete action', () => {
