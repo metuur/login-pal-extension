@@ -457,7 +457,7 @@ describe('named CSV groups', () => {
 
     expect((await run(service, { type: 'STATE', groupId: group.id })).total).toBe(1);
     expect((await run(service, { type: 'STATE', groupId: group.id })).rule).toBe(
-      'https://performance.example.com/*',
+      'https://performance.example.com',
     );
     await ingest(service, 'default', ['C'], 'replace');
     expect((await run(service, { type: 'STATE', groupId: group.id })).accounts[0].accountId).toBe(

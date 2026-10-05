@@ -1,1 +1,1 @@
-Top-frame isolated script. Validate exact profile routes and both controls before delivery; never submit forms. Root owns content scripts. No general DOM searching outside approved routes, no account enumeration, no logs containing credentials.
+Top-frame isolated script. Validate exact authorized HTTPS origins and both controls before delivery; never submit forms. Root owns content scripts. No general DOM searching outside approved origins, no account enumeration, no logs containing credentials.

@@ -1,3 +1,5 @@
+> Current domain-matching amendment (2026-10-05): CSV import and login authorization match the exact HTTPS origin (hostname and port), ignoring paths, queries and fragments. Existing saved path rules use the same domain behavior. The login field is labeled “Authorized HTTPS login domain” and defaults to the imported domain. Subdomains require separate authorization. Success detection remains exact-route/element based; unique visible fields and explicit user action are still required. This supersedes older exact-login-path requirements below.
+
 # Account Login Assistant — Tasks
 
 ## Selected-group CSV export (2026-10-05)

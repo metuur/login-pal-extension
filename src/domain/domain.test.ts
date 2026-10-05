@@ -9,7 +9,14 @@ import {
   unsealValue,
 } from './crypto';
 import { parseCsv } from './csv';
-import { parseRule, parseRoute, matchesRule, matchesRoute, validateProfile } from './rules';
+import {
+  parseRule,
+  parseDomainRule,
+  parseRoute,
+  matchesRule,
+  matchesRoute,
+  validateProfile,
+} from './rules';
 import { emptyVault, planImport } from './import';
 import { searchAccounts } from './search';
 const csv = (s: string) => parseCsv(new TextEncoder().encode(s));
@@ -43,11 +50,11 @@ describe('CSV validation', () => {
   });
 });
 describe('authorization rules', () => {
-  it('uses exact origin, hash and normalized path', () => {
+  it('matches domains regardless of path and hash, keeping success routes exact', () => {
     const r = parseRule('https://QA.example.com:443/login*?x=1#ok');
     expect(matchesRule(r, 'https://qa.example.com/login/next#ok')).toBe(true);
     expect(matchesRule(r, 'https://qa.example.com.evil/login#ok')).toBe(false);
-    expect(matchesRule(r, 'https://qa.example.com/login')).toBe(false);
+    expect(matchesRule(r, 'https://qa.example.com/login')).toBe(true);
     expect(
       matchesRoute(parseRoute('https://qa.example.com/login'), 'https://qa.example.com/login/'),
     ).toBe(false);
@@ -256,12 +263,12 @@ describe('strict import regressions', () => {
     expect(removed.payload.history.profile?.lastSuccessfulAccountId).toBeNull();
     expect(removed.payload.history.profile?.lastSuccessfulAt).toBeNull();
   });
-  it('normalizes query-free rules while treating encoded stars literally', () => {
+  it('ignores catalog paths, queries and fragments while retaining port boundaries', () => {
     const rule = parseRule('https://qa.example.com/%2A?ignored=yes');
     expect(matchesRule(rule, 'https://qa.example.com/%2A?other=1')).toBe(true);
-    expect(matchesRule(rule, 'https://qa.example.com/anything')).toBe(false);
+    expect(matchesRule(rule, 'https://qa.example.com/anything')).toBe(true);
     expect(matchesRule(rule, 'https://qa.example.com:444/%2A')).toBe(false);
-    expect(matchesRule(rule, 'https://qa.example.com/%2A#route')).toBe(false);
+    expect(matchesRule(rule, 'https://qa.example.com/%2A#route')).toBe(true);
   });
   it('authenticates salt and version and handles large ciphertext', async () => {
     const salt = randomSalt(),
@@ -316,4 +323,23 @@ describe('CSV group export', () => {
     expect(parsed.accounts[1].metadata.role).toBe('Tester');
     expect(parsed.accounts[0].metadata.role).toBe('');
   });
+});
+
+it('normalizes imported URLs to a domain and merges same-domain CSVs across paths', () => {
+  const rule = parseDomainRule('https://QA.example.com:443/auth/login?tenant=1#form');
+  expect(rule).toEqual({
+    origin: 'https://qa.example.com',
+    pathname: '/',
+    hash: '',
+    pathMatch: 'prefix',
+  });
+  const existing = planImport(
+    emptyVault(),
+    csv(header + '\na,u,p,c'),
+    parseRule('https://qa.example.com/old'),
+    'merge',
+  ).payload;
+  const next = planImport(existing, csv(header + '\nb,u,p,c'), rule, 'merge');
+  expect(next.payload.accounts).toHaveLength(2);
+  expect(next.payload.catalogRuleRevision).toBe(existing.catalogRuleRevision);
 });

@@ -137,9 +137,9 @@ sample.download = 'sample-accounts.csv';
 const fileIcon = el('div', 'avatar');
 fileIcon.append(icon('upload'));
 fileCard.append(fileIcon, fileText, change, fileInput);
-const target = field('Target authorized URL pattern *');
+const target = field('Authorized HTTPS domain *');
 target.input.required = true;
-target.input.placeholder = 'https://your-website.example/login*';
+target.input.placeholder = 'https://your-website.example';
 target.input.autocomplete = 'off';
 target.input.spellcheck = false;
 const presets = el('div', 'presets');
@@ -186,7 +186,7 @@ importPanel.append(
   el(
     'p',
     'subtle',
-    'Use an exact HTTPS URL or a path ending in *. Autofill also requires the exact login profile below.',
+    'Enter the HTTPS domain, for example https://qa.example.com. Paths, queries and fragments are ignored. Subdomains and ports must match.',
   ),
   presets,
   activeHint,
@@ -214,7 +214,7 @@ profilePanel.id = 'profile';
 profilePanel.append(el('summary', '', 'Login profile & website permission'));
 const profileForm = el('form', 'stack');
 const profileName = field('Profile name'),
-  login = field('Exact HTTPS login URL', 'url'),
+  login = field('Authorized HTTPS login domain', 'url'),
   usernameSelector = field('Username field CSS selector'),
   passwordSelector = field('Password field CSS selector'),
   successUrl = field('Exact HTTPS success / observation URL', 'url'),
@@ -300,7 +300,7 @@ function routeUrl(route: Route) {
 function populateProfile() {
   const p = state?.profile;
   profileName.input.value = p?.name ?? '';
-  login.input.value = p ? routeUrl(p.login) : '';
+  login.input.value = p ? p.login.origin : state?.rule ? new URL(state.rule).origin : '';
   usernameMatch.select.value = p?.usernameMatch ?? 'css';
   passwordMatch.select.value = p?.passwordMatch ?? 'css';
   usernameMatch.update();
@@ -618,8 +618,7 @@ async function activeSource() {
     if (!tab.url) throw new Error();
     const url = new URL(tab.url);
     if (url.protocol !== 'https:' || url.username || url.password) throw new Error();
-    url.search = '';
-    return url.href;
+    return url.origin;
   } catch {
     return undefined;
   }
@@ -627,9 +626,7 @@ async function activeSource() {
 function updatePresets() {
   presets.replaceChildren();
   const values = new Set(
-    [state?.rule, state?.profile ? routeUrl(state.profile.login) : undefined].filter(
-      (v): v is string => !!v,
-    ),
+    [state?.rule, state?.profile?.login.origin].filter((v): v is string => !!v),
   );
   for (const value of values)
     presets.append(
@@ -729,7 +726,7 @@ profileForm.addEventListener('submit', (event) => {
     invalidatePreview();
     message(
       profileStatus,
-      'Profile saved. Open its exact login page and use the extension to fill an account.',
+      'Profile saved. Open a login form on the authorized domain and use the extension to fill an account.',
     );
     message(status, 'Website profile saved.');
   }, 'Requesting website permission…');

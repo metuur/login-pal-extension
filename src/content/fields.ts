@@ -1,3 +1,4 @@
+import { matchesOrigin } from '../domain/rules';
 import type { FieldMatch, FillResult, LoginProfile, Route } from '../shared/types';
 
 export function routeMatches(route: Route, href: string): boolean {
@@ -80,8 +81,8 @@ export function loginFields(
   profile: LoginProfile,
   doc: Document,
 ): [HTMLInputElement, HTMLInputElement] {
-  if (!routeMatches(profile.login, doc.location.href))
-    throw new Error('The current page is not the configured login page.');
+  if (!matchesOrigin(profile.login, doc.location.href))
+    throw new Error('The current page is not on the authorized login domain.');
   const username = candidates(doc, profile.usernameMatch ?? 'css', profile.usernameSelector, false),
     password = candidates(doc, profile.passwordMatch ?? 'css', profile.passwordSelector, true);
   const Input = doc.defaultView!.HTMLInputElement;

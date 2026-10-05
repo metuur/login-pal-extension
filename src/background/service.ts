@@ -21,7 +21,14 @@ import {
   sealValue,
   unsealValue,
 } from '../domain/crypto';
-import { parseRule, formatRule, matchesRule, matchesRoute, validateProfile } from '../domain/rules';
+import {
+  parseDomainRule,
+  formatRule,
+  matchesRule,
+  matchesRoute,
+  matchesOrigin,
+  validateProfile,
+} from '../domain/rules';
 import { parseCsv, exportCsv } from '../domain/csv';
 import { planImport } from '../domain/import';
 import { searchAccounts } from '../domain/search';
@@ -288,7 +295,7 @@ export class AssistantService {
       this.profile.approvedCatalogRuleRevision === this.payload.catalogRuleRevision &&
       tab?.url &&
       matchesRule(this.payload.catalogRule, tab.url) &&
-      matchesRoute(this.profile.login, tab.url) &&
+      matchesOrigin(this.profile.login, tab.url) &&
       (await chrome.permissions.contains({ origins: [this.host(this.profile)] }))
     );
     if (generation !== this.generation) return this.state(command);
@@ -298,7 +305,7 @@ export class AssistantService {
       initialized: !!this.envelope,
       migrationRequired: !this.session,
       profile: this.profile,
-      rule: this.payload?.catalogRule ? formatRule(this.payload.catalogRule) : null,
+      rule: this.payload?.catalogRule ? this.payload.catalogRule.origin : null,
       total: accounts.length,
       matches: result.matches,
       page: result.page,
@@ -366,7 +373,7 @@ export class AssistantService {
       )
         throw new Error();
       const parsed = parseCsv(new Uint8Array(command.bytes));
-      const rule = parseRule(command.rule);
+      const rule = parseDomainRule(command.rule);
       const planned = planImport(this.payload!, parsed, rule, command.mode);
       const preview: ImportPreview = {
         ...planned.counts,
@@ -571,7 +578,7 @@ export class AssistantService {
     const tab = await this.targetTab(tabId);
     if (!tab.active) throw new Error();
     const current = await this.probe(tab.id!);
-    if (!matchesRule(rule, current.url) || !matchesRoute(profile.login, current.url))
+    if (!matchesRule(rule, current.url) || !matchesOrigin(profile.login, current.url))
       throw new Error();
     await chrome.scripting.executeScript({
       target: { tabId: tab.id!, documentIds: [current.documentId] },
@@ -661,7 +668,7 @@ export class AssistantService {
     if (current.documentId !== sender.documentId) throw new Error();
     let attempt = this.session!.attempts.find((a) => a.tabId === tabId);
     const routeAllowed =
-      matchesRoute(profile.login, current.url) || matchesRoute(profile.success.route, current.url);
+      matchesOrigin(profile.login, current.url) || matchesRoute(profile.success.route, current.url);
     if (
       attempt &&
       (!routeAllowed ||
@@ -741,7 +748,7 @@ export class AssistantService {
     await this.ready;
     if (
       this.profile &&
-      !matchesRoute(this.profile.login, url) &&
+      !matchesOrigin(this.profile.login, url) &&
       !matchesRoute(this.profile.success.route, url)
     )
       await this.cancelTab(tabId);

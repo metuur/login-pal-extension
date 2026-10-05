@@ -54,17 +54,20 @@ export function matchesRoute(r: Route, value: string): boolean {
     return false;
   }
 }
-export function matchesRule(r: CatalogRule, value: string): boolean {
+/** Domain authorization ignores routes but keeps HTTPS host and port exact. */
+export function matchesOrigin(r: Pick<Route, 'origin'>, value: string): boolean {
   try {
-    const u = url(value, false, true);
-    return (
-      r.origin === u.origin &&
-      r.hash === u.hash &&
-      (r.pathMatch === 'prefix' ? u.pathname.startsWith(r.pathname) : r.pathname === u.pathname)
-    );
+    return r.origin === url(value, false, true).origin;
   } catch {
     return false;
   }
+}
+export function matchesRule(r: CatalogRule, value: string): boolean {
+  return matchesOrigin(r, value);
+}
+export function parseDomainRule(value: string): CatalogRule {
+  const parsed = parseRule(value);
+  return { origin: parsed.origin, pathname: '/', hash: '', pathMatch: 'prefix' };
 }
 export function validateProfile(
   input: ProfileInput,
@@ -75,7 +78,7 @@ export function validateProfile(
   const login = parseRoute(input.loginUrl),
     success = parseRoute(input.successUrl);
   if (!matchesRule(rule, input.loginUrl))
-    throw new Error('Login URL must match the imported catalog rule.');
+    throw new Error('Login domain must match the imported catalog domain.');
   if (login.origin !== success.origin)
     throw new Error('Login and success URLs must share one origin.');
   if (input.successKind !== 'url' && input.successKind !== 'element')
@@ -109,7 +112,7 @@ export function validateProfile(
     revision: (previous?.revision ?? 0) + 1,
     approvedCatalogRuleRevision: ruleRevision,
     name: input.name.trim(),
-    login,
+    login: { origin: login.origin, pathname: '/', hash: '' },
     usernameSelector,
     passwordSelector,
     usernameMatch,

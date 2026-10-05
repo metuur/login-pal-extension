@@ -124,10 +124,19 @@ describe('validated credential delivery', () => {
     expect(pass.value === 'page-change').toBe(true);
     dom.window.close();
   });
-  it('rejects lookalike and off-route documents', () => {
+  it('allows other paths on the domain but rejects other origins', () => {
     const dom = fixture();
-    dom.reconfigure({ url: 'https://qa.example.test/unrelated' });
-    expect(inspectFields(profile, dom.window.document).ok).toBe(false);
+    dom.reconfigure({ url: 'https://qa.example.test/unrelated?tenant=2#signin' });
+    expect(inspectFields(profile, dom.window.document).ok).toBe(true);
+    for (const url of [
+      'https://qa.example.test.evil/login',
+      'https://sub.qa.example.test/login',
+      'http://qa.example.test/login',
+      'https://qa.example.test:444/login',
+    ]) {
+      dom.reconfigure({ url });
+      expect(inspectFields(profile, dom.window.document).ok).toBe(false);
+    }
     dom.window.close();
   });
   it('recognizes an already visible configured success marker', () => {

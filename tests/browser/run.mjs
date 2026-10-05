@@ -188,10 +188,10 @@ try {
   );
   await site.goto(origin + '/unrelated');
   await site.bringToFront();
-  await reject(
-    { type: 'FILL', accountId: 'ACC-5678', tabId },
-    'Catalog wildcard cannot bypass exact login route',
-    popup,
+  await send({ type: 'FILL', accountId: 'ACC-5678', tabId }, popup);
+  check(
+    (await site.locator('#username').inputValue()) === 'maria@example.test',
+    'Autofill accepts another path on the authorized domain',
   );
   await site.goto(origin + '/login?flow=spa');
   await site.bringToFront();
@@ -357,7 +357,7 @@ try {
     .getByRole('combobox', { name: 'CSV group', exact: true })
     .inputValue();
   await options
-    .getByLabel('Target authorized URL pattern *', { exact: true })
+    .getByLabel('Authorized HTTPS domain *', { exact: true })
     .fill('https://performance.example.test/*');
   await options.locator('#csv-file').setInputFiles({
     name: 'performance.csv',
@@ -374,7 +374,7 @@ try {
     await new Promise((r) => setTimeout(r, 100));
   check(
     (await groupState()).total === 1 &&
-      (await groupState()).rule === 'https://performance.example.test/*',
+      (await groupState()).rule === 'https://performance.example.test',
     'CSV group stores its own URL and duplicate account ID',
   );
   const chooserEvent = options.waitForEvent('filechooser');

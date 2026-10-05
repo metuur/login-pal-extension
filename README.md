@@ -11,10 +11,10 @@ The repository's `dist` folder is also directly loadable after building. This is
 ## First use
 
 1. Open the extension. A local catalog is created automatically, ready for CSV import.
-2. Open Settings, name the selected CSV group (or choose **Create new group**), and choose a CSV. Use **Download sample CSV (3 rows)** for the supported format. Enter the required **Target authorized URL pattern**, for example `https://qa.example.com/*`. This example is illustrative; use your own authorized site.
+2. Open Settings, name the selected CSV group (or choose **Create new group**), and choose a CSV. Use **Download sample CSV (3 rows)** for the supported format. Enter the required **Authorized HTTPS domain**, for example `https://qa.example.com/*`. This example is illustrative; use your own authorized site.
 3. Keep **Merge & Update** to add/update accounts by ID while preserving omitted accounts in that group. **Upload another CSV** automatically selects Merge for the same group. Choose **Wipe & Replace** to replace only the selected group’s dataset. Verify the file, review counts and errors, then confirm the import. Invalid rows are excluded; Replace can therefore remove existing accounts corresponding to invalid rows.
-4. Configure the login profile: a name, exact HTTPS login URL, username/password matching rules, and a reliable success URL or visible element at its configured URL. Save and authorize the requested host permission. Importing alone does not authorize autofill.
-5. Visit the exact login page, open the popup, search by account ID, username, or metadata, select an account, review it, and choose Autofill. Submit the site's Login button yourself.
+4. Configure the login profile: a name, authorized HTTPS login domain, username/password matching rules, and a reliable success URL or visible element at its configured URL. Save and authorize the requested host permission. Importing alone does not authorize autofill.
+5. Visit a login form on the authorized domain, open the popup, search by account ID, username, or metadata, select an account, review it, and choose Autofill. Submit the site's Login button yourself.
 
 “Recent” means the fields were filled successfully. “Last successful” updates only after the configured success condition is observed within two minutes. A failed login leaves the previous successful account unchanged. Editing filled values cancels attribution.
 
@@ -28,7 +28,7 @@ UTF-8 (including BOM), quoted commas/newlines, doubled quotes, and CRLF/LF are s
 
 ## URL matching and supported forms
 
-Each named CSV group has its own catalog URL rule, login profile, accounts, history, and Undo. Select the group in the popup or Settings. Existing accounts are kept in “Imported accounts”. Account IDs must be unique within a CSV/group, but may repeat across groups. Up to 50 groups are supported; each retains the documented per-catalog limits, and Chrome’s overall storage quota still applies. Rules require an explicit HTTPS host, with an optional single terminal pathname `*`; wildcard hosts are rejected. Origin (including port), pathname, and hash matter; query parameters are ignored. An encoded star is literal. The login route itself must be exact even when the catalog uses a broader rule. Success must be on the same origin.
+Each named CSV group has its own catalog URL rule, login profile, accounts, history, and Undo. Select the group in the popup or Settings. Existing accounts are kept in “Imported accounts”. Account IDs must be unique within a CSV/group, but may repeat across groups. Up to 50 groups are supported; each retains the documented per-catalog limits, and Chrome’s overall storage quota still applies. Rules match the exact HTTPS origin (host and port). Paths, query parameters and fragments do not restrict import or autofill. Existing path-scoped rules also use domain matching. Subdomains are separate domains; wildcard hosts are rejected. Success detection still uses its configured exact route and optional visible element on the same origin.
 
 Autofill supports top-level, visible, writable username/text/email and password inputs in the ordinary page DOM. It rejects ambiguous selectors and explicitly cross-origin form actions. Embedded frames, closed shadow roots, SSO handoffs, and multi-step logins are outside this version's scope. Changing the catalog target requires Replace and renewed profile approval.
 

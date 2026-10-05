@@ -7,7 +7,6 @@ import type {
   Account,
   ProfileHistory,
 } from '../shared/types';
-import { formatRule } from './rules';
 export function emptyVault(): VaultPayload {
   return {
     schemaVersion: 1,
@@ -38,7 +37,7 @@ export function planImport(
 ): { payload: VaultPayload; counts: ImportCounts } {
   if (!parsed.accounts.length) throw new Error('Import needs at least one valid account.');
   if (mode !== 'merge' && mode !== 'replace') throw new Error('Choose a supported import mode.');
-  const changed = !current.catalogRule || formatRule(current.catalogRule) !== formatRule(rule);
+  const changed = !current.catalogRule || current.catalogRule.origin !== rule.origin;
   if (mode === 'merge' && current.accounts.length && changed)
     throw new Error('Use Wipe & Replace to change the catalog URL rule.');
   const old = new Map(current.accounts.map((a) => [a.accountId, a])),
