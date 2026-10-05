@@ -1,0 +1,1 @@
+Worker-only vault, session, permission and history authority. Validate senders and all runtime inputs, serialize writes, and recheck generation/revisions. Never return passwords to extension UI or logs. Agent backend owns this directory; coordinate content/shared protocols with root.

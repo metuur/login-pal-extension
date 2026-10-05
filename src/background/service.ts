@@ -1,0 +1,745 @@
+import type {
+  Account,
+  AppState,
+  Attempt,
+  Command,
+  ContentContext,
+  ContentRequest,
+  Envelope,
+  FillResult,
+  ImportPreview,
+  LoginProfile,
+  ProfileHistory,
+  Reply,
+  VaultPayload,
+} from '../shared/types';
+import {
+  randomSalt,
+  deriveVaultKey,
+  encryptVault,
+  decryptVault,
+  sealValue,
+  unsealValue,
+} from '../domain/crypto';
+import { parseRule, formatRule, matchesRule, matchesRoute, validateProfile } from '../domain/rules';
+import { parseCsv } from '../domain/csv';
+import { planImport } from '../domain/import';
+import { searchAccounts } from '../domain/search';
+const IDLE = 900_000,
+  SESSION = 'unlockedSession',
+  REGISTRATION = 'login-assistant';
+const bytes = (value: unknown) => new TextEncoder().encode(JSON.stringify(value)).length;
+const empty = (): VaultPayload => ({
+  schemaVersion: 1,
+  revision: 0,
+  snapshotRevision: 0,
+  catalogRule: null,
+  catalogRuleRevision: 0,
+  accounts: [],
+  history: {},
+});
+const history = (): ProfileHistory => ({
+  lastSuccessfulAccountId: null,
+  lastSuccessfulAt: null,
+  recentAccountIds: [],
+});
+type Undo = {
+  sealed: Awaited<ReturnType<typeof sealValue>>;
+  expiresAt: number;
+  revision: number;
+  rule: string | null;
+};
+type Session = { key: string; expiresAt: number; attempts: Attempt[]; undo: Undo | null };
+type Preview = { public: ImportPreview; payload: VaultPayload; revision: number };
+// @spec R-1.1..R-1.9, R-3.1..R-3.6: worker owns the encrypted vault and session.
+const SAFE_ERRORS = new Set<string>([
+  'Import needs at least one valid account.',
+  'Choose a supported import mode.',
+  'Use Wipe & Replace to change the catalog URL rule.',
+  'The resulting catalog exceeds 10,000 accounts.',
+  'Enter a valid authorized HTTPS URL.',
+  'Login URL must match the imported catalog rule.',
+  'Login and success URLs must share one origin.',
+  'Choose a supported success condition.',
+  'Success URL must differ from the login URL.',
+  'Enter a valid field selector.',
+  'Choose distinct username and password fields.',
+  'Enter a profile name and import a catalog first.',
+  'Unable to unlock vault.',
+  'Vault exceeds the 5 MiB encrypted storage limit.',
+  'Unable to encrypt vault.',
+  'Unable to secure temporary data.',
+  'Unable to restore temporary data.',
+  'CSV has malformed quoting.',
+  'CSV exceeds the 2 MiB file limit.',
+  'CSV must use valid UTF-8.',
+  'CSV requires unique headers: account_id, username, password (100 columns maximum).',
+  'CSV exceeds 10,000 rows or 100 columns.',
+  'Vault locked.',
+  'Profile could not be saved.',
+]);
+export class AssistantService {
+  private generation = 0;
+  private authorizationRevision = 0;
+  private session: Session | null = null;
+  private payload: VaultPayload | null = null;
+  private envelope: Envelope | null = null;
+  private profile: LoginProfile | null = null;
+  private preview: Preview | null = null;
+  private tail: Promise<unknown> = Promise.resolve();
+  readonly ready: Promise<void>;
+  constructor() {
+    this.ready = this.initialize();
+  }
+  private async initialize() {
+    await Promise.all([
+      chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' }),
+      chrome.storage.session.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' }),
+    ]);
+    const [local, temporary] = await Promise.all([
+      chrome.storage.local.get(['vault', 'profile']),
+      chrome.storage.session.get(SESSION),
+    ]);
+    this.envelope = (local.vault as Envelope | undefined) ?? null;
+    this.profile = (local.profile as LoginProfile | undefined) ?? null;
+    const session = temporary[SESSION] as Session | undefined;
+    if (session && session.expiresAt > Date.now() && this.envelope) {
+      try {
+        this.payload = await decryptVault(this.envelope, session.key);
+        this.session = session;
+        await this.arm();
+      } catch {
+        await this.lock();
+      }
+    } else await this.lock();
+  }
+  private assert(generation = this.generation) {
+    if (
+      generation !== this.generation ||
+      !this.session ||
+      !this.payload ||
+      this.session.expiresAt <= Date.now()
+    )
+      throw new Error('Vault locked.');
+  }
+  private async arm() {
+    if (this.session) await chrome.alarms.create('idle-lock', { when: this.session.expiresAt });
+  }
+  private notify() {
+    void chrome.runtime.sendMessage({ type: 'STATE_CHANGED' }).catch(() => {});
+  }
+  private async persistSession(generation = this.generation) {
+    if (!this.session) return;
+    await chrome.storage.session.set({ [SESSION]: this.session });
+    if (generation !== this.generation) await chrome.storage.session.remove(SESSION);
+  }
+  async lock() {
+    ++this.generation;
+    this.session = null;
+    this.payload = null;
+    this.preview = null;
+    await chrome.storage.session.remove(SESSION);
+    await chrome.alarms.clear('idle-lock');
+    this.notify();
+  }
+  async expireIfIdle() {
+    await this.ready;
+    if (this.session && this.session.expiresAt <= Date.now()) await this.lock();
+  }
+  private async touch() {
+    this.assert();
+    this.session!.expiresAt = Date.now() + IDLE;
+    await this.persistSession();
+    await this.arm();
+  }
+  // Serialized callers publish one authenticated snapshot; lock can invalidate work mid-flight.
+  private async write(next: VaultPayload, accountMutation = false, stillValid = () => true) {
+    this.assert();
+    const generation = this.generation;
+    const oldEnvelope = this.envelope;
+    next.snapshotRevision = this.payload!.snapshotRevision + 1;
+    if (accountMutation) next.revision = this.payload!.revision + 1;
+    const envelope = await encryptVault(next, this.session!.key, this.envelope!.salt);
+    if (bytes(envelope) > 5 * 1024 * 1024) throw new Error('Vault size limit.');
+    this.assert(generation);
+    if (!stillValid()) throw new Error('Cancelled.');
+    await chrome.storage.local.set({ vault: envelope });
+    if (
+      generation !== this.generation ||
+      !this.session ||
+      this.session.expiresAt <= Date.now() ||
+      !stillValid()
+    ) {
+      await chrome.storage.local.set({ vault: oldEnvelope });
+      throw new Error('Cancelled.');
+    }
+    this.envelope = envelope;
+    this.payload = next;
+    this.preview = null;
+    this.session.undo = null;
+    if (accountMutation) this.session.attempts = [];
+    await this.persistSession(generation);
+    this.notify();
+  }
+  async handle(message: unknown, sender: chrome.runtime.MessageSender): Promise<Reply> {
+    if (
+      !message ||
+      typeof message !== 'object' ||
+      !('type' in message) ||
+      typeof message.type !== 'string'
+    )
+      return { ok: false, error: 'Invalid request.' };
+    const trusted =
+      sender.id === chrome.runtime.id &&
+      [chrome.runtime.getURL('popup.html'), chrome.runtime.getURL('options.html')].some(
+        (url) => sender.url?.split('?')[0]?.split('#')[0] === url,
+      );
+    const content =
+      !trusted &&
+      sender.id === chrome.runtime.id &&
+      sender.url?.startsWith('https://') &&
+      sender.tab?.id !== undefined &&
+      sender.frameId === 0 &&
+      !!sender.documentId;
+    if (
+      trusted &&
+      message.type === 'FILL' &&
+      sender.url?.split('?')[0]?.split('#')[0] !== chrome.runtime.getURL('popup.html')
+    )
+      return { ok: false, error: 'Open the popup on the target tab to autofill.' };
+    if (
+      !trusted &&
+      !(content && ['CONTENT_CONTEXT', 'SUCCESS_OBSERVED', 'CANCEL_ATTEMPT'].includes(message.type))
+    )
+      return { ok: false, error: 'Request not authorized.' };
+    if (content && message.type === 'CANCEL_ATTEMPT') {
+      await this.ready;
+      try {
+        await this.content(message as ContentRequest, sender);
+        return { ok: true, data: undefined };
+      } catch {
+        return { ok: false, error: 'Attempt no longer available.' };
+      }
+    }
+    if (trusted && message.type === 'LOCK') {
+      await this.ready;
+      await this.lock();
+      return { ok: true, data: undefined };
+    }
+    const operation = this.tail.then(async () => {
+      await this.ready;
+      try {
+        if (this.session && this.session.expiresAt <= Date.now()) await this.lock();
+        const data = trusted
+          ? await this.command(message as Command)
+          : await this.content(message as ContentRequest, sender);
+        return { ok: true, data } as Reply;
+      } catch (error) {
+        return {
+          ok: false,
+          error:
+            error instanceof Error && SAFE_ERRORS.has(error.message)
+              ? error.message
+              : 'Operation could not complete. Check the configuration, unlock state, and permissions, then try again.',
+        } as Reply;
+      }
+    });
+    this.tail = operation;
+    return operation;
+  }
+  private async state(command: Extract<Command, { type: 'STATE' }>): Promise<AppState> {
+    const generation = this.generation;
+    const accounts = this.payload?.accounts ?? [];
+    const result = searchAccounts(
+      accounts,
+      typeof command.query === 'string' ? command.query.slice(0, 1000) : '',
+      Number.isInteger(command.page) ? command.page! : 0,
+    );
+    const h = this.profile ? this.payload?.history[this.profile.id] : undefined;
+    const summary = (a: Account) => {
+      const { password: _password, ...safe } = a;
+      return safe;
+    };
+    const byId = (id: string) => accounts.find((a) => a.accountId === id);
+    const tab = await this.targetTab(command.tabId).catch(() => undefined);
+    const authorized = !!(
+      this.session &&
+      this.profile &&
+      this.payload?.catalogRule &&
+      this.profile.approvedCatalogRuleRevision === this.payload.catalogRuleRevision &&
+      tab?.url &&
+      matchesRule(this.payload.catalogRule, tab.url) &&
+      matchesRoute(this.profile.login, tab.url) &&
+      (await chrome.permissions.contains({ origins: [this.host(this.profile)] }))
+    );
+    if (this.session && this.session.expiresAt <= Date.now()) await this.lock();
+    if (generation !== this.generation) return this.state(command);
+    const last = h?.lastSuccessfulAccountId ? byId(h.lastSuccessfulAccountId) : undefined;
+    const undo = this.session?.undo;
+    return {
+      initialized: !!this.envelope,
+      locked: !this.session,
+      profile: this.profile,
+      rule: this.payload?.catalogRule ? formatRule(this.payload.catalogRule) : null,
+      total: accounts.length,
+      matches: result.matches,
+      page: result.page,
+      accounts: result.accounts,
+      recent: (h?.recentAccountIds ?? [])
+        .map(byId)
+        .filter((a): a is Account => !!a)
+        .map(summary),
+      lastSuccessful: last ? summary(last) : null,
+      lastSuccessfulAt: last ? h!.lastSuccessfulAt : null,
+      authorized,
+      siteLabel: this.profile?.name ?? 'Configure a login profile',
+      storageBytes: this.envelope ? bytes(this.envelope) : 0,
+      undoAvailable:
+        !!undo && undo.expiresAt > Date.now() && undo.revision === this.payload?.snapshotRevision,
+      undoExpiresAt: undo?.expiresAt ?? null,
+      version: chrome.runtime.getManifest().version,
+    };
+  }
+  private async command(command: Command): Promise<unknown> {
+    if (command.type === 'STATE') return this.state(command);
+    if (command.type === 'SETUP' || command.type === 'UNLOCK') {
+      if (
+        typeof command.password !== 'string' ||
+        command.password.length < (command.type === 'SETUP' ? 12 : 1)
+      )
+        throw new Error();
+      const generation = this.generation;
+      if (
+        (command.type === 'SETUP' && this.envelope) ||
+        (command.type === 'UNLOCK' && !this.envelope)
+      )
+        throw new Error();
+      const salt = this.envelope?.salt ?? randomSalt();
+      const key = await deriveVaultKey(command.password, salt);
+      const payload = this.envelope ? await decryptVault(this.envelope, key) : empty();
+      const envelope = this.envelope ?? (await encryptVault(payload, key, salt));
+      if (generation !== this.generation) throw new Error();
+      if (!this.envelope) await chrome.storage.local.set({ vault: envelope });
+      if (generation !== this.generation) throw new Error();
+      this.envelope = envelope;
+      this.payload = payload;
+      this.session = { key, expiresAt: Date.now() + IDLE, attempts: [], undo: null };
+      await this.persistSession(generation);
+      await this.arm();
+      this.notify();
+      return;
+    }
+    if (command.type === 'RESET') {
+      await this.lock();
+      await chrome.scripting.unregisterContentScripts();
+      const permissions = await chrome.permissions.getAll();
+      if (permissions.origins?.length)
+        await chrome.permissions.remove({ origins: permissions.origins });
+      await chrome.storage.local.remove(['vault', 'profile']);
+      this.envelope = null;
+      this.profile = null;
+      this.notify();
+      return;
+    }
+    this.assert();
+    await this.touch();
+    if (command.type === 'TOUCH') return;
+    if (command.type === 'PREVIEW_IMPORT') {
+      if (
+        !Array.isArray(command.bytes) ||
+        command.bytes.length > 2 * 1024 * 1024 ||
+        command.bytes.some((b) => !Number.isInteger(b) || b < 0 || b > 255) ||
+        !['merge', 'replace'].includes(command.mode) ||
+        typeof command.rule !== 'string'
+      )
+        throw new Error();
+      const parsed = parseCsv(new Uint8Array(command.bytes));
+      const rule = parseRule(command.rule);
+      const planned = planImport(this.payload!, parsed, rule, command.mode);
+      const preview: ImportPreview = {
+        ...planned.counts,
+        token: crypto.randomUUID(),
+        found: parsed.found,
+        valid: parsed.valid,
+        invalid: parsed.invalid,
+        diagnostics: parsed.diagnostics,
+        rule: formatRule(rule),
+        mode: command.mode,
+      };
+      this.preview = {
+        public: preview,
+        payload: planned.payload,
+        revision: this.payload!.snapshotRevision,
+      };
+      return preview;
+    }
+    if (command.type === 'COMMIT_IMPORT') {
+      if (
+        !this.preview ||
+        this.preview.public.token !== command.token ||
+        this.preview.revision !== this.payload!.snapshotRevision
+      )
+        throw new Error();
+      await this.write(structuredClone(this.preview.payload), true);
+      return;
+    }
+    if (command.type === 'DELETE') {
+      const account = this.payload!.accounts.find((a) => a.accountId === command.accountId);
+      if (!account) throw new Error();
+      const generation = this.generation;
+      const sealed = await sealValue(account, this.session!.key, 'deleted-account');
+      this.assert(generation);
+      const next = structuredClone(this.payload!);
+      next.accounts = next.accounts.filter((a) => a.accountId !== account.accountId);
+      this.prune(next);
+      await this.write(next, true);
+      this.session!.undo = {
+        sealed,
+        expiresAt: Date.now() + 30_000,
+        revision: next.snapshotRevision,
+        rule: next.catalogRule ? formatRule(next.catalogRule) : null,
+      };
+      await this.persistSession();
+      this.notify();
+      return;
+    }
+    if (command.type === 'UNDO') {
+      const undo = this.session!.undo;
+      if (
+        !undo ||
+        undo.expiresAt <= Date.now() ||
+        undo.revision !== this.payload!.snapshotRevision ||
+        undo.rule !== (this.payload!.catalogRule ? formatRule(this.payload!.catalogRule) : null)
+      )
+        throw new Error();
+      const generation = this.generation;
+      const account = await unsealValue<Account>(undo.sealed, this.session!.key, 'deleted-account');
+      this.assert(generation);
+      if (this.payload!.accounts.some((a) => a.accountId === account.accountId)) throw new Error();
+      const next = structuredClone(this.payload!);
+      next.accounts.push(account);
+      await this.write(next, true);
+      return;
+    }
+    if (command.type === 'PURGE') {
+      const next = structuredClone(this.payload!);
+      next.accounts = [];
+      next.history = {};
+      await this.write(next, true);
+      return;
+    }
+    if (command.type === 'SAVE_PROFILE') {
+      try {
+        await this.saveProfile(command.profile);
+      } catch (error) {
+        // A user-gesture permission request happens in the UI before validation here.
+        // Keep only the existing profile's grant when that save cannot complete.
+        const granted = await chrome.permissions.getAll();
+        const unused = (granted.origins ?? []).filter(
+          (origin) => !this.profile || origin !== this.host(this.profile),
+        );
+        if (unused.length) await chrome.permissions.remove({ origins: unused });
+        const registrations = await chrome.scripting.getRegisteredContentScripts({
+          ids: [REGISTRATION],
+        });
+        if (registrations.length)
+          await chrome.scripting.unregisterContentScripts({ ids: [REGISTRATION] });
+        if (
+          this.profile &&
+          (await chrome.permissions.contains({ origins: [this.host(this.profile)] }))
+        )
+          await chrome.scripting.registerContentScripts([
+            {
+              id: REGISTRATION,
+              matches: [this.host(this.profile)],
+              js: ['content.js'],
+              allFrames: false,
+              runAt: 'document_idle',
+              persistAcrossSessions: true,
+              world: 'ISOLATED',
+            },
+          ]);
+        throw error;
+      }
+      return;
+    }
+    if (command.type === 'FILL') {
+      await this.fill(command.accountId, command.tabId);
+      return;
+    }
+    throw new Error();
+  }
+  private prune(payload: VaultPayload) {
+    const ids = new Set(payload.accounts.map((a) => a.accountId));
+    for (const h of Object.values(payload.history)) {
+      h.recentAccountIds = h.recentAccountIds.filter((id) => ids.has(id));
+      if (h.lastSuccessfulAccountId && !ids.has(h.lastSuccessfulAccountId)) {
+        h.lastSuccessfulAccountId = null;
+        h.lastSuccessfulAt = null;
+      }
+    }
+  }
+  private host(profile: LoginProfile) {
+    return `${new URL(profile.login.origin).protocol}//${new URL(profile.login.origin).hostname}/*`;
+  }
+  private async saveProfile(input: Extract<Command, { type: 'SAVE_PROFILE' }>['profile']) {
+    if (!this.payload!.catalogRule) throw new Error();
+    const next = validateProfile(
+      input,
+      this.payload!.catalogRule,
+      this.payload!.catalogRuleRevision,
+      this.profile ?? undefined,
+    );
+    if (!(await chrome.permissions.contains({ origins: [this.host(next)] }))) throw new Error();
+    const generation = this.generation;
+    const previous = this.profile;
+    this.session!.attempts = [];
+    this.session!.undo = null;
+    this.preview = null;
+    await this.persistSession();
+    const registrations = await chrome.scripting.getRegisteredContentScripts({
+      ids: [REGISTRATION],
+    });
+    if (registrations.length)
+      await chrome.scripting.unregisterContentScripts({ ids: [REGISTRATION] });
+    await chrome.scripting.registerContentScripts([
+      {
+        id: REGISTRATION,
+        matches: [this.host(next)],
+        js: ['content.js'],
+        allFrames: false,
+        runAt: 'document_idle',
+        persistAcrossSessions: true,
+        world: 'ISOLATED',
+      },
+    ]);
+    this.assert(generation);
+    await chrome.storage.local.set({ profile: next });
+    this.assert(generation);
+    this.profile = next;
+    if (previous && this.host(previous) !== this.host(next))
+      await chrome.permissions.remove({ origins: [this.host(previous)] });
+    this.notify();
+  }
+  private async targetTab(id?: number) {
+    if (id !== undefined && (!Number.isInteger(id) || id < 0)) throw new Error();
+    const tab =
+      id === undefined
+        ? (await chrome.tabs.query({ active: true, lastFocusedWindow: true }))[0]
+        : await chrome.tabs.get(id);
+    if (!tab || tab.id === undefined) throw new Error();
+    return tab;
+  }
+  private async probe(tabId: number) {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId, frameIds: [0] },
+      func: () => location.href,
+    });
+    const top = results.find((r) => r.frameId === 0);
+    if (!top?.documentId || typeof top.result !== 'string') throw new Error();
+    return { documentId: top.documentId, url: top.result };
+  }
+  // @spec R-6.1..R-6.8: explicit account delivery is bound to a current top-frame document.
+  private async fill(accountId: string, tabId?: number) {
+    const generation = this.generation;
+    const authorization = this.authorizationRevision;
+    const profile = this.profile;
+    const rule = this.payload!.catalogRule;
+    const account = this.payload!.accounts.find((a) => a.accountId === accountId);
+    if (
+      !account ||
+      !profile ||
+      !rule ||
+      profile.approvedCatalogRuleRevision !== this.payload!.catalogRuleRevision ||
+      !(await chrome.permissions.contains({ origins: [this.host(profile)] }))
+    )
+      throw new Error();
+    const tab = await this.targetTab(tabId);
+    if (!tab.active) throw new Error();
+    const current = await this.probe(tab.id!);
+    if (!matchesRule(rule, current.url) || !matchesRoute(profile.login, current.url))
+      throw new Error();
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id!, documentIds: [current.documentId] },
+      files: ['content.js'],
+    });
+    const options = { documentId: current.documentId };
+    const inspection = (await chrome.tabs.sendMessage(
+      tab.id!,
+      { type: 'INSPECT', profile },
+      options,
+    )) as FillResult;
+    if (!inspection?.ok || inspection.baseline) throw new Error();
+    this.assert(generation);
+    const attempt: Attempt = {
+      token: crypto.randomUUID(),
+      tabId: tab.id!,
+      documentId: current.documentId,
+      profileId: profile.id,
+      profileRevision: profile.revision,
+      catalogRevision: this.payload!.revision,
+      accountId,
+      createdAt: Date.now(),
+      expiresAt: Date.now() + 120_000,
+      acknowledged: false,
+    };
+    this.session!.attempts = [...this.session!.attempts.filter((a) => a.tabId !== tab.id), attempt];
+    await this.persistSession();
+    this.assert(generation);
+    if (
+      authorization !== this.authorizationRevision ||
+      !(await chrome.permissions.contains({ origins: [this.host(profile)] }))
+    ) {
+      await this.cancelTab(tab.id!);
+      throw new Error();
+    }
+    this.assert(generation);
+    if (authorization !== this.authorizationRevision) throw new Error();
+    let filled: FillResult;
+    try {
+      filled = (await chrome.tabs.sendMessage(
+        tab.id!,
+        {
+          type: 'FILL_FIELDS',
+          profile,
+          username: account.username,
+          password: account.password,
+          attempt,
+        },
+        options,
+      )) as FillResult;
+    } catch {
+      await this.cancelTab(tab.id!);
+      throw new Error();
+    }
+    if (!filled?.ok) {
+      await this.cancelTab(tab.id!);
+      throw new Error();
+    }
+    this.assert(generation);
+    const live = this.session!.attempts.find((a) => a.token === attempt.token);
+    if (!live) throw new Error();
+    live.acknowledged = true;
+    await this.persistSession();
+    this.assert(generation);
+    const next = structuredClone(this.payload!);
+    const h = (next.history[profile.id] ??= history());
+    h.recentAccountIds = [accountId, ...h.recentAccountIds.filter((id) => id !== accountId)].slice(
+      0,
+      10,
+    );
+    await this.write(next);
+  }
+  // Observation is independently revalidated; a content sender never selects credentials.
+  private async content(
+    command: ContentRequest,
+    sender: chrome.runtime.MessageSender,
+  ): Promise<ContentContext | void> {
+    if (!this.session || !this.payload || !this.profile) return { profile: null, attempt: null };
+    this.assert();
+    const generation = this.generation;
+    const profile = this.profile;
+    if (!(await chrome.permissions.contains({ origins: [this.host(profile)] })))
+      return { profile: null, attempt: null };
+    const tabId = sender.tab!.id!;
+    const current = await this.probe(tabId);
+    this.assert(generation);
+    if (current.documentId !== sender.documentId) throw new Error();
+    let attempt = this.session!.attempts.find((a) => a.tabId === tabId);
+    const routeAllowed =
+      matchesRoute(profile.login, current.url) || matchesRoute(profile.success.route, current.url);
+    if (
+      attempt &&
+      (!routeAllowed ||
+        attempt.expiresAt <= Date.now() ||
+        attempt.profileRevision !== profile.revision ||
+        attempt.catalogRevision !== this.payload.revision)
+    ) {
+      await this.cancelTab(tabId);
+      attempt = undefined;
+    }
+    if (command.type === 'CONTENT_CONTEXT')
+      return { profile: routeAllowed ? profile : null, attempt: attempt ?? null };
+    if (!attempt || command.token !== attempt.token) throw new Error();
+    if (command.type === 'CANCEL_ATTEMPT') {
+      await this.cancelTab(tabId);
+      return;
+    }
+    if (!attempt.acknowledged || !matchesRoute(profile.success.route, current.url))
+      throw new Error();
+    if (profile.success.kind === 'element') {
+      const results = await chrome.scripting.executeScript({
+        target: { tabId, documentIds: [current.documentId] },
+        func: (selector: string) => {
+          return [...document.querySelectorAll(selector)].some((element) => {
+            if (!element.isConnected || !element.getClientRects().length) return false;
+            for (let node: Element | null = element; node; node = node.parentElement) {
+              const style = getComputedStyle(node);
+              if (
+                node.hasAttribute('hidden') ||
+                node.hasAttribute('inert') ||
+                style.display === 'none' ||
+                style.visibility === 'hidden' ||
+                style.visibility === 'collapse' ||
+                style.opacity === '0'
+              )
+                return false;
+            }
+            return true;
+          });
+        },
+        args: [profile.success.selector],
+      });
+      if (results[0]?.result !== true) throw new Error();
+    }
+    this.assert(generation);
+    const final = await this.probe(tabId);
+    if (final.documentId !== current.documentId || !matchesRoute(profile.success.route, final.url))
+      throw new Error();
+    this.assert(generation);
+    if (
+      !this.session!.attempts.some((a) => a.token === attempt!.token) ||
+      attempt.expiresAt <= Date.now() ||
+      !this.payload.accounts.some((a) => a.accountId === attempt!.accountId)
+    )
+      throw new Error();
+    const next = structuredClone(this.payload);
+    const h = (next.history[profile.id] ??= history());
+    h.lastSuccessfulAccountId = attempt.accountId;
+    h.lastSuccessfulAt = Date.now();
+    await this.write(
+      next,
+      false,
+      () =>
+        !!this.session?.attempts.some(
+          (a) => a.token === attempt!.token && a.expiresAt > Date.now(),
+        ),
+    );
+    await this.cancelTab(tabId);
+  }
+  async cancelTab(tabId: number) {
+    if (this.session) {
+      this.session.attempts = this.session.attempts.filter((a) => a.tabId !== tabId);
+      await this.persistSession();
+    }
+  }
+  async navigation(tabId: number, url: string) {
+    await this.ready;
+    if (
+      this.profile &&
+      !matchesRoute(this.profile.login, url) &&
+      !matchesRoute(this.profile.success.route, url)
+    )
+      await this.cancelTab(tabId);
+  }
+  async permissionRemoved() {
+    ++this.authorizationRevision;
+    await this.ready;
+    if (this.session) {
+      this.session.attempts = [];
+      this.session.undo = null;
+      await this.persistSession();
+      this.notify();
+    }
+  }
+}
