@@ -1,0 +1,1 @@
+Root owns isolated Chromium extension acceptance. Use local HTTPS synthetic fixtures only. Keep temporary profiles/certificates outside the repository and close contexts/servers in finally. Screenshots show extension UI only, never credential values. Test-only host grants belong to a temporary dist copy, never the shipping manifest.

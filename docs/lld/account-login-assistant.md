@@ -1,6 +1,6 @@
 # Account Login Assistant — Low-Level Design
 
-Status: Planning baseline accepted through the user’s request to continue planning. Implementation awaits plan review. Upstream: [HLD](../hld/account-login-assistant.md). Behavior contract: [EARS](../ears/account-login-assistant.md).
+Status: Implemented under the user-authorized build. See the task plan and verification report for landing evidence and integration limits. Upstream: [HLD](../hld/account-login-assistant.md). Behavior contract: [EARS](../ears/account-login-assistant.md).
 
 ## Architecture
 
@@ -75,7 +75,7 @@ An attempt contains a random token, tab ID, originating document ID, profile ID/
 2. Derive a 256-bit AES-GCM key with PBKDF2-HMAC-SHA-256, an independently generated 16-byte salt, and 600,000 iterations. Use a new cryptographically random 12-byte IV for every encryption. The AES-GCM authentication tag is 128 bits. Authenticate the versioned envelope metadata.
 3. Persist the encrypted envelope in `chrome.storage.local`; never put plaintext account data in localStorage, IndexedDB, sync storage, logs, or durable caches. Restrict local and session storage to trusted extension contexts before processing requests.
 4. Retain the derived key only in trusted `chrome.storage.session` while unlocked so worker suspension does not force a new unlock. Decrypted account/index caches exist only in worker memory. Session storage does not defend against a compromised browser; this is local encryption at rest.
-5. Use `chrome.alarms` for a best-effort idle lock after 15 minutes. Independently check an absolute expiry before every privileged operation so delayed alarms never grant extra access. Only explicit extension interaction extends inactivity; website events do not.
+5. Use `chrome.alarms` for a best-effort idle lock after 15 minutes. Independently check an absolute expiry before every privileged operation so delayed alarms never grant extra access. Only explicit extension interaction extends inactivity; website events do not. Packaged pages send a throttled TOUCH on trusted pointer, keyboard, or input events while unlocked; state polling never renews expiry. Alarm callbacks check the current deadline so an old queued alarm cannot lock a renewed session.
 6. Manual lock, expiry, disable, reload, update, and browser restart end the unlocked session. Invalidate an unlock-generation token; clear key, caches, pending imports, encrypted undo records, and attempts. In-flight operations must not restore old state or complete a history/import write after locking.
 7. A wrong password, malformed envelope, failed authentication tag, or unsupported version shows a generic safe error and preserves storage. Reset requires a separate destructive confirmation and clears vault, profile, permissions, dynamic registrations, and session state.
 
@@ -192,7 +192,7 @@ On Use this account or Autofill: check unlock/expiry, account existence, active 
 
 Send only the selected username/password to that exact document, not merely its tab ID. The content script repeats URL/field validation immediately before writing, uses native input value setters with bubbling input/change events, checks that the expected fields still exist and retain their values, and acknowledges without returning secrets. Never click a button or call form submission. Navigation before delivery or failed validation aborts. If one write fails after another succeeds, report partial/failed fill, clear only values still equal to the extension-written values, and do not create an attempt or update history.
 
-After a successful acknowledgement, store a two-minute pending attempt and move its account ID to the front of recents (unique, maximum 10). Selection alone does neither. The content script clears transient credential references as soon as possible; the intended website can read values once filled. Locking the extension does not erase fields already delivered to the application.
+Before delivery, reserve a two-minute attempt with acknowledged=false so input-edit cancellation is active immediately after filling. No success observation is accepted while unacknowledged. After a successful acknowledgement, activate the still-current attempt and move its account ID to the front of recents (unique, maximum 10). A cancelled token cannot be resurrected by a late acknowledgement. Selection alone does neither. The content script clears transient credential references as soon as possible; the intended website can read values once filled. Locking the extension does not erase fields already delivered to the application.
 
 ### Success tracking and consistency
 

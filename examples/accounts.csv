@@ -1,0 +1,4 @@
+account_id,username,password,customer_name,account_type,environment,role
+ACC-1234,john@example.test,synthetic-only-password-1,Acme Corp,Premium,QA,Admin
+ACC-5678,maria@example.test,synthetic-only-password-2,Contoso Global,Basic,QA,Support
+ACC-8831,alex@example.test,synthetic-only-password-3,FinTech Alpha,Trial,QA,Analyst

@@ -1,0 +1,6 @@
+node_modules
+dist
+artifacts
+.devlocal
+docs
+package-lock.json
