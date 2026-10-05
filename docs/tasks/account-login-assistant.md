@@ -318,7 +318,7 @@ The integrated acceptance task follows the focused story checks; it adds cross-c
   - why: Preserve the user's chosen look in the actual extension viewport.
   - acceptance: R-8.1 — THE SYSTEM SHALL use the supplied screen.png and code.html light slate/white/indigo visual style, taking precedence over the conflicting dark palette in DESIGN.md.
   - acceptance: R-8.2 — THE SYSTEM SHALL present the reference's compact branded header, authorized-profile strip, featured account card, search, rounded account rows, and count/Lock footer using the tokens defined in the LLD.
-  - acceptance: R-8.3 — THE SYSTEM SHALL target a 380px-wide popup with height capped at 600px and accessible vertical scrolling, excluding the reference's outer presentation canvas and fixed 884px minimum height.
+  - acceptance: R-8.3 — THE SYSTEM SHALL target a 380px-wide popup with height capped at the smaller of 600px and the available viewport, with accessible internal vertical scrolling, excluding the reference's outer presentation canvas and fixed 884px minimum height.
   - acceptance: R-8.4 — THE SYSTEM SHALL load popup styles, fonts, icons, and scripts from packaged local assets without runtime CDN, Google Fonts, or inline demo scripts.
   - verify: Compare synthetic reference state to screen.png: light surfaces, indigo CTA, header/strip/card/list/footer, typography and spacing; verify 380px width/600px cap, scroll behavior, packaged assets, and no CDN requests.
   - landed: `2e73dd9`, `f9963bc` — `src/popup/index.ts`, `src/ui/common.ts`, `src/ui/common.test.ts`, `public/popup.html`, `public/ui.css`, `tests/browser/run.mjs`.
@@ -354,7 +354,7 @@ The integrated acceptance task follows the focused story checks; it adds cross-c
 - [x] 9.1 Build the settings shell and navigation (deps: 8.1, est: ~50m) (mutex: options)
   - why: Provide a coherent home for import and account management in the second supplied design.
   - acceptance: R-9.1 — THE SYSTEM SHALL reproduce the light settings reference from stitch_account_login_assistant_extension-2 with its import panel, file card, URL field/shortcuts, mode switch, searchable account list, local-encryption notice, usage footer, and Back/Done controls.
-  - acceptance: R-9.18 — THE SYSTEM SHALL implement settings controls with packaged scripts/assets, accessible focus and labels, truthful status messages, page scrolling and zoom, without executing the reference's inline demos or loading its CDN resources.
+  - acceptance: R-9.18 — THE SYSTEM SHALL implement settings controls with packaged scripts/assets, accessible focus and labels, truthful status messages, a panel capped at the smaller of 600px and the available viewport with internal scrolling and visible header/footer, and zoom, without executing the reference's inline demos or loading its CDN resources.
   - acceptance: R-9.19 — WHEN Back or Done is activated, THE SYSTEM SHALL return to the settings overview or close its extension-created management tab and focus the source tab if available, without claiming to reopen the browser popup.
   - verify: Compare the light settings reference with local assets; verify source-tab versus directly opened Back/Done behavior, ordinary scrolling/zoom, safe inline statuses, and access to setup/profile editor.
   - landed: `736d88c`, `2e73dd9`, `f9963bc` — `src/options/index.ts`, `src/ui/common.ts`, `src/ui/common.test.ts`, `src/background/service.ts`, `src/background/service.test.ts`, `public/options.html`, `public/ui.css`, `tests/browser/run.mjs`.

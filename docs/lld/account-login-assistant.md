@@ -245,3 +245,7 @@ Chrome documentation retrieved through Context7 during specification:
 - [Extension security guidance](https://developer.chrome.com/docs/extensions/develop/security-privacy/stay-secure)
 
 These sources support platform boundaries. Encryption parameters, timeout values, import limits, and UI behavior above are proposed product decisions rather than Chrome requirements.
+
+## Available-height constraint
+
+Per the user’s layout correction, both popup and settings panels fit within 600px or the available viewport, whichever is smaller. Settings subtracts its outer spacing. Header and footer remain visible while the central content scrolls internally.

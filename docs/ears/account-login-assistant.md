@@ -134,7 +134,7 @@ Status: Planning baseline accepted through the user’s request to continue plan
 | --- | --- |
 | R-8.1 | THE SYSTEM SHALL use the supplied screen.png and code.html light slate/white/indigo visual style, taking precedence over the conflicting dark palette in DESIGN.md. |
 | R-8.2 | THE SYSTEM SHALL present the reference's compact branded header, authorized-profile strip, featured account card, search, rounded account rows, and count/Lock footer using the tokens defined in the LLD. |
-| R-8.3 | THE SYSTEM SHALL target a 380px-wide popup with height capped at 600px and accessible vertical scrolling, excluding the reference's outer presentation canvas and fixed 884px minimum height. |
+| R-8.3 | THE SYSTEM SHALL target a 380px-wide popup with height capped at the smaller of 600px and the available viewport, with accessible internal vertical scrolling, excluding the reference's outer presentation canvas and fixed 884px minimum height. |
 | R-8.4 | THE SYSTEM SHALL load popup styles, fonts, icons, and scripts from packaged local assets without runtime CDN, Google Fonts, or inline demo scripts. |
 | R-8.5 | WHEN rendering accounts, badges, counts, timestamps, and authorization indicators, THE SYSTEM SHALL derive them from actual vault/profile/tab state rather than reference placeholders. |
 | R-8.6 | THE SYSTEM SHALL label last-successful history distinctly from recent accounts and search results, preserving selection confirmation before autofill for list results. |
@@ -166,5 +166,5 @@ Status: Planning baseline accepted through the user’s request to continue plan
 | R-9.15 | WHEN committed data changes, THE SYSTEM SHALL refresh account/search counts, history, storage usage, and relevant open extension views from the committed state. |
 | R-9.16 | THE SYSTEM SHALL display actual serialized encrypted-envelope usage against the 5 MiB product vault limit and the installed extension version, without placeholder totals or claims about Chrome's total quota. |
 | R-9.17 | WHILE locked, THE SYSTEM SHALL withhold account details and counts and disable import, delete, Undo, and purge until unlock. |
-| R-9.18 | THE SYSTEM SHALL implement settings controls with packaged scripts/assets, accessible focus and labels, truthful status messages, page scrolling and zoom, without executing the reference's inline demos or loading its CDN resources. |
+| R-9.18 | THE SYSTEM SHALL implement settings controls with packaged scripts/assets, accessible focus and labels, truthful status messages, a panel capped at the smaller of 600px and the available viewport with internal scrolling and visible header/footer, and zoom, without executing the reference's inline demos or loading its CDN resources. |
 | R-9.19 | WHEN Back or Done is activated, THE SYSTEM SHALL return to the settings overview or close its extension-created management tab and focus the source tab if available, without claiming to reopen the browser popup. |

@@ -134,3 +134,7 @@ Encrypting the CSV is insufficient without a defined unlocked-session lifecycle.
 ### Revised Confidence
 
 Moderate for the documented MVP. Confidence increases after browser tests exercise the boundaries in the EARS document and the real application's profile passes manual acceptance. This specification and risk review form the planning baseline; the implementation plan is reviewed separately.
+
+## Available-height constraint
+
+Per the user’s layout correction, both popup and settings panels fit within 600px or the available viewport, whichever is smaller. Settings subtracts its outer spacing. Header and footer remain visible while the central content scrolls internally.
