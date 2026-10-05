@@ -29,3 +29,9 @@ Observed validation on 2026-10-05:
 - Browser tests used synthetic accounts and a disposable extension profile. The host permission prompt was bypassed only in the disposable test copy; real website compatibility was outside this layout change.
 
 Generated screenshots are in the ignored artifacts directory: settings-import.png, settings-review.png, settings.png, settings-profile.png, and settings-import-narrow.png.
+
+## Default login field selectors
+
+At the user's request, new profiles now prefill real CSS values: username autocomplete, email inputs, and common username/email/login names or IDs; password inputs use `input[type="password"]`. Saved custom values and matching methods remain intact. “Use common selectors” explicitly restores both CSS drafts; it does not save the profile or grant permission. The profile includes a plain-language explanation of website authorization, field matching, and success detection.
+
+The existing exact-one-input, visible/writable, authorized-origin, and manual-submit checks remain unchanged. Broad defaults may require narrowing on pages with multiple matching forms. Validation passed 71 unit tests, 80 Chromium checks, and both builds, including saving and filling with the prefilled selectors. The isolated preview was visually inspected at the shared 430px width.

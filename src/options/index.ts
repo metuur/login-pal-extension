@@ -286,6 +286,17 @@ function tabFromHash(): SettingsTab {
 window.addEventListener('hashchange', () => selectTab(tabFromHash()));
 
 const profileForm = el('form', 'stack');
+const defaultUsernameSelector = [
+  'input[autocomplete~="username"]',
+  'input[type="email"]',
+  'input[name="username" i]',
+  'input[name="email" i]',
+  'input[name="login" i]',
+  'input[id="username" i]',
+  'input[id="email" i]',
+  'input[id="login" i]',
+].join(', ');
+const defaultPasswordSelector = 'input[type="password"]';
 const profileName = field('Profile name'),
   login = field('Authorized login domain', 'url'),
   usernameSelector = field('Username field CSS selector'),
@@ -362,10 +373,36 @@ matchingHelp.append(
 );
 const successFields = el('div', 'settings-grid');
 successFields.append(kindLabel, successUrl.wrap, successSelector.wrap);
+const selectorDefaults = el('div', 'actions');
+selectorDefaults.append(
+  button(
+    'Use common selectors',
+    () => {
+      usernameMatch.select.value = 'css';
+      passwordMatch.select.value = 'css';
+      usernameMatch.update();
+      passwordMatch.update();
+      usernameSelector.input.value = defaultUsernameSelector;
+      passwordSelector.input.value = defaultPasswordSelector;
+      message(profileStatus, 'Common selectors restored. Save to apply them to this website.');
+    },
+    'text-button',
+  ),
+);
 profileForm.append(
-  el('p', 'subtle', 'Configure the login form for this CSV group. Filling never submits the form.'),
+  el(
+    'p',
+    'subtle',
+    'A login profile tells the extension which website to fill, where its username and password fields are, and how to recognize a successful login. You submit the form yourself.',
+  ),
   profileIdentity,
   fieldMatching,
+  selectorDefaults,
+  el(
+    'p',
+    'subtle',
+    'Common username/email and password selectors are prefilled for new profiles. If more than one field matches, narrow the selector to the login form.',
+  ),
   matchingHelp,
   successFields,
   profileStatus,
@@ -383,8 +420,8 @@ function populateProfile() {
   passwordMatch.select.value = p?.passwordMatch ?? 'css';
   usernameMatch.update();
   passwordMatch.update();
-  usernameSelector.input.value = p?.usernameSelector ?? '';
-  passwordSelector.input.value = p?.passwordSelector ?? '';
+  usernameSelector.input.value = p?.usernameSelector ?? defaultUsernameSelector;
+  passwordSelector.input.value = p?.passwordSelector ?? defaultPasswordSelector;
   kind.value = p?.success.kind ?? 'url';
   successUrl.input.value = p ? routeUrl(p.success.route) : '';
   successSelector.input.value = p?.success.kind === 'element' ? p.success.selector : '';

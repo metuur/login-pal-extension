@@ -118,6 +118,33 @@ try {
     'Arrow navigation activates the indexed accounts tab',
   );
   await options.keyboard.press('End');
+  const defaultUsernameSelector = await options
+    .getByLabel('Username field CSS selector', { exact: true })
+    .inputValue();
+  const defaultPasswordSelector = await options
+    .getByLabel('Password field CSS selector', { exact: true })
+    .inputValue();
+  check(
+    !!defaultUsernameSelector && !!defaultPasswordSelector,
+    'New login profiles contain actual default selectors, not just placeholders',
+  );
+  await options.getByLabel('Username field CSS selector', { exact: true }).fill('#custom-login');
+  await options
+    .getByRole('combobox', { name: 'Password match method', exact: true })
+    .selectOption('id');
+  await options.getByLabel('Password match value', { exact: true }).fill('custom-password');
+  await options.getByRole('button', { name: 'Use common selectors', exact: true }).click();
+  check(
+    (await options
+      .getByRole('combobox', { name: 'Password match method', exact: true })
+      .inputValue()) === 'css' &&
+      (await options.getByLabel('Username field CSS selector', { exact: true }).inputValue()) ===
+        defaultUsernameSelector &&
+      (await options.getByLabel('Password field CSS selector', { exact: true }).inputValue()) ===
+        defaultPasswordSelector &&
+      !(await state()).profile,
+    'Restoring common selectors updates only the draft until explicitly saved',
+  );
   await options.getByLabel('Profile name', { exact: true }).fill('Unfinished profile');
   await settingsTab('Login profile').focus();
   await options.keyboard.press('Home');
@@ -163,12 +190,24 @@ try {
   const profile = {
     name: 'QA Portal',
     loginUrl: origin + '/login',
-    usernameSelector: '#username',
-    passwordSelector: '#password',
+    usernameSelector: defaultUsernameSelector,
+    passwordSelector: defaultPasswordSelector,
     successKind: 'url',
     successUrl: origin + '/dashboard',
   };
-  await send({ type: 'SAVE_PROFILE', profile });
+  await settingsTab('Login profile').click();
+  await options.getByLabel('Profile name', { exact: true }).fill(profile.name);
+  await options.getByLabel('Authorized login domain', { exact: true }).fill(profile.loginUrl);
+  await options
+    .getByLabel('Exact success / observation URL', { exact: true })
+    .fill(profile.successUrl);
+  await options.getByRole('button', { name: 'Save & authorize website', exact: true }).click();
+  await options.getByText('Website profile saved.', { exact: true }).waitFor();
+  check(
+    (await state()).profile.usernameSelector === defaultUsernameSelector &&
+      (await state()).profile.passwordSelector === defaultPasswordSelector,
+    'The profile can be saved with prefilled selectors without manually entering CSS',
+  );
   const site = await context.newPage();
   await site.goto(origin + '/login');
   const tabId = await options.evaluate(
