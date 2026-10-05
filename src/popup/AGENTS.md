@@ -1,0 +1,1 @@
+Use password-free shared worker commands. Follow first supplied screenshot/HTML light theme. UI agent owns popup. No simulated fill/lock completion, no unsafe imported HTML. Preserve accessible focus and truthful state.

@@ -1,0 +1,1 @@
+UI agent owns settings and account management. Follow second supplied light reference. Invoke background mutations through typed commands; only user gestures request permissions. Never show raw CSV rows or secrets. Preserve confirmation and stale-preview handling.

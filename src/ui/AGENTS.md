@@ -1,0 +1,1 @@
+Shared UI helpers only. Render imported values with textContent. Never accept account passwords in view models. Keep controls accessible, statuses truthful, and user edits intact across background notifications.
