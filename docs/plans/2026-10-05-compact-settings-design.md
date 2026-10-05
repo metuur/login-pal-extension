@@ -4,7 +4,7 @@ The user requested shorter, easier-to-navigate settings, with separate inner tab
 
 ## Layout decision
 
-Use three tabs: Import CSV, Indexed accounts, and Login profile. Keep the CSV group picker, tabs, and storage footer outside the scrolling content. The profile panel retains its full “Login profile & website permission” heading. Keep mounted panels so switching tabs preserves draft fields, selected files, and valid import reviews.
+Use three tabs: Import CSV, Indexed accounts, and Login page setup. Keep the CSV group picker, tabs, and storage footer outside the scrolling content. The profile panel uses the matching “Login page setup” heading. Keep mounted panels so switching tabs preserves draft fields, selected files, and valid import reviews.
 
 Simply reducing spacing would still leave three independent workflows stacked together. Collapsible sections would still allow the page to grow indefinitely. Tabs make the current task explicit and keep navigation available.
 

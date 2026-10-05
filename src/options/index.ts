@@ -222,7 +222,7 @@ accountsPanel.append(listHeading, undo, search.wrap, list);
 slashSearch(search.input, () => !!state && !state.migrationRequired && activeTab === 'accounts');
 const profilePanel = el('section', 'panel profile-panel stack');
 profilePanel.id = 'profile';
-profilePanel.append(el('h2', '', 'Login profile & website permission'));
+profilePanel.append(el('h2', '', 'Login page setup'));
 
 type SettingsTab = 'import' | 'accounts' | 'profile';
 let activeTab: SettingsTab = 'import';
@@ -231,7 +231,7 @@ const tabButtons = new Map<SettingsTab, HTMLButtonElement>();
 for (const [id, label] of [
   ['import', 'Import CSV'],
   ['accounts', 'Indexed accounts'],
-  ['profile', 'Login profile'],
+  ['profile', 'Login page setup'],
 ] as const) {
   const tab = button(label, () => selectTab(id), 'settings-tab');
   tab.id = `tab-${id}`;

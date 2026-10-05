@@ -146,9 +146,9 @@ try {
     'Restoring common selectors updates only the draft until explicitly saved',
   );
   await options.getByLabel('Profile name', { exact: true }).fill('Unfinished profile');
-  await settingsTab('Login profile').focus();
+  await settingsTab('Login page setup').focus();
   await options.keyboard.press('Home');
-  await settingsTab('Login profile').click();
+  await settingsTab('Login page setup').click();
   check(
     (await options.getByLabel('Profile name', { exact: true }).inputValue()) ===
       'Unfinished profile',
@@ -195,7 +195,7 @@ try {
     successKind: 'url',
     successUrl: origin + '/dashboard',
   };
-  await settingsTab('Login profile').click();
+  await settingsTab('Login page setup').click();
   await options.getByLabel('Profile name', { exact: true }).fill(profile.name);
   await options.getByLabel('Authorized login domain', { exact: true }).fill(profile.loginUrl);
   await options
@@ -406,9 +406,9 @@ try {
     (s) => s.total === 3 && s.accounts.some((a) => a.metadata.account_type === 'Premium'),
     'Settings import action commits verified account changes',
   );
-  await settingsTab('Login profile').waitFor();
+  await settingsTab('Login page setup').waitFor();
   check(
-    (await settingsTab('Login profile').getAttribute('aria-selected')) === 'true',
+    (await settingsTab('Login page setup').getAttribute('aria-selected')) === 'true',
     'Import completion opens website profile setup',
   );
   await settingsTab('Indexed accounts').click();
@@ -419,7 +419,7 @@ try {
   await waitState((s) => s.total === 3, 'Settings Undo action restores the deleted account');
   for (const width of [360, 430, 1000]) {
     await options.setViewportSize({ width, height: 800 });
-    for (const name of ['Import CSV', 'Indexed accounts', 'Login profile']) {
+    for (const name of ['Import CSV', 'Indexed accounts', 'Login page setup']) {
       await settingsTab(name).click();
       check(
         await options.evaluate(() => {
@@ -451,7 +451,7 @@ try {
     (await options.locator('body').innerText()).includes('Merge'),
     'Settings renders account import modes',
   );
-  await settingsTab('Login profile').click();
+  await settingsTab('Login page setup').click();
   await options
     .getByRole('combobox', { name: 'Username match method', exact: true })
     .selectOption('label');
