@@ -1,5 +1,21 @@
 import type { Route, CatalogRule, ProfileInput, LoginProfile } from '../shared/types';
-const invalid = () => new Error('Enter a valid authorized HTTPS URL.');
+const invalid = () => new Error('Enter a valid authorized HTTPS URL, or http:// on localhost.');
+/** Loopback hosts may use plain http so a local development server can be authorized. */
+export function isLoopbackHost(hostname: string): boolean {
+  return hostname === 'localhost' || hostname.endsWith('.localhost') || hostname === '127.0.0.1';
+}
+export function isAuthorizedScheme(u: URL): boolean {
+  return u.protocol === 'https:' || (u.protocol === 'http:' && isLoopbackHost(u.hostname));
+}
+/** Content pages reach the worker over https, or over http while on a loopback host. */
+export function isAuthorizedPageUrl(value: string | undefined): boolean {
+  if (!value) return false;
+  try {
+    return isAuthorizedScheme(new URL(value));
+  } catch {
+    return false;
+  }
+}
 function url(value: string, allowStar = false, observed = false): URL {
   if (typeof value !== 'string' || !value.trim() || /[\\\u0000-\u0020]/u.test(value.trim()))
     throw invalid();
@@ -10,7 +26,7 @@ function url(value: string, allowStar = false, observed = false): URL {
     throw invalid();
   }
   if (
-    u.protocol !== 'https:' ||
+    !isAuthorizedScheme(u) ||
     u.username ||
     u.password ||
     !u.hostname ||
@@ -31,7 +47,7 @@ export function formatRoute(r: Route): string {
 }
 export function parseRule(value: string): CatalogRule {
   const u = url(value, true);
-  const rawPath = value.trim().match(/^https:\/\/[^/]*(\/[^?#]*)/iu)?.[1] ?? '';
+  const rawPath = value.trim().match(/^https?:\/\/[^/]*(\/[^?#]*)/iu)?.[1] ?? '';
   if (/[()[\]{}|^$]/u.test(rawPath)) throw invalid();
   const stars = u.pathname.split('*').length - 1;
   if (stars > 1 || (stars === 1 && !u.pathname.endsWith('*')) || /[{}|^$]/u.test(u.pathname))
@@ -54,7 +70,7 @@ export function matchesRoute(r: Route, value: string): boolean {
     return false;
   }
 }
-/** Domain authorization ignores routes but keeps HTTPS host and port exact. */
+/** Domain authorization ignores routes but keeps scheme, host and port exact. */
 export function matchesOrigin(r: Pick<Route, 'origin'>, value: string): boolean {
   try {
     return r.origin === url(value, false, true).origin;

@@ -4,19 +4,18 @@ import { resolve } from 'node:path';
 
 export default defineConfig({
   root: 'preview',
-  publicDir: resolve('.preview-assets'),
-  plugins: [
-    react(),
-    {
-      name: 'extension-font-paths',
-      enforce: 'pre',
-      transform(code, id) {
-        if (id.endsWith('/public/ui.css')) return code.replaceAll("url('fonts/", "url('/fonts/");
+  publicDir: false,
+  plugins: [react()],
+  resolve: {
+    alias: [
+      {
+        find: /^fonts\/(.+)-latin-(\d+)-normal\.woff2$/,
+        replacement: '@fontsource/$1/files/$1-latin-$2-normal.woff2',
       },
-    },
-  ],
-  server: { host: '127.0.0.1', port: 5173, strictPort: true },
-  preview: { host: '127.0.0.1', port: 4174, strictPort: true },
+    ],
+  },
+  server: { host: '127.0.0.1', port: 5173 },
+  preview: { host: '127.0.0.1', port: 4174 },
   build: {
     outDir: '../dist-web',
     emptyOutDir: true,

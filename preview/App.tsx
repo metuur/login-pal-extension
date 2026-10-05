@@ -1,8 +1,24 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { icon, versionFooter } from '../src/ui/common';
+
+const MAIN = '/popup.html';
+const SETTINGS = '/options.html';
+
+function Icon({ name }: { name: Parameters<typeof icon>[0] }) {
+  const slot = useRef<HTMLSpanElement>(null);
+  useEffect(() => slot.current?.replaceChildren(icon(name)), [name]);
+  return <span className="icon-slot" ref={slot} />;
+}
+
+function VersionFooter() {
+  const slot = useRef<HTMLDivElement>(null);
+  useEffect(() => slot.current?.replaceChildren(versionFooter()), []);
+  return <div className="icon-slot" ref={slot} />;
+}
 
 export default function App() {
   const [page, setPage] = useState(
-    new URLSearchParams(location.search).get('view') === 'popup' ? '/popup.html' : '/options.html',
+    new URLSearchParams(location.search).get('view') === 'settings' ? SETTINGS : MAIN,
   );
   useEffect(() => {
     const navigate = (event: Event) => {
@@ -12,33 +28,48 @@ export default function App() {
     window.addEventListener('preview-navigate', navigate);
     return () => window.removeEventListener('preview-navigate', navigate);
   }, []);
+  const settings = page.startsWith(SETTINGS);
   return (
-    <main className="workspace">
-      <header>
-        <span className="eyebrow">LOCAL WORKSPACE</span>
-        <h1>OneChat Login Assistant</h1>
-        <p>Manage your synthetic account groups in a live browser workspace.</p>
+    <div className="workspace">
+      <header className="app-header">
+        <div className="header-line">
+          <div className="brand">
+            <div className="logo">
+              <Icon name="key" />
+            </div>
+            <strong>OneChat DEV Login Assistant</strong>
+          </div>
+          <div className="header-actions">
+            {settings ? (
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Back to account search"
+                title="Back to account search"
+                onClick={() => setPage(MAIN)}
+              >
+                <Icon name="back" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Settings"
+                title="Settings"
+                onClick={() => setPage(SETTINGS)}
+              >
+                <Icon name="settings" />
+              </button>
+            )}
+          </div>
+        </div>
       </header>
-      <nav aria-label="Screens">
-        <button aria-pressed={page.startsWith('/options')} onClick={() => setPage('/options.html')}>
-          Settings
-        </button>
-        <button aria-pressed={page.startsWith('/popup')} onClick={() => setPage('/popup.html')}>
-          Popup
-        </button>
-      </nav>
-      <div className="screen">
-        <iframe
-          key={page}
-          src={page}
-          title={page.startsWith('/popup') ? 'Account popup' : 'Account settings'}
-        />
-      </div>
-      <aside>
-        Imports, groups, search and CSV exports work locally. Profile permission is simulated here;
-        autofill into other websites requires the installed Chrome extension. Preview data stays
-        separate from extension data.
-      </aside>
-    </main>
+      <iframe
+        key={page}
+        src={page}
+        title={settings ? 'Account settings' : 'Account login search'}
+      />
+      <VersionFooter />
+    </div>
   );
 }

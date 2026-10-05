@@ -16,6 +16,7 @@ import {
   matchesRule,
   matchesRoute,
   validateProfile,
+  isAuthorizedPageUrl,
 } from './rules';
 import { emptyVault, planImport } from './import';
 import { searchAccounts } from './search';
@@ -70,6 +71,44 @@ describe('authorization rules', () => {
     ])
       expect(() => parseRule(u)).toThrow();
     expect(parseRule('https://qa.example.com/%2A').pathMatch).toBe('exact');
+  });
+  it('allows plain http only on loopback hosts', () => {
+    expect(parseRule('http://localhost:3000/*').origin).toBe('http://localhost:3000');
+    expect(parseRule('http://app.localhost/login*').origin).toBe('http://app.localhost');
+    expect(parseRule('http://127.0.0.1:8080/*').origin).toBe('http://127.0.0.1:8080');
+    for (const u of [
+      'http://localhost.example.com/*',
+      'http://notlocalhost/*',
+      'http://[::1]:3000/*',
+      'http://10.0.0.1/*',
+    ])
+      expect(() => parseRule(u)).toThrow();
+    const r = parseRule('http://localhost:3000/*');
+    expect(matchesRule(r, 'http://localhost:3000/login')).toBe(true);
+    expect(matchesRule(r, 'https://localhost:3000/login')).toBe(false);
+    expect(matchesRule(r, 'http://localhost:3001/login')).toBe(false);
+    expect(
+      validateProfile(
+        {
+          name: 'Local',
+          loginUrl: 'http://localhost:3000/login',
+          usernameSelector: '#u',
+          passwordSelector: '#p',
+          successKind: 'url',
+          successUrl: 'http://localhost:3000/home',
+        },
+        r,
+        1,
+      ).login.origin,
+    ).toBe('http://localhost:3000');
+  });
+  it('trusts content senders on https or loopback http only', () => {
+    expect(isAuthorizedPageUrl('https://qa.example.com/login')).toBe(true);
+    expect(isAuthorizedPageUrl('http://localhost:3000/login')).toBe(true);
+    expect(isAuthorizedPageUrl('http://127.0.0.1/login')).toBe(true);
+    expect(isAuthorizedPageUrl('http://qa.example.com/login')).toBe(false);
+    expect(isAuthorizedPageUrl('file:///tmp/login.html')).toBe(false);
+    expect(isAuthorizedPageUrl(undefined)).toBe(false);
   });
   it('profile requires matching login and distinct URL success', () => {
     const p = {

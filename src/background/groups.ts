@@ -1,4 +1,5 @@
 import { AssistantService } from './service';
+import { isAuthorizedPageUrl } from '../domain/rules';
 import type { AppState, CsvGroup, Reply } from '../shared/types';
 
 /** Each imported CSV group has an independent catalog, profile, history and write queue. */
@@ -41,7 +42,7 @@ export class GroupService {
     if (!this.trusted(sender)) {
       if (
         sender.id !== chrome.runtime.id ||
-        !sender.url?.startsWith('https://') ||
+        !isAuthorizedPageUrl(sender.url) ||
         sender.frameId !== 0 ||
         !sender.documentId ||
         sender.tab?.id === undefined

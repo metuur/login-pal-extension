@@ -1,4 +1,5 @@
 > Current domain-matching amendment (2026-10-05): CSV import and login authorization match the exact HTTPS origin (hostname and port), ignoring paths, queries and fragments. Existing saved path rules use the same domain behavior. The login field is labeled “Authorized HTTPS login domain” and defaults to the imported domain. Subdomains require separate authorization. Success detection remains exact-route/element based; unique visible fields and explicit user action are still required. This supersedes older exact-login-path requirements below.
+> Loopback http amendment (2026-10-05): authorization additionally accepts plain http on loopback hosts (`localhost`, `*.localhost`, `127.0.0.1`) so a local development server can be authorized, matching the exact origin including port. Every other scheme, and http on any non-loopback host, stays rejected. The manifest adds the matching optional host permissions, and host grants, content-script registration and worker sender validation follow the authorized origin's own scheme. The import field is labeled “Authorized domain” and the profile field “Authorized login domain”.
 
 # Account Login Assistant — Tasks
 

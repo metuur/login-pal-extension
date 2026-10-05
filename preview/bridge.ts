@@ -1,6 +1,7 @@
 import { GroupService } from '../src/background/groups';
 import type { Reply } from '../src/shared/types';
 import { version } from '../package.json';
+import sampleCsv from '../public/sample-accounts.csv?url';
 
 type Listener = (event: unknown) => void;
 export interface PreviewBridge {
@@ -51,7 +52,8 @@ export function createBridge(): PreviewBridge {
     },
     runtime: {
       id: 'onechat-preview',
-      getURL: (path: string) => new URL(path, location.origin + '/').href,
+      getURL: (path: string) =>
+        path === 'sample-accounts.csv' ? sampleCsv : new URL(path, location.origin + '/').href,
       getManifest: () => ({ version }),
       async sendMessage(event: unknown) {
         for (const listener of listeners) listener(event);

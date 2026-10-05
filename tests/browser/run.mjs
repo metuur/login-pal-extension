@@ -55,8 +55,10 @@ try {
   const packageInfo = JSON.parse(await readFile('package.json', 'utf8'));
   check(manifest.version === packageInfo.version, 'Generated manifest uses the package version');
   check(
-    !manifest.host_permissions && manifest.optional_host_permissions?.length === 1,
-    'Shipping manifest has optional host access only',
+    !manifest.host_permissions &&
+      manifest.optional_host_permissions?.join(' ') ===
+        'https://*/* http://localhost/* http://*.localhost/* http://127.0.0.1/*',
+    'Shipping manifest has optional host access only, https plus loopback http',
   );
   // Headless Chrome cannot approve the host dialog. Grant only the controlled
   // localhost fixture in this disposable copy; production permissions are unchanged.
@@ -357,7 +359,7 @@ try {
     .getByRole('combobox', { name: 'CSV group', exact: true })
     .inputValue();
   await options
-    .getByLabel('Authorized HTTPS domain *', { exact: true })
+    .getByLabel('Authorized domain *', { exact: true })
     .fill('https://performance.example.test/*');
   await options.locator('#csv-file').setInputFiles({
     name: 'performance.csv',

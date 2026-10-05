@@ -20,7 +20,12 @@ const manifest = {
   description: 'A local encrypted account catalog for authorized QA login pages.',
   minimum_chrome_version: '120',
   permissions: ['storage', 'scripting', 'activeTab'],
-  optional_host_permissions: ['https://*/*'],
+  optional_host_permissions: [
+    'https://*/*',
+    'http://localhost/*',
+    'http://*.localhost/*',
+    'http://127.0.0.1/*',
+  ],
   background: {
     service_worker: 'background.js',
   },

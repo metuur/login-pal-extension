@@ -13,8 +13,7 @@
     "check": "npm run typecheck && npm test && npm run build",
     "lint": "prettier --check src scripts tests public package.json tsconfig.json preview vite.config.ts",
     "format": "prettier --write src scripts tests public package.json tsconfig.json preview vite.config.ts",
-    "predev": "node scripts/prepare-preview.mjs",
-    "build:web": "node scripts/prepare-preview.mjs && vite build",
+    "build:web": "vite build",
     "start": "vite preview"
   },
   "dependencies": {

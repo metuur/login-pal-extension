@@ -28,6 +28,7 @@ import {
   matchesRoute,
   matchesOrigin,
   validateProfile,
+  isAuthorizedPageUrl,
 } from '../domain/rules';
 import { parseCsv, exportCsv } from '../domain/csv';
 import { planImport } from '../domain/import';
@@ -223,7 +224,7 @@ export class AssistantService {
     const content =
       !trusted &&
       sender.id === chrome.runtime.id &&
-      sender.url?.startsWith('https://') &&
+      isAuthorizedPageUrl(sender.url) &&
       sender.tab?.id !== undefined &&
       sender.frameId === 0 &&
       !!sender.documentId;

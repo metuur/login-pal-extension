@@ -1,0 +1,33 @@
+/* Dev workspace only: the React shell owns the brand header and version footer,
+   so the embedded view fills the frame and drops that duplicated chrome. */
+html,
+body.popup,
+body.options {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+}
+body.popup #app,
+.options #app {
+  height: 100%;
+  max-height: none;
+  max-width: none;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.popup-body,
+.options-body {
+  flex: 1;
+}
+.header-line,
+.options .app-header,
+.version-footer {
+  display: none;
+}
+.profile-strip {
+  margin-top: 0;
+}

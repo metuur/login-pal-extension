@@ -15,3 +15,5 @@ dist-web/
 dist-dev/
 .dev-dist-next/
 .dev-dist-old/
+.playwright-mcp/
+.headroom_**

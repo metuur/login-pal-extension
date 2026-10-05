@@ -6,7 +6,7 @@ import type {
   Route,
   FieldMatch,
 } from '../shared/types';
-import { parseRule, validateProfile } from '../domain/rules';
+import { parseRule, validateProfile, isAuthorizedScheme } from '../domain/rules';
 import {
   accountRow,
   groupPicker,
@@ -137,7 +137,7 @@ sample.download = 'sample-accounts.csv';
 const fileIcon = el('div', 'avatar');
 fileIcon.append(icon('upload'));
 fileCard.append(fileIcon, fileText, change, fileInput);
-const target = field('Authorized HTTPS domain *');
+const target = field('Authorized domain *');
 target.input.required = true;
 target.input.placeholder = 'https://your-website.example';
 target.input.autocomplete = 'off';
@@ -186,7 +186,7 @@ importPanel.append(
   el(
     'p',
     'subtle',
-    'Enter the HTTPS domain, for example https://qa.example.com. Paths, queries and fragments are ignored. Subdomains and ports must match.',
+    'Enter the HTTPS domain, for example https://qa.example.com, or http://localhost:3000 for a local server. Paths, queries and fragments are ignored. Subdomains and ports must match.',
   ),
   presets,
   activeHint,
@@ -214,10 +214,10 @@ profilePanel.id = 'profile';
 profilePanel.append(el('summary', '', 'Login profile & website permission'));
 const profileForm = el('form', 'stack');
 const profileName = field('Profile name'),
-  login = field('Authorized HTTPS login domain', 'url'),
+  login = field('Authorized login domain', 'url'),
   usernameSelector = field('Username field CSS selector'),
   passwordSelector = field('Password field CSS selector'),
-  successUrl = field('Exact HTTPS success / observation URL', 'url'),
+  successUrl = field('Exact success / observation URL', 'url'),
   successSelector = field('Visible success element CSS selector');
 for (const f of [profileName, login, usernameSelector, passwordSelector, successUrl])
   f.input.required = true;
@@ -344,7 +344,7 @@ async function verifyImport() {
     return;
   }
   if (!target.input.value.trim()) {
-    message(importError, 'Enter the HTTPS URL to match.', true);
+    message(importError, 'Enter the URL to match.', true);
     target.input.focus();
     return;
   }
@@ -617,7 +617,7 @@ async function activeSource() {
     const tab = await chrome.tabs.get(sourceTab);
     if (!tab.url) throw new Error();
     const url = new URL(tab.url);
-    if (url.protocol !== 'https:' || url.username || url.password) throw new Error();
+    if (!isAuthorizedScheme(url) || url.username || url.password) throw new Error();
     return url.origin;
   } catch {
     return undefined;
@@ -712,7 +712,9 @@ profileForm.addEventListener('submit', (event) => {
     return;
   }
   // Keep the permission request directly in the user gesture, before any await.
-  const permission = chrome.permissions.request({ origins: [`https://${url.hostname}/*`] });
+  const permission = chrome.permissions.request({
+    origins: [`${url.protocol}//${url.hostname}/*`],
+  });
   void mutate(async () => {
     if (!(await permission)) {
       message(
