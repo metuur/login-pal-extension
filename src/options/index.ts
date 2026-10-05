@@ -39,13 +39,14 @@ const brand = el('div', 'brand');
 const title = el('div');
 title.append(
   el('strong', '', 'OneChat DEV Login Assistant'),
-  el('p', 'subtle', 'Import & rule matching'),
+  el('p', 'subtle', 'Account settings'),
 );
 brand.append(logo, title);
 const badge = el('span', 'pill authorized');
 const version = el('span', 'version mono', `v${chrome.runtime.getManifest().version}`);
 headerLine.append(
   iconButton('back', 'Back to overview', () => {
+    selectTab('import');
     location.hash = '';
     window.scrollTo({ top: 0 });
   }),
@@ -58,7 +59,10 @@ const status = liveRegion(),
   content = el('div', 'options-body stack'),
   footer = el('footer', 'app-footer');
 const groupBar = el('div', 'group-bar');
-app.replaceChildren(header, groupBar, status, content, footer, versionFooter());
+const tabs = el('div', 'settings-tabs');
+tabs.setAttribute('role', 'tablist');
+tabs.setAttribute('aria-label', 'Account settings');
+app.replaceChildren(header, groupBar, tabs, status, content, footer, versionFooter());
 const rawSource = new URL(location.href).searchParams.get('sourceTab');
 const sourceTab = rawSource !== null && /^\d+$/.test(rawSource) ? Number(rawSource) : undefined;
 let state: AppState | undefined,
@@ -78,6 +82,7 @@ const groupName = field('CSV group name');
 groupName.input.maxLength = 80;
 groupName.input.placeholder = 'QA Platform X';
 const groupActions = el('div', 'actions');
+const groupEditor = el('div', 'group-editor');
 groupActions.append(
   button('Save group name', () =>
     mutate(async () => {
@@ -175,27 +180,33 @@ for (const [value, label] of [
 const previewBox = el('div', 'stack');
 const verify = button('Verify accounts', verifyImport, 'primary');
 const importError = liveRegion();
-importPanel.append(
-  importHeading,
-  groupName.wrap,
-  groupActions,
-  fileCard,
-  another,
-  sample,
-  target.wrap,
+const importSetup = el('div', 'stack import-setup');
+const fileActions = el('div', 'actions file-actions');
+another.className = 'text-button';
+fileActions.append(sample, another);
+groupEditor.append(groupName.wrap, groupActions);
+const domainHelp = el('details', 'settings-help');
+domainHelp.append(
+  el('summary', '', 'Which domains can I use?'),
   el(
     'p',
     'subtle',
     'Enter the HTTPS domain, for example https://qa.example.com, or http://localhost:3000 for a local server. Paths, queries and fragments are ignored. Subdomains and ports must match.',
   ),
-  presets,
   activeHint,
+);
+const domainFields = el('div', 'stack');
+domainFields.append(target.wrap, presets, domainHelp);
+importSetup.append(
+  groupEditor,
+  fileCard,
+  fileActions,
+  domainFields,
   modeWrap,
   modeExplanation,
-  importError,
   verify,
-  previewBox,
 );
+importPanel.append(importHeading, importError, importSetup, previewBox);
 const accountsPanel = el('section', 'stack');
 accountsPanel.id = 'accounts';
 const list = el('div', 'stack'),
@@ -208,10 +219,72 @@ const search = searchBox((value) => {
   void refresh();
 });
 accountsPanel.append(listHeading, undo, search.wrap, list);
-slashSearch(search.input, () => !!state && !state.migrationRequired);
-const profilePanel = el('details', 'panel profile-panel');
+slashSearch(search.input, () => !!state && !state.migrationRequired && activeTab === 'accounts');
+const profilePanel = el('section', 'panel profile-panel stack');
 profilePanel.id = 'profile';
-profilePanel.append(el('summary', '', 'Login profile & website permission'));
+profilePanel.append(el('h2', '', 'Login profile & website permission'));
+
+type SettingsTab = 'import' | 'accounts' | 'profile';
+let activeTab: SettingsTab = 'import';
+const tabPanels = { import: importPanel, accounts: accountsPanel, profile: profilePanel };
+const tabButtons = new Map<SettingsTab, HTMLButtonElement>();
+for (const [id, label] of [
+  ['import', 'Import CSV'],
+  ['accounts', 'Indexed accounts'],
+  ['profile', 'Login profile'],
+] as const) {
+  const tab = button(label, () => selectTab(id), 'settings-tab');
+  tab.id = `tab-${id}`;
+  tab.setAttribute('role', 'tab');
+  tab.setAttribute('aria-controls', id);
+  const panel = tabPanels[id];
+  panel.setAttribute('role', 'tabpanel');
+  panel.setAttribute('aria-labelledby', tab.id);
+  panel.tabIndex = 0;
+  tabButtons.set(id, tab);
+  tabs.append(tab);
+  tab.addEventListener('keydown', (event) => {
+    const ids = [...tabButtons.keys()];
+    const index = ids.indexOf(id);
+    const next =
+      event.key === 'Home'
+        ? 0
+        : event.key === 'End'
+          ? ids.length - 1
+          : event.key === 'ArrowRight'
+            ? (index + 1) % ids.length
+            : event.key === 'ArrowLeft'
+              ? (index + ids.length - 1) % ids.length
+              : -1;
+    if (next < 0 || busy) return;
+    event.preventDefault();
+    selectTab(ids[next], true);
+  });
+}
+function selectTab(id: SettingsTab, focus = false) {
+  activeTab = id;
+  for (const [key, tab] of tabButtons) {
+    const selected = key === id;
+    tab.setAttribute('aria-selected', String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+    tabPanels[key].hidden = !selected;
+  }
+  content.scrollTop = 0;
+  if (focus) {
+    const tab = tabButtons.get(id);
+    if (tab?.disabled) tabPanels[id].focus();
+    else tab?.focus();
+  }
+}
+function tabFromHash(): SettingsTab {
+  return location.hash === '#profile'
+    ? 'profile'
+    : location.hash === '#accounts'
+      ? 'accounts'
+      : 'import';
+}
+window.addEventListener('hashchange', () => selectTab(tabFromHash()));
+
 const profileForm = el('form', 'stack');
 const profileName = field('Profile name'),
   login = field('Authorized login domain', 'url'),
@@ -270,26 +343,31 @@ kind.addEventListener('change', () => {
 const profileStatus = liveRegion(),
   save = button('Save & authorize website', () => {}, 'primary');
 save.type = 'submit';
-profileForm.append(
-  el(
-    'p',
-    'subtle',
-    'One website profile. Import a CSV and URL rule first, then review and save these fields. Filling never submits the form.',
-  ),
-  profileName.wrap,
-  login.wrap,
-  usernameMatch.wrap,
-  usernameSelector.wrap,
-  passwordMatch.wrap,
-  passwordSelector.wrap,
+const profileIdentity = el('div', 'settings-grid');
+profileIdentity.append(profileName.wrap, login.wrap);
+const fieldMatching = el('div', 'settings-grid');
+const usernameFields = el('div', 'stack');
+usernameFields.append(usernameMatch.wrap, usernameSelector.wrap);
+const passwordFields = el('div', 'stack');
+passwordFields.append(passwordMatch.wrap, passwordSelector.wrap);
+fieldMatching.append(usernameFields, passwordFields);
+const matchingHelp = el('details', 'settings-help');
+matchingHelp.append(
+  el('summary', '', 'How field matching works'),
   el(
     'p',
     'subtle',
     'ID/name match exactly. Text labels and placeholders ignore case and extra spaces. Each method must resolve to one visible, writable input. CSS supports alternatives separated by commas, but must match exactly one input.',
   ),
-  kindLabel,
-  successUrl.wrap,
-  successSelector.wrap,
+);
+const successFields = el('div', 'settings-grid');
+successFields.append(kindLabel, successUrl.wrap, successSelector.wrap);
+profileForm.append(
+  el('p', 'subtle', 'Configure the login form for this CSV group. Filling never submits the form.'),
+  profileIdentity,
+  fieldMatching,
+  matchingHelp,
+  successFields,
   profileStatus,
   save,
 );
@@ -315,10 +393,13 @@ function populateProfile() {
 }
 function invalidatePreview() {
   preview = undefined;
+  const wasReviewing = importSetup.hidden;
+  importSetup.hidden = false;
   message(importError, '');
   previewBox.replaceChildren();
   step.textContent = 'Step 1 of 2';
   verify.hidden = false;
+  if (wasReviewing && activeTab === 'import') verify.focus();
   fileInfo.textContent = file
     ? `${(file.size / 1024).toFixed(1)} KiB · not yet validated`
     : 'UTF-8 · up to 2 MiB';
@@ -378,17 +459,28 @@ async function verifyImport() {
   } finally {
     busy = false;
     setBusy(false);
+    if (preview && activeTab === 'import')
+      previewBox.querySelector<HTMLButtonElement>('.primary')?.focus();
   }
 }
 function showPreview() {
   if (!preview) return;
   const p = preview;
   step.textContent = 'Step 2 of 2';
+  importSetup.hidden = true;
   verify.hidden = true;
   fileInfo.textContent = `${((file?.size ?? 0) / 1024).toFixed(1)} KiB · ${p.valid} valid rows`;
   previewBox.replaceChildren(
     el('h2', '', `Review import into ${state?.groupName ?? 'this group'}`),
+    el('p', 'wrap', file?.name ?? 'Account CSV'),
     el('p', 'mono wrap', p.rule),
+    el(
+      'p',
+      'subtle',
+      p.mode === 'replace'
+        ? 'Wipe & Replace · Accounts missing from valid incoming rows will be removed.'
+        : 'Merge & Update · Existing accounts absent from this file are preserved.',
+    ),
   );
   const counts = el('div', 'import-counts');
   for (const [label, value] of [
@@ -421,19 +513,25 @@ function showPreview() {
     details.append(codes);
     previewBox.append(details);
   }
-  previewBox.append(
-    button(`Import ${p.valid} valid accounts`, () => commit(p.token), 'primary'),
+  const importAction = button(`Import ${p.valid} valid accounts`, () => commit(p.token), 'primary');
+  const reviewActions = el('div', 'actions review-actions');
+  reviewActions.append(
+    button('Edit import', () => invalidatePreview()),
     button('Cancel review', () => {
       invalidatePreview();
       message(importError, 'Import cancelled. Your stored accounts are unchanged.');
     }),
   );
+  previewBox.append(importAction, reviewActions);
+  content.scrollTop = 0;
 }
 async function commit(token: string) {
+  let imported = false;
   await mutate(async () => {
     // This review is being consumed by our own commit, not invalidated by another view.
     invalidatePreview();
     await request({ type: 'COMMIT_IMPORT', token });
+    imported = true;
     file = undefined;
     fileInput.value = '';
     fileName.textContent = 'Choose an account CSV';
@@ -444,11 +542,14 @@ async function commit(token: string) {
       status,
       'Accounts imported. Review and save the login fields for this URL before autofill.',
     );
-    profilePanel.open = true;
   }, 'Importing encrypted accounts…');
+  if (imported) {
+    if (!login.input.value && state?.rule) login.input.value = new URL(state.rule).origin;
+    selectTab('profile', true);
+  }
 }
 function setBusy(value: boolean) {
-  content
+  app
     .querySelectorAll<HTMLButtonElement | HTMLInputElement | HTMLSelectElement>(
       'button,input,select',
     )
@@ -558,7 +659,7 @@ function updateAccounts() {
         'empty',
         s.total
           ? 'No matches. Try another search.'
-          : 'No accounts indexed. Import a CSV above to begin.',
+          : 'No accounts indexed. Open Import CSV to begin.',
       ),
     );
   for (const account of s.accounts)
@@ -747,7 +848,7 @@ async function done() {
     }
   }
   location.hash = '';
-  profilePanel.open = false;
+  selectTab('import', true);
   window.scrollTo({ top: 0 });
 }
 function render() {
@@ -773,6 +874,7 @@ function render() {
   );
   footer.replaceChildren();
   if (s.migrationRequired) {
+    tabs.hidden = true;
     mounted = false;
     file = undefined;
     fileInput.value = '';
@@ -789,13 +891,14 @@ function render() {
     footer.append(el('span', 'subtle', 'Local synthetic accounts'));
     return;
   }
+  tabs.hidden = false;
   if (!mounted) {
     groupName.input.value = s.groupName ?? 'Imported accounts';
     target.input.value = s.rule ?? '';
     populateProfile();
-    const security = el('div', 'notice encryption');
+    const security = el('details', 'settings-help local-settings');
     security.append(
-      icon('shield'),
+      el('summary', '', 'Local data & reset'),
       el(
         'p',
         '',
@@ -804,10 +907,11 @@ function render() {
     );
     const tools = el('div', 'actions');
     tools.append(resetButton(refresh));
-    content.replaceChildren(importPanel, accountsPanel, profilePanel, security, tools);
+    security.append(tools);
+    content.replaceChildren(importPanel, accountsPanel, profilePanel, security);
+    if (!tabButtons.get(activeTab)?.hasAttribute('aria-selected')) activeTab = tabFromHash();
+    selectTab(activeTab);
     mounted = true;
-    profilePanel.open = location.hash === '#profile';
-    if (location.hash === '#profile') profilePanel.scrollIntoView();
     updatePresets();
   }
   updateAccounts();
