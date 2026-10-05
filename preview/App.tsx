@@ -30,7 +30,7 @@ export default function App() {
   }, []);
   const settings = page.startsWith(SETTINGS);
   return (
-    <div className={`workspace${settings ? ' workspace-settings' : ''}`}>
+    <div className="workspace">
       <header className="app-header">
         <div className="header-line">
           <div className="brand">

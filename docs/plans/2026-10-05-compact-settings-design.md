@@ -8,7 +8,7 @@ Use three tabs: Import CSV, Indexed accounts, and Login profile. Keep the CSV gr
 
 Simply reducing spacing would still leave three independent workflows stacked together. Collapsible sections would still allow the page to grow indefinitely. Tabs make the current task explicit and keep navigation available.
 
-Settings can use up to 760px on desktop, including the local development preview. Profile fields use two columns when there is room; narrow screens use one column. The account-search popup keeps its existing width.
+Settings retains a compact 430px maximum width. In the local development preview, settings and the main account-search page share that same container width, so navigation does not resize the app. This follows the user's width correction after reviewing the initial tabbed layout. Profile fields stack within the compact container. The account-search popup keeps its existing width.
 
 ## Import and help
 

@@ -62,7 +62,7 @@ body.options {
   display: flex;
   flex-direction: column;
   max-height: calc(100dvh - 48px);
-  max-width: 760px;
+  max-width: 430px;
   margin: 0 auto;
   background: white;
   border: 1px solid #e2e8f0;

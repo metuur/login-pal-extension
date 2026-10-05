@@ -9,9 +9,6 @@ body {
   max-width: 430px;
   height: 100dvh;
 }
-#root:has(.workspace-settings) {
-  max-width: 760px;
-}
 .workspace {
   display: flex;
   flex-direction: column;
