@@ -130,7 +130,7 @@ export type Command =
   | { type: 'RENAME_GROUP'; name: string }
   | { type: 'STATE'; query?: string; page?: number; tabId?: number }
   | { type: 'MIGRATE'; password: string }
-  | { type: 'RESET' | 'UNDO' | 'PURGE' }
+  | { type: 'RESET' | 'UNDO' | 'PURGE' | 'EXPORT_CSV' }
   | { type: 'PREVIEW_IMPORT'; bytes: number[]; rule: string; mode: ImportMode }
   | { type: 'COMMIT_IMPORT'; token: string }
   | { type: 'SAVE_PROFILE'; profile: ProfileInput }

@@ -391,6 +391,27 @@ try {
   for (let i = 0; i < 30 && (await groupState()).total !== 2; i++)
     await new Promise((r) => setTimeout(r, 100));
   check((await groupState()).total === 2, 'Upload another CSV merges into the selected group');
+  await options.getByRole('searchbox', { name: 'Search accounts', exact: true }).fill('PERF-2');
+  const exportEvent = options.waitForEvent('download');
+  await options.getByRole('button', { name: 'Export CSV', exact: true }).click();
+  const groupDownload = await exportEvent;
+  const exportedText = await readFile(await groupDownload.path(), 'utf8');
+  const { default: Papa } = await import('papaparse');
+  const exportedRows = Papa.parse(exportedText, { header: true, skipEmptyLines: true }).data;
+  check(
+    groupDownload.suggestedFilename() === 'Performance.csv' &&
+      exportedRows.length === 2 &&
+      exportedRows.every((row) => ['ACC-1234', 'PERF-2'].includes(row.account_id)),
+    'Export downloads every account in the selected group, regardless of search filter',
+  );
+  check(
+    exportedRows.every(
+      (row) => typeof row.password === 'string' && row.password.startsWith('synthetic-'),
+    ),
+    'Export preserves synthetic password values for reimport',
+  );
+  await options.getByRole('searchbox', { name: 'Search accounts', exact: true }).fill('');
+
   await options.locator('.options-body').evaluate((node) => {
     node.scrollTop = 0;
   });
@@ -466,7 +487,11 @@ try {
   await send({ type: 'PURGE' });
   check(
     requests.every(
-      (url) => url.startsWith(base) || url.startsWith(origin) || url.startsWith('data:'),
+      (url) =>
+        url.startsWith(base) ||
+        url.startsWith(origin) ||
+        url.startsWith('data:') ||
+        url.startsWith(`blob:${base}`),
     ),
     'Extension UI loads no remote assets or application services',
   );

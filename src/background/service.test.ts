@@ -430,6 +430,31 @@ describe('named CSV groups', () => {
     await ingest(service, group.id, ['A'], 'merge', 'https://performance.example.com/*');
     await ingest(service, 'default', ['B']);
     expect((await run(service, { type: 'STATE' })).total).toBe(2);
+    const { parseCsv } = await import('../domain/csv');
+    const exported = await run<string>(service, { type: 'EXPORT_CSV', groupId: group.id });
+    const rows = parseCsv(new TextEncoder().encode(exported));
+    expect(rows.valid).toBe(1);
+    expect(rows.accounts[0].accountId).toBe('A');
+    expect(
+      (
+        await service.handle(
+          { type: 'EXPORT_CSV', groupId: group.id },
+          { ...sender, url: 'chrome-extension://test/popup.html' },
+        )
+      ).ok,
+    ).toBe(false);
+    expect(
+      (
+        await service.handle({ type: 'EXPORT_CSV', groupId: group.id }, {
+          id: 'test',
+          url: 'https://qa.example.com',
+          tab: { id: 1 },
+          frameId: 0,
+          documentId: 'doc',
+        } as chrome.runtime.MessageSender)
+      ).ok,
+    ).toBe(false);
+
     expect((await run(service, { type: 'STATE', groupId: group.id })).total).toBe(1);
     expect((await run(service, { type: 'STATE', groupId: group.id })).rule).toBe(
       'https://performance.example.com/*',

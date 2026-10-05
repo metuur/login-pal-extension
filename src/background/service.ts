@@ -22,7 +22,7 @@ import {
   unsealValue,
 } from '../domain/crypto';
 import { parseRule, formatRule, matchesRule, matchesRoute, validateProfile } from '../domain/rules';
-import { parseCsv } from '../domain/csv';
+import { parseCsv, exportCsv } from '../domain/csv';
 import { planImport } from '../domain/import';
 import { searchAccounts } from '../domain/search';
 
@@ -222,6 +222,12 @@ export class AssistantService {
       !!sender.documentId;
     if (
       trusted &&
+      message.type === 'EXPORT_CSV' &&
+      sender.url?.split('?')[0]?.split('#')[0] !== chrome.runtime.getURL('options.html')
+    )
+      return { ok: false, error: 'Export accounts from Settings.' };
+    if (
+      trusted &&
       message.type === 'FILL' &&
       sender.url?.split('?')[0]?.split('#')[0] !== chrome.runtime.getURL('popup.html')
     )
@@ -349,6 +355,7 @@ export class AssistantService {
       return;
     }
     this.assert();
+    if (command.type === 'EXPORT_CSV') return exportCsv(this.payload!.accounts);
     if (command.type === 'PREVIEW_IMPORT') {
       if (
         !Array.isArray(command.bytes) ||

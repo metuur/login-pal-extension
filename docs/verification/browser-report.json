@@ -1,5 +1,5 @@
 {
-  "passed": 56,
+  "passed": 58,
   "checks": [
     "Generated manifest uses the package version",
     "Shipping manifest has optional host access only",
@@ -43,6 +43,8 @@
     "Creating another CSV group preserves the original group",
     "CSV group stores its own URL and duplicate account ID",
     "Upload another CSV merges into the selected group",
+    "Export downloads every account in the selected group, regardless of search filter",
+    "Export preserves synthetic password values for reimport",
     "Purge confirmation names the selected CSV group",
     "Group purge preserves accounts in other CSV groups",
     "Cancelling purge preserves the catalog",
@@ -60,7 +62,7 @@
   ],
   "search": {
     "accounts": 10000,
-    "inputToRenderedResultsMs": 41.900000005960464,
+    "inputToRenderedResultsMs": 43.900000005960464,
     "thresholdMs": 200
   },
   "browser": "153.0.8010.12",

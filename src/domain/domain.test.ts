@@ -1,3 +1,4 @@
+import { exportCsv as serializeAccounts } from './csv';
 import { describe, it, expect } from 'vitest';
 import {
   deriveVaultKey,
@@ -286,4 +287,33 @@ it('ignores arbitrary query data on observed URLs without accepting it in policy
   expect(
     matchesRule(parseRule('https://qa.example.com/*'), 'https://qa.example.com/login?filter=*'),
   ).toBe(true);
+});
+
+describe('CSV group export', () => {
+  it('round trips quotes, commas, Unicode, newlines and password whitespace', () => {
+    const accounts: import('../shared/types').Account[] = [
+      {
+        accountId: 'QA-1',
+        username: 'demo@example.test',
+        password: '  synthetic,"value"\nnext  ',
+        metadata: { company: 'Málaga, "QA"', notes: 'line 1\nline 2' },
+      },
+      {
+        accountId: 'QA-2',
+        username: 'other@example.test',
+        password: '=synthetic-literal',
+        metadata: { role: 'Tester' },
+      },
+    ];
+    const csv = serializeAccounts(accounts);
+    const parsed = parseCsv(new TextEncoder().encode(csv));
+    expect(parsed.valid).toBe(2);
+    expect(parsed.invalid).toBe(0);
+    expect(
+      parsed.accounts.every((account, index) => account.password === accounts[index].password),
+    ).toBe(true);
+    expect(parsed.accounts[0].metadata.company === accounts[0].metadata.company).toBe(true);
+    expect(parsed.accounts[1].metadata.role).toBe('Tester');
+    expect(parsed.accounts[0].metadata.role).toBe('');
+  });
 });

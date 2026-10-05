@@ -1,5 +1,10 @@
 # Account Login Assistant verification
 
+## CSV export revision (2026-10-05)
+
+Passed TypeScript, formatting, build, 68 focused tests and 58 browser checks. Serialization round trips synthetic passwords with quotes/newlines/whitespace and unions metadata. Worker tests reject export from popup/content senders and isolate groups. Browser download verifies the group filename, complete group despite search filtering, correct account IDs, and included synthetic passwords without recording values in reports.
+
+
 ## Expanded input matching (2026-10-05)
 
 Passed 67 focused tests, TypeScript and build; 56 browser checks passed. Six new non-CSS methods fill correctly in DOM tests, including label/aria-labelledby normalization and ambiguity rejection. The browser harness configures visible-label username matching and autocomplete password matching through Settings and fills the real fixture form. Existing CSS-based profiles remain compatible. Tracking regression passed after adapting edit detection to resolved input elements.

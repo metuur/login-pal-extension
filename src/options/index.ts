@@ -504,7 +504,45 @@ function updateAccounts() {
     'danger-small',
   );
   purge.disabled = !s.total || busy;
-  listHeading.append(purge);
+  const exportButton = button(
+    'Export CSV',
+    async () => {
+      if (busy) return;
+      busy = true;
+      setBusy(true);
+      let url: string | undefined;
+      try {
+        const csv = await request<string>({ type: 'EXPORT_CSV' });
+        url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+        const link = el('a');
+        link.href = url;
+        link.download = `${(s.groupName ?? 'accounts').replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0, 80) || 'accounts'}.csv`;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        message(
+          status,
+          `CSV download started for ${s.groupName ?? 'this group'} (${s.total} accounts).`,
+        );
+      } catch {
+        message(status, 'Could not export this group. Try again.', true);
+      } finally {
+        if (url) {
+          const downloadUrl = url;
+          setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+        }
+        busy = false;
+        setBusy(false);
+      }
+    },
+    'secondary',
+  );
+  exportButton.disabled = !s.total || busy;
+  exportButton.title =
+    'Download all accounts in this group, including synthetic passwords and metadata.';
+  const actions = el('div', 'actions');
+  actions.append(exportButton, purge);
+  listHeading.append(actions);
   list.replaceChildren();
   if (query) list.append(el('p', 'mono subtle', `${s.matches} matches of ${s.total} accounts`));
   let origin = '';

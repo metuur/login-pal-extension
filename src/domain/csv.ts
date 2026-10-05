@@ -1,5 +1,28 @@
 import Papa from 'papaparse';
 import type { Account, CsvResult, RowDiagnostic } from '../shared/types';
+
+export function exportCsv(accounts: Account[]): string {
+  const required = ['account_id', 'username', 'password'];
+  const metadata = [...new Set(accounts.flatMap((account) => Object.keys(account.metadata)))]
+    .filter((key) => !required.includes(key))
+    .sort();
+  return (
+    '\uFEFF' +
+    Papa.unparse(
+      {
+        fields: [...required, ...metadata],
+        data: accounts.map((account) => [
+          account.accountId,
+          account.username,
+          account.password,
+          ...metadata.map((key) => account.metadata[key] ?? ''),
+        ]),
+      },
+      { quotes: true, newline: '\r\n' },
+    ) +
+    '\r\n'
+  );
+}
 // Papa Parse accepts bare quotes in unquoted fields; reject those malformed CSV
 // inputs before parsing. This scanner validates quoting only, never splits records.
 function validateQuotes(text: string): void {

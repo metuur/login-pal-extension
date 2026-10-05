@@ -66,3 +66,7 @@ The build generates `dist/manifest.json`; `package.json` is the single source of
 ## Match username and password inputs
 
 Each field has its own match method in Settings → Login profile. Existing profiles default to CSS. Choose CSS selector, exact input ID, exact input name, autocomplete token (such as `username` / `current-password`), placeholder, visible associated label, or `aria-label`. Label matching includes visible `aria-labelledby` text. Text comparisons ignore case and repeated whitespace; ID and name comparisons remain exact. Non-CSS methods consider visible, writable inputs of the correct type only. Ambiguous results abort filling. CSS may use comma-separated alternatives, but the combined selector must identify exactly one input. No form submission occurs.
+
+## Export a CSV group
+
+In Settings, select a group and click **Export CSV** beside its account list. The download includes every account in that group, regardless of the current filter, using `account_id`, `username`, `password`, followed by all metadata columns. The filename comes from the group name. UTF-8, quoting, commas, line breaks, and password whitespace are preserved; fields absent from a row are blank. The file includes synthetic passwords. Exported groups accumulated from multiple files may exceed the 2 MiB/100-column per-import limits; export never silently drops data to meet those limits.

@@ -1,5 +1,10 @@
 # Account Login Assistant — EARS Specifications
 
+## Selected-group CSV export (2026-10-05)
+
+An explicit Settings Export CSV action downloads the whole selected group, independent of list filters. Output includes required account_id/username/password headers and the union of metadata columns, UTF-8 BOM, CRLF, CSV escaping, and exact password values. Filename derives from group name. Other groups are excluded. Only the trusted Settings page can request export; CSV bytes are transient download content, never rendered in account views or logs. Existing summary responses remain password-free. Oversized accumulated groups are exported completely; existing per-import limits still apply.
+
+
 ## Input matching expansion (2026-10-05)
 
 Username and password can independently match by CSS (legacy default), exact id/name, autocomplete token, placeholder, visible associated label including aria-labelledby, or aria-label. Text labels normalize whitespace/case; id/name remain exact. Non-CSS candidates must be visible, writable, supported inputs; ambiguity aborts. Revalidate the same input identities before each write. Editing filled inputs cancels login attribution for every match mode. Route/permission restrictions and manual submission remain.
