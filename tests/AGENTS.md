@@ -1,0 +1,1 @@
+Use synthetic credentials only and isolated test state. No secret values in assertion output, logs, screenshots or reports. Agents run only assigned tests. Root runs full suite and browser harness with unconditional teardown.

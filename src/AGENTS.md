@@ -1,0 +1,1 @@
+Dependency direction: UI and background may import shared/domain. Domain is browser-API independent except standard Web Crypto. Background owns state and credentials; content never imports vault/crypto. UI must not receive account passwords. Tests assert behavior, not mock call order.
