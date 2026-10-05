@@ -25,8 +25,7 @@ import { parseRule, formatRule, matchesRule, matchesRoute, validateProfile } fro
 import { parseCsv } from '../domain/csv';
 import { planImport } from '../domain/import';
 import { searchAccounts } from '../domain/search';
-const IDLE = 900_000,
-  SESSION = 'unlockedSession',
+const SESSION = 'unlockedSession',
   REGISTRATION = 'login-assistant';
 const bytes = (value: unknown) => new TextEncoder().encode(JSON.stringify(value)).length;
 const empty = (): VaultPayload => ({
@@ -49,7 +48,7 @@ type Undo = {
   revision: number;
   rule: string | null;
 };
-type Session = { key: string; expiresAt: number; attempts: Attempt[]; undo: Undo | null };
+type Session = { key: string; attempts: Attempt[]; undo: Undo | null };
 type Preview = { public: ImportPreview; payload: VaultPayload; revision: number };
 // @spec R-1.1..R-1.9, R-3.1..R-3.6: worker owns the encrypted vault and session.
 const SAFE_ERRORS = new Set<string>([
@@ -75,7 +74,7 @@ const SAFE_ERRORS = new Set<string>([
   'CSV must use valid UTF-8.',
   'CSV requires unique headers: account_id, username, password (100 columns maximum).',
   'CSV exceeds 10,000 rows or 100 columns.',
-  'Vault locked.',
+  'Catalog unavailable. Migrate the previous catalog or reset it.',
   'Profile could not be saved.',
 ]);
 export class AssistantService {
@@ -97,33 +96,37 @@ export class AssistantService {
       chrome.storage.session.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' }),
     ]);
     const [local, temporary] = await Promise.all([
-      chrome.storage.local.get(['vault', 'profile']),
+      chrome.storage.local.get(['vault', 'profile', 'catalogKey']),
       chrome.storage.session.get(SESSION),
     ]);
     this.envelope = (local.vault as Envelope | undefined) ?? null;
     this.profile = (local.profile as LoginProfile | undefined) ?? null;
-    const session = temporary[SESSION] as Session | undefined;
-    if (session && session.expiresAt > Date.now() && this.envelope) {
-      try {
-        this.payload = await decryptVault(this.envelope, session.key);
-        this.session = session;
-        await this.arm();
-      } catch {
-        await this.lock();
-      }
-    } else await this.lock();
+    const previous = temporary[SESSION] as Session | undefined;
+    const key = typeof local.catalogKey === 'string' ? local.catalogKey : previous?.key;
+    if (this.envelope && key) {
+      this.payload = await decryptVault(this.envelope, key);
+      this.session = { key, attempts: previous?.attempts ?? [], undo: previous?.undo ?? null };
+      await chrome.storage.local.set({ catalogKey: key });
+      await this.persistSession();
+    } else if (!this.envelope) {
+      await this.createCatalog();
+    }
+    // An older password-protected catalog is preserved for one-time migration.
+  }
+  private async createCatalog() {
+    const salt = randomSalt();
+    const key = await deriveVaultKey(crypto.randomUUID(), salt);
+    const payload = empty();
+    const envelope = await encryptVault(payload, key, salt);
+    await chrome.storage.local.set({ vault: envelope, catalogKey: key });
+    this.envelope = envelope;
+    this.payload = payload;
+    this.session = { key, attempts: [], undo: null };
+    await this.persistSession();
   }
   private assert(generation = this.generation) {
-    if (
-      generation !== this.generation ||
-      !this.session ||
-      !this.payload ||
-      this.session.expiresAt <= Date.now()
-    )
-      throw new Error('Vault locked.');
-  }
-  private async arm() {
-    if (this.session) await chrome.alarms.create('idle-lock', { when: this.session.expiresAt });
+    if (generation !== this.generation || !this.session || !this.payload)
+      throw new Error('Catalog unavailable. Migrate the previous catalog or reset it.');
   }
   private notify() {
     void chrome.runtime.sendMessage({ type: 'STATE_CHANGED' }).catch(() => {});
@@ -133,26 +136,14 @@ export class AssistantService {
     await chrome.storage.session.set({ [SESSION]: this.session });
     if (generation !== this.generation) await chrome.storage.session.remove(SESSION);
   }
-  async lock() {
+  async invalidateSession() {
     ++this.generation;
     this.session = null;
     this.payload = null;
     this.preview = null;
     await chrome.storage.session.remove(SESSION);
-    await chrome.alarms.clear('idle-lock');
-    this.notify();
   }
-  async expireIfIdle() {
-    await this.ready;
-    if (this.session && this.session.expiresAt <= Date.now()) await this.lock();
-  }
-  private async touch() {
-    this.assert();
-    this.session!.expiresAt = Date.now() + IDLE;
-    await this.persistSession();
-    await this.arm();
-  }
-  // Serialized callers publish one authenticated snapshot; lock can invalidate work mid-flight.
+  // Serialized callers publish one authenticated snapshot; reset can invalidate work mid-flight.
   private async write(next: VaultPayload, accountMutation = false, stillValid = () => true) {
     this.assert();
     const generation = this.generation;
@@ -164,12 +155,7 @@ export class AssistantService {
     this.assert(generation);
     if (!stillValid()) throw new Error('Cancelled.');
     await chrome.storage.local.set({ vault: envelope });
-    if (
-      generation !== this.generation ||
-      !this.session ||
-      this.session.expiresAt <= Date.now() ||
-      !stillValid()
-    ) {
+    if (generation !== this.generation || !this.session || !stillValid()) {
       await chrome.storage.local.set({ vault: oldEnvelope });
       throw new Error('Cancelled.');
     }
@@ -221,15 +207,9 @@ export class AssistantService {
         return { ok: false, error: 'Attempt no longer available.' };
       }
     }
-    if (trusted && message.type === 'LOCK') {
-      await this.ready;
-      await this.lock();
-      return { ok: true, data: undefined };
-    }
     const operation = this.tail.then(async () => {
       await this.ready;
       try {
-        if (this.session && this.session.expiresAt <= Date.now()) await this.lock();
         const data = trusted
           ? await this.command(message as Command)
           : await this.content(message as ContentRequest, sender);
@@ -240,7 +220,7 @@ export class AssistantService {
           error:
             error instanceof Error && SAFE_ERRORS.has(error.message)
               ? error.message
-              : 'Operation could not complete. Check the configuration, unlock state, and permissions, then try again.',
+              : 'Operation could not complete. Check the configuration, catalog state, and permissions, then try again.',
         } as Reply;
       }
     });
@@ -272,13 +252,12 @@ export class AssistantService {
       matchesRoute(this.profile.login, tab.url) &&
       (await chrome.permissions.contains({ origins: [this.host(this.profile)] }))
     );
-    if (this.session && this.session.expiresAt <= Date.now()) await this.lock();
     if (generation !== this.generation) return this.state(command);
     const last = h?.lastSuccessfulAccountId ? byId(h.lastSuccessfulAccountId) : undefined;
     const undo = this.session?.undo;
     return {
       initialized: !!this.envelope,
-      locked: !this.session,
+      migrationRequired: !this.session,
       profile: this.profile,
       rule: this.payload?.catalogRule ? formatRule(this.payload.catalogRule) : null,
       total: accounts.length,
@@ -302,48 +281,37 @@ export class AssistantService {
   }
   private async command(command: Command): Promise<unknown> {
     if (command.type === 'STATE') return this.state(command);
-    if (command.type === 'SETUP' || command.type === 'UNLOCK') {
+    if (command.type === 'MIGRATE') {
       if (
+        this.session ||
+        !this.envelope ||
         typeof command.password !== 'string' ||
-        command.password.length < (command.type === 'SETUP' ? 12 : 1)
+        !command.password
       )
-        throw new Error();
-      const generation = this.generation;
-      if (
-        (command.type === 'SETUP' && this.envelope) ||
-        (command.type === 'UNLOCK' && !this.envelope)
-      )
-        throw new Error();
-      const salt = this.envelope?.salt ?? randomSalt();
-      const key = await deriveVaultKey(command.password, salt);
-      const payload = this.envelope ? await decryptVault(this.envelope, key) : empty();
-      const envelope = this.envelope ?? (await encryptVault(payload, key, salt));
-      if (generation !== this.generation) throw new Error();
-      if (!this.envelope) await chrome.storage.local.set({ vault: envelope });
-      if (generation !== this.generation) throw new Error();
-      this.envelope = envelope;
+        throw new Error('No legacy catalog to migrate.');
+      const key = await deriveVaultKey(command.password, this.envelope.salt);
+      const payload = await decryptVault(this.envelope, key);
+      await chrome.storage.local.set({ catalogKey: key });
       this.payload = payload;
-      this.session = { key, expiresAt: Date.now() + IDLE, attempts: [], undo: null };
-      await this.persistSession(generation);
-      await this.arm();
+      this.session = { key, attempts: [], undo: null };
+      await this.persistSession();
       this.notify();
       return;
     }
     if (command.type === 'RESET') {
-      await this.lock();
+      await this.invalidateSession();
       await chrome.scripting.unregisterContentScripts();
       const permissions = await chrome.permissions.getAll();
       if (permissions.origins?.length)
         await chrome.permissions.remove({ origins: permissions.origins });
-      await chrome.storage.local.remove(['vault', 'profile']);
+      await chrome.storage.local.remove(['vault', 'profile', 'catalogKey']);
       this.envelope = null;
       this.profile = null;
+      await this.createCatalog();
       this.notify();
       return;
     }
     this.assert();
-    await this.touch();
-    if (command.type === 'TOUCH') return;
     if (command.type === 'PREVIEW_IMPORT') {
       if (
         !Array.isArray(command.bytes) ||

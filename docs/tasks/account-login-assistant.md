@@ -1,5 +1,10 @@
 # Account Login Assistant — Tasks
 
+## Synthetic-data mode — supersedes password-lock requirements (2026-10-05)
+
+The user removed the lock feature for synthetic-only data. New installations create a ready-to-use local catalog automatically. No setup password, lock button, idle timer, TOUCH renewal, startup lock, or alarms permission remains. The snapshot retains AES-GCM but persists its key in trusted local storage; this does not provide user-password protection. Existing encrypted catalogs migrate once with their old key/session or previous password, preserving data on failure. Reset clears old state and creates an empty ready catalog. Origin authorization, explicit filling, password-free summaries, transactional imports, and attempt/Undo expiry remain. Historical locked-state instructions below are superseded by this amendment.
+
+
 Status: All 52 implementation stories completed and committed under the user's explicit build authorization. Verification: 58 focused tests, 48 browser checks, TypeScript and production build passed. See [verification](../verification/account-login-assistant.md) for native permission-dialog, lifecycle, browser-version, and real-site limitations.
 
 Sources: [HLD](../hld/account-login-assistant.md), [LLD](../lld/account-login-assistant.md), and [EARS](../ears/account-login-assistant.md). The EARS document owns acceptance behavior; task descriptions do not add product scope.

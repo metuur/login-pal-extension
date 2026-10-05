@@ -97,14 +97,19 @@ try {
     check(response?.ok === false, label);
   };
   const state = () => send({ type: 'STATE' });
-  check(!(await state()).initialized, 'New installation requires vault setup');
-  await options.getByLabel('Master password', { exact: true }).fill('synthetic master phrase');
-  await options
-    .getByLabel('Confirm master password', { exact: true })
-    .fill('synthetic master phrase');
-  await options.getByRole('button', { name: 'Create encrypted vault', exact: true }).click();
+  check(
+    (await state()).initialized && !(await state()).migrationRequired,
+    'New installation opens directly without password setup',
+  );
   await options.getByRole('button', { name: 'Verify accounts', exact: true }).waitFor();
-  check(!(await state()).locked, 'New vault is unlocked');
+  check(
+    (await options.locator('input[type="password"]').count()) === 0,
+    'Fresh settings has no master-password inputs',
+  );
+  check(
+    (await popup.getByRole('button', { name: 'Lock', exact: true }).count()) === 0,
+    'Popup has no lock action',
+  );
   const csv =
     'account_id,username,password,customer_name,account_type,environment\nACC-1234,john@example.test,synthetic-only-one,Acme Corp,Premium,QA\nACC-5678,maria@example.test,synthetic-only-two,Contoso Global,Basic,QA\nACC-9042,qa@example.test,synthetic-only-three,Test Customer,Admin,QA';
   const bytes = [...new TextEncoder().encode(csv)];
@@ -209,7 +214,7 @@ try {
   await site.locator('#login').click();
   await waitState(
     (s) => s.lastSuccessful?.accountId === 'ACC-1234',
-    'Worker termination preserves unlocked session and pending login attribution',
+    'Worker termination preserves catalog session and pending login attribution',
   );
   await cdp.detach();
   await send({
@@ -254,17 +259,6 @@ try {
   check(merge.updated === 1 && merge.removed === 0, 'Merge preview preserves omitted records');
   await send({ type: 'COMMIT_IMPORT', token: merge.token });
   check((await state()).total === 3, 'Merge preserves omitted records after commit');
-  await send({ type: 'LOCK' });
-  check(
-    (await state()).locked && (await state()).accounts.length === 0,
-    'Lock withholds account summaries',
-  );
-  await reject(
-    { type: 'UNLOCK', password: 'wrong synthetic phrase' },
-    'Wrong master password fails safely',
-  );
-  await send({ type: 'UNLOCK', password: 'synthetic master phrase' });
-  check((await state()).total === 3, 'Unlock recovers encrypted accounts');
   const storageSafe = await options.evaluate(async () => {
     const data = await chrome.storage.local.get(null),
       serialized = JSON.stringify(data);
@@ -404,14 +398,14 @@ try {
   await restartedOptions.goto(base + 'options.html');
   const restartedState = await send({ type: 'STATE' }, restartedOptions);
   check(
-    restartedState.initialized && restartedState.locked,
-    'Browser restart requires a fresh unlock',
+    restartedState.initialized && !restartedState.migrationRequired,
+    'Browser restart opens the catalog without a password',
   );
-  await send({ type: 'UNLOCK', password: 'synthetic master phrase' }, restartedOptions);
   await send({ type: 'RESET' }, restartedOptions);
   check(
-    !(await send({ type: 'STATE' }, restartedOptions)).initialized,
-    'Full reset returns to first-run setup',
+    (await send({ type: 'STATE' }, restartedOptions)).total === 0 &&
+      !(await send({ type: 'STATE' }, restartedOptions)).migrationRequired,
+    'Full reset creates an empty ready-to-use catalog',
   );
   check(
     await restartedOptions.evaluate(

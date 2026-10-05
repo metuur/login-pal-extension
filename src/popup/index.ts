@@ -6,7 +6,6 @@ import {
   featuredHeading,
   icon,
   iconButton,
-  installActivityTracking,
   liveRegion,
   message,
   metadata,
@@ -16,7 +15,7 @@ import {
   sectionLabel,
   slashSearch,
   title,
-  vaultForm,
+  migrationForm,
   versionFooter,
 } from '../ui/common';
 
@@ -57,8 +56,7 @@ const search = searchBox((value) => {
   page = 0;
   void refresh(true);
 });
-slashSearch(search.input, () => !!state && !state.locked);
-installActivityTracking(() => !!state && !state.locked);
+slashSearch(search.input, () => !!state && !state.migrationRequired);
 async function fill(account: AccountSummary) {
   if (busy) return;
   busy = true;
@@ -107,37 +105,21 @@ function render(resultsOnly = false) {
     el(
       'span',
       s.authorized ? 'pill authorized' : 'pill',
-      s.locked ? 'Locked' : s.authorized ? '● Authorized' : 'Not authorized',
+      s.migrationRequired ? 'Migration needed' : s.authorized ? '● Authorized' : 'Not authorized',
     ),
   );
   footer.replaceChildren();
-  if (s.locked) {
-    body.replaceChildren(vaultForm(s, refresh));
+  if (s.migrationRequired) {
+    body.replaceChildren(migrationForm(refresh));
     footer.append(
-      el('span', 'subtle', 'Encrypted on this device'),
-      button('Manage vault', () => openOptions(), 'text-button'),
+      el('span', 'subtle', 'Existing catalog'),
+      button('Manage accounts', () => openOptions(), 'text-button'),
     );
     return;
   }
   footer.append(
     el('span', 'mono subtle', `${s.total.toLocaleString()} imported accounts`),
-    button(
-      'Lock',
-      async () => {
-        try {
-          await request({ type: 'LOCK' });
-          message(status, 'Vault locked.');
-          await refresh();
-        } catch (error) {
-          message(
-            status,
-            error instanceof Error ? error.message : 'Could not lock the vault.',
-            true,
-          );
-        }
-      },
-      'text-button',
-    ),
+    button('Manage accounts', () => openOptions(), 'text-button'),
   );
   const oldResults = body.querySelector('#results');
   const results = el('div', 'stack');

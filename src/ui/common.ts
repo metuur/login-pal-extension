@@ -78,26 +78,7 @@ export async function request<T = void>(command: Command): Promise<T> {
     );
   return reply.data;
 }
-export function installActivityTracking(isUnlocked: () => boolean): () => void {
-  let lastTouch = Number.NEGATIVE_INFINITY;
-  let disposed = false;
-  const onInteraction = (event: Event) => {
-    if (disposed || !event.isTrusted || !isUnlocked()) return;
-    const now = Date.now();
-    if (now - lastTouch < 500) return;
-    lastTouch = now;
-    // Only an actual interaction can renew inactivity; rendering and timers cannot.
-    void request({ type: 'TOUCH' }).catch(() => {
-      // A lock racing with the gesture remains authoritative in the worker.
-    });
-  };
-  const events = ['pointerdown', 'keydown', 'input'] as const;
-  for (const event of events) document.addEventListener(event, onInteraction, true);
-  return () => {
-    disposed = true;
-    for (const event of events) document.removeEventListener(event, onInteraction, true);
-  };
-}
+
 export function message(target: HTMLElement, text: string, error = false) {
   target.textContent = text;
   target.className = `notice ${error ? 'error' : 'info'}`;
@@ -214,65 +195,38 @@ export function pagination(state: AppState, onPage: (page: number) => void) {
   );
   return n;
 }
-export function vaultForm(state: AppState, onDone: () => Promise<void>) {
+export function migrationForm(onDone: () => Promise<void>) {
   const form = el('form', 'vault-form panel');
   form.append(
-    el('div', 'lock-emblem', '◇'),
-    el('h1', '', state.initialized ? 'Unlock your accounts' : 'Your accounts, on this device'),
+    el('h1', '', 'Keep your existing accounts'),
     el(
       'p',
       'subtle',
-      state.initialized
-        ? 'Enter your master password to access your local vault.'
-        : 'Create a master password to encrypt your account vault. Use at least 12 characters.',
+      'This catalog was saved with a master password. Enter it once to migrate to password-free synthetic-data storage. Future visits open directly. You can also reset and reimport your CSV in Settings.',
     ),
   );
-  const password = field('Master password', 'password');
-  password.input.autocomplete = state.initialized ? 'current-password' : 'new-password';
+  const password = field('Previous master password', 'password');
+  password.input.autocomplete = 'current-password';
   password.input.required = true;
-  password.input.minLength = state.initialized ? 1 : 12;
-  form.append(password.wrap);
-  const confirmation = field('Confirm master password', 'password');
-  confirmation.input.autocomplete = 'new-password';
-  confirmation.input.required = true;
-  if (!state.initialized)
-    form.append(
-      confirmation.wrap,
-      el(
-        'p',
-        'notice warning',
-        'There is no password recovery. If you forget it, you must reset the vault and import your accounts again.',
-      ),
-    );
   const status = liveRegion();
-  const submit = button(
-    state.initialized ? 'Unlock vault' : 'Create encrypted vault',
-    () => {},
-    'primary',
-  );
+  const submit = button('Migrate accounts', () => {}, 'primary');
   submit.type = 'submit';
-  form.append(status, submit);
+  form.append(password.wrap, status, submit);
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     void (async () => {
-      if (!state.initialized && password.input.value !== confirmation.input.value) {
-        message(status, 'The passwords do not match.', true);
-        return;
-      }
       submit.disabled = true;
-      message(status, 'Opening your local vault…');
       try {
-        await request({
-          type: state.initialized ? 'UNLOCK' : 'SETUP',
-          password: password.input.value,
-        });
+        await request({ type: 'MIGRATE', password: password.input.value });
         password.input.value = '';
-        confirmation.input.value = '';
         await onDone();
       } catch (error) {
         password.input.value = '';
-        confirmation.input.value = '';
-        message(status, error instanceof Error ? error.message : 'Could not open the vault.', true);
+        message(
+          status,
+          error instanceof Error ? error.message : 'Could not migrate accounts.',
+          true,
+        );
         submit.disabled = false;
       }
     })();

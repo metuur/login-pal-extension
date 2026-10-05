@@ -1,5 +1,10 @@
 # Account Login Assistant verification
 
+## Current synthetic-data revision (2026-10-05)
+
+Lock removal passed TypeScript, 57 focused tests, formatting, build, and 49 real-browser checks. New installations open automatically; restart retains access. Legacy migration tests verify wrong-password preservation and one-time conversion without account loss. The key is now persisted beside the encrypted snapshot, so local storage is not user-password protected. The historical password-lock results below describe the earlier release and are superseded for this revision. Current browser evidence is in browser-report.json.
+
+
 Verified on 2026-10-04 in the authorized local build workflow. Domain, worker, and UI agents implemented and reviewed their assigned boundaries; the parent integrated content delivery, browser fixtures, packaging, and acceptance evidence.
 
 ## Results

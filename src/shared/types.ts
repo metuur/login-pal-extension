@@ -95,7 +95,7 @@ export interface Attempt {
 }
 export interface AppState {
   initialized: boolean;
-  locked: boolean;
+  migrationRequired: boolean;
   profile: LoginProfile | null;
   rule: string | null;
   total: number;
@@ -114,8 +114,8 @@ export interface AppState {
 }
 export type Command =
   | { type: 'STATE'; query?: string; page?: number; tabId?: number }
-  | { type: 'SETUP' | 'UNLOCK'; password: string }
-  | { type: 'LOCK' | 'RESET' | 'UNDO' | 'PURGE' | 'TOUCH' }
+  | { type: 'MIGRATE'; password: string }
+  | { type: 'RESET' | 'UNDO' | 'PURGE' }
   | { type: 'PREVIEW_IMPORT'; bytes: number[]; rule: string; mode: ImportMode }
   | { type: 'COMMIT_IMPORT'; token: string }
   | { type: 'SAVE_PROFILE'; profile: ProfileInput }

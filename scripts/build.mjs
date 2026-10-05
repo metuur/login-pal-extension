@@ -17,7 +17,7 @@ const manifest = {
   name: 'OneChat DEV Login Assistant',
   description: 'A local encrypted account catalog for authorized QA login pages.',
   minimum_chrome_version: '120',
-  permissions: ['storage', 'scripting', 'activeTab', 'alarms'],
+  permissions: ['storage', 'scripting', 'activeTab'],
   optional_host_permissions: ['https://*/*'],
   background: {
     service_worker: 'background.js',

@@ -27,7 +27,6 @@ async function command<T>(service: AssistantService, cmd: Command): Promise<T> {
 async function setup() {
   const service = new AssistantService();
   await service.ready;
-  await command(service, { type: 'SETUP', password: 'synthetic master password' });
   return service;
 }
 async function preview(service: AssistantService, name = 'A') {
@@ -148,42 +147,47 @@ describe('worker credential and transaction boundary', () => {
     await command(service, { type: 'PURGE' });
     expect((await service.handle({ type: 'UNDO' }, sender)).ok).toBe(false);
   });
-  it('does not extend expiry from polling and fails closed without the alarm', async () => {
-    const service = await setup();
-    const original = (session.unlockedSession as { expiresAt: number }).expiresAt;
-    await state(service);
-    expect((session.unlockedSession as { expiresAt: number }).expiresAt).toBe(original);
-    vi.spyOn(Date, 'now').mockReturnValue(original + 1);
-    expect((await state(service)).locked).toBe(true);
+  it('opens automatically and stays available after inactivity and browser restart', async () => {
+    let service = await setup();
+    await importAccount(service);
+    expect((await state(service)).migrationRequired).toBe(false);
+    vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 86400_000);
+    expect((await state(service)).total).toBe(1);
+    session = {};
+    service = new AssistantService();
+    await service.ready;
+    expect((await state(service)).migrationRequired).toBe(false);
+    expect((await state(service)).total).toBe(1);
+    expect((await service.handle({ type: 'LOCK' }, sender)).ok).toBe(false);
+    expect(chrome.alarms.create).not.toHaveBeenCalled();
     vi.restoreAllMocks();
   });
-  it('extends inactivity only for explicit trusted interaction', async () => {
+  it('migrates an older catalog once without losing accounts or overwriting failed attempts', async () => {
+    const { deriveVaultKey, encryptVault } = await import('../domain/crypto');
     const service = await setup();
-    const original = (session.unlockedSession as { expiresAt: number }).expiresAt;
-    const now = original - 800_000;
-    vi.spyOn(Date, 'now').mockReturnValue(now);
-    await state(service);
-    expect((session.unlockedSession as { expiresAt: number }).expiresAt).toBe(original);
-    const contentSender = {
-      id: 'test',
-      url: 'https://qa.example.com/login',
-      tab: { id: 1 },
-      frameId: 0,
-      documentId: 'doc',
-    } as chrome.runtime.MessageSender;
-    expect((await service.handle({ type: 'TOUCH' }, contentSender)).ok).toBe(false);
-    expect((session.unlockedSession as { expiresAt: number }).expiresAt).toBe(original);
-    await command(service, { type: 'TOUCH' });
-    expect((session.unlockedSession as { expiresAt: number }).expiresAt).toBe(now + 900_000);
-    // A queued alarm from before the interaction must not lock the renewed session.
-    await service.expireIfIdle();
-    expect((await state(service)).locked).toBe(false);
-    await service.lock();
-    expect((await service.handle({ type: 'TOUCH' }, sender)).ok).toBe(false);
-    expect(session.unlockedSession).toBeUndefined();
-    vi.restoreAllMocks();
+    await importAccount(service);
+    const { decryptVault } = await import('../domain/crypto');
+    const envelope = local.vault as import('../shared/types').Envelope;
+    const payload = await decryptVault(envelope, local.catalogKey as string);
+    const legacyKey = await deriveVaultKey('old synthetic password', envelope.salt);
+    local.vault = await encryptVault(payload, legacyKey, envelope.salt);
+    delete local.catalogKey;
+    session = {};
+    const legacy = new AssistantService();
+    await legacy.ready;
+    expect((await state(legacy)).migrationRequired).toBe(true);
+    const before = JSON.stringify(local);
+    expect((await legacy.handle({ type: 'MIGRATE', password: 'wrong' }, sender)).ok).toBe(false);
+    expect(JSON.stringify(local)).toBe(before);
+    await command(legacy, { type: 'MIGRATE', password: 'old synthetic password' });
+    expect((await state(legacy)).total).toBe(1);
+    session = {};
+    const restarted = new AssistantService();
+    await restarted.ready;
+    expect((await state(restarted)).migrationRequired).toBe(false);
+    expect((await state(restarted)).total).toBe(1);
   });
-  it('rolls back an in-flight storage write if locking wins', async () => {
+  it('rolls back an in-flight storage write if session invalidation wins', async () => {
     const service = await setup();
     await importAccount(service);
     const before = JSON.stringify(local);
@@ -202,11 +206,11 @@ describe('worker credential and transaction boundary', () => {
     };
     const result = service.handle({ type: 'COMMIT_IMPORT', token: p.token }, sender);
     await waiting;
-    await service.lock();
+    await service.invalidateSession();
     release();
     expect((await result).ok).toBe(false);
     expect(JSON.stringify(local)).toBe(before);
-    expect((await state(service)).locked).toBe(true);
+    expect((await state(service)).migrationRequired).toBe(true);
   });
   it('reports bounded safe validation errors without echoing imported text', async () => {
     const service = await setup();
@@ -247,7 +251,7 @@ describe('worker credential and transaction boundary', () => {
       error: 'Use Wipe & Replace to change the catalog URL rule.',
     });
   });
-  it('redacts unknown storage exceptions and expires a session during state lookup', async () => {
+  it('redacts unknown storage exceptions', async () => {
     const service = await setup();
     await importAccount(service);
     const p = await preview(service);
@@ -256,17 +260,6 @@ describe('worker credential and transaction boundary', () => {
     );
     const result = await service.handle({ type: 'COMMIT_IMPORT', token: p.token }, sender);
     expect(JSON.stringify(result)).not.toContain('private imported payload');
-    const expiry = (session.unlockedSession as { expiresAt: number }).expiresAt;
-    vi.mocked(chrome.tabs.query as unknown as () => Promise<unknown[]>).mockImplementationOnce(
-      async () => {
-        vi.spyOn(Date, 'now').mockReturnValue(expiry + 1);
-        return [];
-      },
-    );
-    const locked = await state(service);
-    expect(locked.locked).toBe(true);
-    expect(locked.accounts).toHaveLength(0);
-    vi.restoreAllMocks();
   });
   it('never sends credentials after permission removal during inspection', async () => {
     const service = await setup();
@@ -346,17 +339,9 @@ describe('worker credential and transaction boundary', () => {
     ).toBe(false);
     expect((session.unlockedSession as { attempts: unknown[] }).attempts).toHaveLength(0);
   });
-  it('preserves encrypted storage after a wrong unlock and expires Undo', async () => {
+  it('expires Undo without making the catalog unavailable', async () => {
     const service = await setup();
     await importAccount(service);
-    const original = JSON.stringify(local);
-    await service.lock();
-    expect(
-      (await service.handle({ type: 'UNLOCK', password: 'incorrect synthetic password' }, sender))
-        .ok,
-    ).toBe(false);
-    expect(JSON.stringify(local)).toBe(original);
-    await command(service, { type: 'UNLOCK', password: 'synthetic master password' });
     await command(service, { type: 'DELETE', accountId: 'A' });
     const expired = Date.now() + 31_000;
     vi.spyOn(Date, 'now').mockReturnValue(expired);

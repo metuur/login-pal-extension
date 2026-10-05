@@ -3,12 +3,11 @@ import { JSDOM } from 'jsdom';
 import {
   accountRow,
   featuredHeading,
-  installActivityTracking,
   metadata,
   request,
   searchBox,
   slashSearch,
-  vaultForm,
+  migrationForm,
 } from './common';
 import type { AppState } from '../shared/types';
 
@@ -23,36 +22,6 @@ beforeEach(() => {
   });
 });
 describe('password-free accessible views', () => {
-  it('renews inactivity only for trusted unlocked interactions, without automatic renewal', async () => {
-    let unlocked = true;
-    const listenerSpy = vi.spyOn(document, 'addEventListener');
-    const now = vi.spyOn(Date, 'now').mockReturnValue(1000);
-    const cleanup = installActivityTracking(() => unlocked);
-    const listener = listenerSpy.mock.calls.find(
-      ([name]) => name === 'pointerdown',
-    )?.[1] as EventListener;
-    listener({ isTrusted: false } as Event);
-    expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
-    listener({ isTrusted: true } as Event);
-    expect(chrome.runtime.sendMessage).toHaveBeenCalledExactlyOnceWith({ type: 'TOUCH' });
-    now.mockReturnValue(1200);
-    listener({ isTrusted: true } as Event);
-    expect(chrome.runtime.sendMessage).toHaveBeenCalledTimes(1);
-    now.mockReturnValue(1600);
-    unlocked = false;
-    listener({ isTrusted: true } as Event);
-    expect(chrome.runtime.sendMessage).toHaveBeenCalledTimes(1);
-    unlocked = true;
-    listener({ isTrusted: true } as Event);
-    expect(chrome.runtime.sendMessage).toHaveBeenCalledTimes(2);
-    cleanup();
-    now.mockReturnValue(10000);
-    listener({ isTrusted: true } as Event);
-    await Promise.resolve();
-    expect(chrome.runtime.sendMessage).toHaveBeenCalledTimes(2);
-    listenerSpy.mockRestore();
-    now.mockRestore();
-  });
   it('uses actual optional featured chips and keeps long hostile labels inert', () => {
     const heading = featuredHeading({
       accountId: 'QA-1',
@@ -120,23 +89,26 @@ describe('password-free accessible views', () => {
     );
     expect(document.activeElement).not.toBe(search.input);
   });
-  it('requires master password confirmation before sending setup', async () => {
-    const form = vaultForm({ initialized: false } as AppState, async () => {});
+  it('offers only one-time migration for legacy accounts', async () => {
+    const form = migrationForm(async () => {});
     document.body.append(form);
-    const inputs = form.querySelectorAll('input');
-    inputs[0].value = 'synthetic-master-123';
-    inputs[1].value = 'different-master-123';
+    const input = form.querySelector('input')!;
+    input.value = 'old synthetic password';
     form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     await Promise.resolve();
-    expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
-    expect(form.textContent).toContain('passwords do not match');
-    expect(inputs[0].type).toBe('password');
-    expect(form.textContent).toContain('no password recovery');
+    expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+      type: 'MIGRATE',
+      password: 'old synthetic password',
+    });
+    expect(form.querySelectorAll('input')).toHaveLength(1);
+    expect(form.textContent).toContain('Future visits open directly');
   });
   it('never invents success on a failed worker acknowledgement', async () => {
     vi.stubGlobal('chrome', {
-      runtime: { sendMessage: vi.fn().mockResolvedValue({ ok: false, error: 'Vault locked.' }) },
+      runtime: {
+        sendMessage: vi.fn().mockResolvedValue({ ok: false, error: 'Storage unavailable.' }),
+      },
     });
-    await expect(request({ type: 'LOCK' })).rejects.toThrow('Vault locked.');
+    await expect(request({ type: 'PURGE' })).rejects.toThrow('Storage unavailable.');
   });
 });

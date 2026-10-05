@@ -1,5 +1,10 @@
 # Account Login Assistant — EARS Specifications
 
+## Synthetic-data mode — supersedes password-lock requirements (2026-10-05)
+
+The user removed the lock feature for synthetic-only data. New installations create a ready-to-use local catalog automatically. No setup password, lock button, idle timer, TOUCH renewal, startup lock, or alarms permission remains. The snapshot retains AES-GCM but persists its key in trusted local storage; this does not provide user-password protection. Existing encrypted catalogs migrate once with their old key/session or previous password, preserving data on failure. Reset clears old state and creates an empty ready catalog. Origin authorization, explicit filling, password-free summaries, transactional imports, and attempt/Undo expiry remain. Historical locked-state instructions below are superseded by this amendment.
+
+
 Status: Planning baseline accepted through the user’s request to continue planning. Implementation awaits plan review. Intent flows from [HLD](../hld/account-login-assistant.md) through [LLD](../lld/account-login-assistant.md) to these requirements, then to implementation and tests.
 
 ## Unit 1: Local vault

@@ -1,6 +1,6 @@
 # OneChat DEV Login Assistant
 
-A Chrome extension for internal QA/support accounts. Import a local CSV, bind it to an authorized HTTPS site, search account metadata, and intentionally fill a configured login form. The extension never submits the form. Accounts and history stay encrypted on this computer.
+A Chrome extension for synthetic QA/support accounts. Import a local CSV, bind it to an authorized HTTPS site, search account metadata, and intentionally fill a configured login form. The extension never submits the form. Accounts and history stay on this computer, without a master password or lock flow.
 
 ## Install
 
@@ -10,7 +10,7 @@ The repository's `dist` folder is also directly loadable after building. This is
 
 ## First use
 
-1. Open the extension and create a master password of at least 12 characters. Confirm it exactly; whitespace matters. There is no password recovery. Reset deletes the vault if you forget it.
+1. Open the extension. A local catalog is created automatically, ready for CSV import.
 2. Open Settings and choose a CSV. Enter the required **Target authorized URL pattern**, for example `https://qa.example.com/*`. This example is illustrative; use your own authorized site.
 3. Keep **Merge & Update** to add/update accounts by ID while preserving omitted accounts. Choose **Wipe & Replace** to replace the entire dataset. Verify the file, review counts and errors, then confirm the import. Invalid rows are excluded; Replace can therefore remove existing accounts corresponding to invalid rows.
 4. Configure the login profile: a name, exact HTTPS login URL, username/password CSS selectors, and a reliable success URL or visible element at its configured URL. Save and authorize the requested host permission. Importing alone does not authorize autofill.
@@ -32,14 +32,16 @@ One catalog URL rule and one login profile are supported. Rules require an expli
 
 Autofill supports top-level, visible, writable username/text/email and password inputs in the ordinary page DOM. It rejects ambiguous selectors and explicitly cross-origin form actions. Embedded frames, closed shadow roots, SSO handoffs, and multi-step logins are outside this version's scope. Changing the catalog target requires Replace and renewed profile approval.
 
-## Manage accounts and locking
+## Manage synthetic accounts
 
-- Delete removes one account and its history. Undo lasts 30 seconds, restores the account without old history, and expires on another relevant write or lock.
+- Delete removes one account and its history. Undo lasts 30 seconds, restores the account without old history, and expires on another relevant write or reset.
 - Purge All asks for confirmation of the entire catalog count and preserves the vault setup, URL rule, and profile. Purge cannot be undone.
 - Reset is separate: it removes the vault, profile, session, and profile registrations/permission.
-- Lock clears the unlocked session. The vault also locks after 15 minutes without explicit interaction and after a browser restart or extension reload. Background refresh does not renew inactivity.
+- There is no manual lock, inactivity timeout, or password prompt after restart. Use synthetic data only.
 
-Persistent account/history data uses AES-256-GCM with a fresh IV and a PBKDF2-HMAC-SHA-256 key derived with 600,000 iterations. While unlocked, key material is kept in Chrome's trusted extension session storage so service-worker suspension does not interrupt a session. Page scripts cannot request catalog data. The chosen website necessarily receives filled credentials and may handle them according to its own behavior.
+The local snapshot still uses AES-256-GCM, but its key is stored alongside it in trusted extension local storage so it can open automatically. This is **not password-protected storage**. Page scripts still cannot enumerate the catalog; explicit autofill is limited to your authorized login profile.
+
+Older password-protected catalogs are preserved. If an old session is still available, migration is automatic. Otherwise enter the previous master password once using **Migrate accounts**; subsequent visits open directly. If you no longer know that password, use Reset and reimport the original CSV. Failed migration leaves the prior catalog unchanged.
 
 No application server, synchronization, telemetry, remote fonts, or runtime CDN assets are used. Host access is optional and requested for the configured HTTPS host. Chrome host permissions are broader than the exact route/port checks enforced by the extension.
 

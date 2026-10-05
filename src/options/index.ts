@@ -8,7 +8,6 @@ import {
   field,
   icon,
   iconButton,
-  installActivityTracking,
   liveRegion,
   message,
   pagination,
@@ -17,7 +16,7 @@ import {
   searchBox,
   sectionLabel,
   slashSearch,
-  vaultForm,
+  migrationForm,
   versionFooter,
 } from '../ui/common';
 
@@ -148,8 +147,7 @@ const search = searchBox((value) => {
   void refresh();
 });
 accountsPanel.append(listHeading, undo, search.wrap, list);
-slashSearch(search.input, () => !!state && !state.locked);
-installActivityTracking(() => !!state && !state.locked);
+slashSearch(search.input, () => !!state && !state.migrationRequired);
 const profilePanel = el('details', 'panel profile-panel');
 profilePanel.id = 'profile';
 profilePanel.append(el('summary', '', 'Login profile & website permission'));
@@ -375,7 +373,7 @@ async function mutate(action: () => Promise<void>, pending = 'Saving your change
   }
 }
 function updateAccounts() {
-  if (!state || state.locked) return;
+  if (!state || state.migrationRequired) return;
   const s = state;
   listHeading.replaceChildren(el('span', '', `Indexed accounts (${s.total})`));
   const purge = button(
@@ -605,10 +603,10 @@ async function done() {
 function render() {
   if (!state) return;
   const s = state;
-  badge.textContent = s.locked ? 'Locked' : `${s.total} accounts`;
-  badge.className = s.locked ? 'pill' : 'pill authorized';
+  badge.textContent = s.migrationRequired ? 'Migration needed' : `${s.total} accounts`;
+  badge.className = s.migrationRequired ? 'pill' : 'pill authorized';
   footer.replaceChildren();
-  if (s.locked) {
+  if (s.migrationRequired) {
     mounted = false;
     file = undefined;
     fileInput.value = '';
@@ -619,10 +617,10 @@ function render() {
     page = 0;
     search.input.value = '';
     invalidatePreview();
-    message(status, s.initialized ? 'Vault locked.' : '');
-    content.replaceChildren(vaultForm(s, refresh));
+    message(status, 'One-time migration required.');
+    content.replaceChildren(migrationForm(refresh));
     if (s.initialized) content.append(resetButton(refresh));
-    footer.append(el('span', 'subtle', 'Local encrypted vault'));
+    footer.append(el('span', 'subtle', 'Local synthetic accounts'));
     return;
   }
   if (!mounted) {
@@ -634,19 +632,11 @@ function render() {
       el(
         'p',
         '',
-        'Accounts stay on this device and are encrypted at rest with AES-256-GCM. The authorized website can read fields after autofill.',
+        'Synthetic data only. Accounts stay on this device and open without a password. Local storage is not protected by a user password.',
       ),
     );
     const tools = el('div', 'actions');
-    tools.append(
-      button('Lock vault', () =>
-        mutate(async () => {
-          await request({ type: 'LOCK' });
-          message(status, 'Vault locked.');
-        }),
-      ),
-      resetButton(refresh),
-    );
+    tools.append(resetButton(refresh));
     content.replaceChildren(importPanel, accountsPanel, profilePanel, security, tools);
     mounted = true;
     profilePanel.open = location.hash === '#profile';
@@ -658,7 +648,7 @@ function render() {
     el(
       'span',
       'mono subtle',
-      `Vault: ${(s.storageBytes / 1024 / 1024).toFixed(2)} MiB / 5 MiB limit`,
+      `Local: ${(s.storageBytes / 1024 / 1024).toFixed(2)} MiB / 5 MiB limit`,
     ),
     button('Done', done, 'dark'),
   );
