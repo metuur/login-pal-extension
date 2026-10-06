@@ -97,7 +97,7 @@ Status: Planning baseline accepted through the user’s request to continue plan
 | R-4.2 | WHEN a query contains whitespace-separated terms, THE SYSTEM SHALL return only accounts for which every term matches at least one indexed field. |
 | R-4.3 | THE SYSTEM SHALL exclude passwords from searchable content, summaries, snippets, ordering, diagnostics, and copy actions. This is the proposed exception to the source brief requiring spec approval. |
 | R-4.4 | WHEN displaying results, THE SYSTEM SHALL use stable account-ID order, paginate at 50 records, and display the total match count. |
-| R-4.5 | WHEN the user selects a result, THE SYSTEM SHALL show its account ID, username, and metadata for confirmation without filling until the user activates Autofill. |
+| R-4.5 | WHEN the user opens a result's details action, THE SYSTEM SHALL show its account ID, username, and metadata without filling until the user activates Autofill. Per the user's 2026-10-06 correction, the row's primary Fill action autofills directly; the details view is reached by a separate per-row action and is no longer an obligatory step. |
 | R-4.6 | WHEN Use this account is activated on the last-successful card, THE SYSTEM SHALL initiate the same validated autofill protocol directly. |
 | R-4.7 | THE SYSTEM SHALL render imported content as inert text and provide keyboard-operable controls and explicit empty, loading, locked, unsupported-site, and error states. |
 | R-4.8 | WHILE locked, THE SYSTEM SHALL withhold accounts, search results, history details, and autofill capability. |
@@ -128,6 +128,7 @@ Status: Planning baseline accepted through the user’s request to continue plan
 | R-6.2 | WHEN an account is selected without successful fill, THE SYSTEM SHALL leave recent and last-successful history unchanged. |
 | R-6.3 | THE SYSTEM SHALL associate each pending attempt with its token, tab, originating document, profile/revision, vault revision, account ID, timestamps, and success baseline without including credentials. |
 | R-6.4 | IF the configured success condition is already true before fill, THE SYSTEM SHALL refuse to create an attributable attempt. |
+| R-6.4a | THE SYSTEM SHALL treat success detection as optional. A profile saved without a success condition SHALL autofill normally and SHALL never record a last successful account, since no condition can be observed. |
 | R-6.5 | WHEN the configured success condition becomes true after an acknowledged fill, THE SYSTEM SHALL validate the current top-frame observation, unexpired current attempt, unlocked session, matching revisions, and existing account before committing its ID as last successful. |
 | R-6.6 | WHERE success is element-based, THE SYSTEM SHALL require a visible matching element on the configured route and revalidate it in the current document. |
 | R-6.7 | THE SYSTEM SHALL support authorized full-page and same-document success transitions, including worker suspension between fill and observation. |
@@ -160,7 +161,7 @@ Status: Planning baseline accepted through the user’s request to continue plan
 | R-8.3 | THE SYSTEM SHALL target a 380px-wide popup with height capped at a fixed 600px (never a viewport-relative value, which collapses a Chrome action popup), with accessible internal vertical scrolling, excluding the reference's outer presentation canvas and fixed 884px minimum height. |
 | R-8.4 | THE SYSTEM SHALL load popup styles, fonts, icons, and scripts from packaged local assets without runtime CDN, Google Fonts, or inline demo scripts. |
 | R-8.5 | WHEN rendering accounts, badges, counts, timestamps, and authorization indicators, THE SYSTEM SHALL derive them from actual vault/profile/tab state rather than reference placeholders. |
-| R-8.6 | THE SYSTEM SHALL label last-successful history distinctly from recent accounts and search results, preserving selection confirmation before autofill for list results. |
+| R-8.6 | THE SYSTEM SHALL label last-successful history distinctly from recent accounts and search results. Per the user's 2026-10-06 correction, list results autofill directly and expose account details through a separate per-row action, matching the featured last-successful card which already filled in one step. |
 | R-8.7 | WHEN the user presses / while unlocked and focus is outside editable controls with no modifier keys, THE SYSTEM SHALL focus the search field. |
 | R-8.8 | IF a displayed shortcut or action has no implemented behavior, THE SYSTEM SHALL omit it rather than present a decorative functional control. |
 | R-8.9 | WHEN a fill or lock operation completes, THE SYSTEM SHALL show completion only after the corresponding real acknowledgement, without equating filled fields to authenticated login. |

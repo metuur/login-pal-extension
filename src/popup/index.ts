@@ -5,6 +5,7 @@ import {
   currentGroup,
   chooseGroup,
   button,
+  copyActions,
   el,
   featuredHeading,
   icon,
@@ -79,10 +80,12 @@ async function fill(account: AccountSummary) {
   }
 }
 function select(account: AccountSummary) {
+  const heading = el('div', 'confirm-heading');
+  heading.append(el('h2', '', title(account)), copyActions(account));
   body.replaceChildren(
     button('← Back to accounts', () => render(), 'text-button'),
     sectionLabel('Confirm account'),
-    el('h2', '', title(account)),
+    heading,
     el('p', 'mono', account.accountId),
     el('p', '', account.username),
     metadata(account),
@@ -142,7 +145,17 @@ function render(resultsOnly = false) {
   results.id = 'results';
   if (!query && s.recent.length) {
     results.append(sectionLabel('Recent accounts', s.recent.length));
-    s.recent.forEach((a) => results.append(accountRow(a, () => select(a))));
+    s.recent.forEach((a) =>
+      results.append(
+        accountRow(
+          a,
+          () => fill(a),
+          false,
+          '',
+          () => select(a),
+        ),
+      ),
+    );
   }
   results.append(sectionLabel(query ? 'Search results' : 'All accounts', s.matches));
   if (!s.accounts.length)
@@ -155,7 +168,17 @@ function render(resultsOnly = false) {
           : 'No accounts yet. Import a CSV in Settings to get started.',
       ),
     );
-  s.accounts.forEach((a) => results.append(accountRow(a, () => select(a))));
+  s.accounts.forEach((a) =>
+    results.append(
+      accountRow(
+        a,
+        () => fill(a),
+        false,
+        '',
+        () => select(a),
+      ),
+    ),
+  );
   if (s.matches > 50)
     results.append(
       pagination(s, (p) => {

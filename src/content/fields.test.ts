@@ -95,6 +95,26 @@ describe('validated credential delivery', () => {
       dom.window.close();
     }
   });
+  it('ignores hidden and unsupported inputs when a CSS selector is ambiguous', () => {
+    const emailInput =
+      '<input class="by-input-text" type="text" placeholder="Email" autocomplete="off" name="email" data-test-input="true">';
+    const config = {
+      ...profile,
+      usernameSelector:
+        'input[autocomplete~="username"], input[type="email"], input[name="username" i], input[name="email" i]',
+      passwordSelector: 'input[type="password"]',
+    };
+    for (const html of [
+      `<form>${emailInput}<input type="password" name="password"></form>`,
+      `<input type="email" name="newsletter" hidden><form>${emailInput}<input type="password" name="password"></form>`,
+      `<form>${emailInput}<input type="password" name="password"></form><input type="password" name="confirm" hidden>`,
+      `<input type="email" name="other" disabled><form>${emailInput}<input type="password" name="password"></form>`,
+    ]) {
+      const dom = fixture(html);
+      expect(inspectFields(config, dom.window.document).ok).toBe(true);
+      dom.window.close();
+    }
+  });
   it('fills both native inputs without submitting and acknowledges no secrets', () => {
     const dom = fixture();
     let submitted = false;

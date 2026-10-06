@@ -17,6 +17,7 @@ import {
   matchesRoute,
   validateProfile,
   isAuthorizedPageUrl,
+  suggestMatch,
 } from './rules';
 import { emptyVault, planImport } from './import';
 import { searchAccounts } from './search';
@@ -381,4 +382,102 @@ it('normalizes imported URLs to a domain and merges same-domain CSVs across path
   const next = planImport(existing, csv(header + '\nb,u,p,c'), rule, 'merge');
   expect(next.payload.accounts).toHaveLength(2);
   expect(next.payload.catalogRuleRevision).toBe(existing.catalogRuleRevision);
+});
+
+describe('detected field suggestions', () => {
+  const input = (over: Partial<Parameters<typeof suggestMatch>[0]> = {}) => ({
+    password: false,
+    id: '',
+    name: '',
+    autocomplete: '',
+    placeholder: '',
+    ariaLabel: '',
+    label: '',
+    ...over,
+  });
+  it('prefers the most stable identifying attribute', () => {
+    expect(suggestMatch(input({ id: 'user', name: 'email', placeholder: 'Email' }))).toEqual({
+      match: 'id',
+      value: 'user',
+    });
+    expect(suggestMatch(input({ name: 'email', placeholder: 'Email' }))).toEqual({
+      match: 'name',
+      value: 'email',
+    });
+    expect(suggestMatch(input({ ariaLabel: 'Account email', placeholder: 'Email' }))).toEqual({
+      match: 'aria-label',
+      value: 'Account email',
+    });
+    expect(suggestMatch(input({ placeholder: '  Email  ' }))).toEqual({
+      match: 'placeholder',
+      value: 'Email',
+    });
+  });
+  it('ignores autocomplete values that identify nothing', () => {
+    expect(suggestMatch(input({ autocomplete: 'off', placeholder: 'Email' }))).toEqual({
+      match: 'placeholder',
+      value: 'Email',
+    });
+    expect(suggestMatch(input({ autocomplete: 'username' }))).toEqual({
+      match: 'autocomplete',
+      value: 'username',
+    });
+  });
+  it('reports nothing for an input with no identifying attribute', () => {
+    expect(suggestMatch(input())).toBeNull();
+  });
+  it('suggests the Bybit-style input by name', () => {
+    expect(
+      suggestMatch(input({ name: 'email', placeholder: 'Email', autocomplete: 'off' })),
+    ).toEqual({ match: 'name', value: 'email' });
+  });
+});
+
+describe('optional success tracking', () => {
+  const rule = parseRule('https://qa.example.test/*');
+  const base = {
+    name: 'QA',
+    loginUrl: 'https://qa.example.test/login',
+    usernameSelector: '#user',
+    passwordSelector: '#pass',
+    successUrl: '',
+    successKind: 'none' as const,
+  };
+  it('saves a profile with no success condition', () => {
+    const profile = validateProfile(base, rule, 1);
+    expect(profile.success).toBeUndefined();
+    expect(profile.usernameSelector).toBe('#user');
+  });
+  it('ignores the success URL entirely when tracking is off', () => {
+    expect(
+      validateProfile({ ...base, successUrl: 'https://other.example/nope' }, rule, 1).success,
+    ).toBeUndefined();
+  });
+  it('still validates the success URL when tracking is on', () => {
+    expect(() =>
+      validateProfile({ ...base, successKind: 'url', successUrl: '' }, rule, 1),
+    ).toThrow();
+    expect(() =>
+      validateProfile(
+        { ...base, successKind: 'url', successUrl: 'https://qa.example.test/login' },
+        rule,
+        1,
+      ),
+    ).toThrow('Success URL must differ from the login URL.');
+    expect(
+      validateProfile(
+        { ...base, successKind: 'url', successUrl: 'https://qa.example.test/home' },
+        rule,
+        1,
+      ).success,
+    ).toEqual({
+      kind: 'url',
+      route: { origin: 'https://qa.example.test', pathname: '/home', hash: '' },
+    });
+  });
+  it('rejects an unsupported success condition', () => {
+    expect(() => validateProfile({ ...base, successKind: 'maybe' as never }, rule, 1)).toThrow(
+      'Choose a supported success condition.',
+    );
+  });
 });

@@ -5,6 +5,7 @@ import type {
   Command,
   ContentContext,
   ContentRequest,
+  DetectedInput,
   Envelope,
   FillResult,
   ImportPreview,
@@ -58,7 +59,15 @@ type Undo = {
 type Session = { key: string; attempts: Attempt[]; undo: Undo | null };
 type Preview = { public: ImportPreview; payload: VaultPayload; revision: number };
 // @spec R-1.1..R-1.9, R-3.1..R-3.6: worker owns the encrypted vault and session.
+const ACCOUNT_NOT_IN_GROUP = 'That account is not in the selected CSV group.';
+const DETECT_OFF_DOMAIN = 'Open the imported catalog domain in that tab, then detect again.';
+const DETECT_NO_TAB = 'No open tab is on the approved login domain.';
+const RULE_UNCHANGED = "That is already this group's authorized domain.";
 const SAFE_ERRORS = new Set<string>([
+  ACCOUNT_NOT_IN_GROUP,
+  DETECT_OFF_DOMAIN,
+  DETECT_NO_TAB,
+  RULE_UNCHANGED,
   'Import needs at least one valid account.',
   'Choose a supported import mode.',
   'Use Wipe & Replace to change the catalog URL rule.',
@@ -364,6 +373,29 @@ export class AssistantService {
     }
     this.assert();
     if (command.type === 'EXPORT_CSV') return exportCsv(this.payload!.accounts);
+    // User-authorized exception, same shape as EXPORT_CSV: the password is
+    // returned only to satisfy an explicit copy gesture from a trusted
+    // extension page, which writes it straight to the clipboard. Never
+    // rendered, never logged.
+    if (command.type === 'COPY_PASSWORD') {
+      const account = this.payload!.accounts.find((a) => a.accountId === command.accountId);
+      if (!account) throw new Error(ACCOUNT_NOT_IN_GROUP);
+      return account.password;
+    }
+    if (command.type === 'DETECT_FIELDS') return this.detect(command.tabId);
+    // Re-point an existing group at another site without re-importing its CSV.
+    // Bumping the revision leaves the saved profile inert until the user
+    // re-authorizes it against the new domain.
+    if (command.type === 'SET_CATALOG_RULE') {
+      const rule = parseDomainRule(command.rule);
+      if (this.payload!.catalogRule?.origin === rule.origin) throw new Error(RULE_UNCHANGED);
+      const next = structuredClone(this.payload!);
+      next.catalogRule = rule;
+      next.catalogRuleRevision = this.payload!.catalogRuleRevision + 1;
+      await this.write(next);
+      this.notify();
+      return;
+    }
     if (command.type === 'PREVIEW_IMPORT') {
       if (
         !Array.isArray(command.bytes) ||
@@ -561,6 +593,53 @@ export class AssistantService {
     if (!top?.documentId || typeof top.result !== 'string') throw new Error();
     return { documentId: top.documentId, url: top.result };
   }
+  /**
+   * Reports identifying attributes of the login inputs on the source tab so the
+   * user can configure matching without DevTools. Scoped to the imported
+   * catalog domain; never reads or returns input values.
+   */
+  private async detect(tabId?: number): Promise<DetectedInput[]> {
+    const rule = this.payload!.catalogRule;
+    if (!rule) throw new Error(DETECT_OFF_DOMAIN);
+    // Settings runs in its own tab, so the active tab is Settings itself. Look
+    // for any open tab already on the approved catalog domain instead.
+    const open = await chrome.tabs.query({});
+    const candidates = open.filter((t) => t.id !== undefined && t.url && matchesRule(rule, t.url));
+    const tab =
+      candidates.find((t) => t.id === tabId) ?? candidates.find((t) => t.active) ?? candidates[0];
+    if (!tab) throw new Error(DETECT_NO_TAB);
+    const current = await this.probe(tab.id!);
+    if (!matchesRule(rule, current.url)) throw new Error(DETECT_OFF_DOMAIN);
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id!, documentIds: [current.documentId] },
+      func: () =>
+        [...document.querySelectorAll('input')]
+          .filter(
+            (input) =>
+              ['text', 'email', 'password'].includes(input.type) &&
+              !input.disabled &&
+              !input.readOnly &&
+              input.getClientRects().length > 0,
+          )
+          .slice(0, 50)
+          .map((input) => ({
+            password: input.type === 'password',
+            id: input.id || '',
+            name: input.name || '',
+            autocomplete: input.getAttribute('autocomplete') || '',
+            placeholder: input.placeholder || '',
+            ariaLabel: input.getAttribute('aria-label') || '',
+            label: [...(input.labels ?? [])]
+              .map((node) => node.textContent || '')
+              .join(' ')
+              .trim()
+              .replace(/\s+/gu, ' ')
+              .slice(0, 100),
+          })),
+    });
+    const top = results.find((r) => r.frameId === 0);
+    return Array.isArray(top?.result) ? (top.result as DetectedInput[]) : [];
+  }
   // @spec R-6.1..R-6.8: explicit account delivery is bound to a current top-frame document.
   private async fill(accountId: string, tabId?: number) {
     const generation = this.generation;
@@ -668,8 +747,10 @@ export class AssistantService {
     this.assert(generation);
     if (current.documentId !== sender.documentId) throw new Error();
     let attempt = this.session!.attempts.find((a) => a.tabId === tabId);
+    const success = profile.success;
     const routeAllowed =
-      matchesOrigin(profile.login, current.url) || matchesRoute(profile.success.route, current.url);
+      matchesOrigin(profile.login, current.url) ||
+      !!(success && matchesRoute(success.route, current.url));
     if (
       attempt &&
       (!routeAllowed ||
@@ -687,9 +768,11 @@ export class AssistantService {
       await this.cancelTab(tabId);
       return;
     }
-    if (!attempt.acknowledged || !matchesRoute(profile.success.route, current.url))
+    // Without a configured condition there is nothing to observe, so a success
+    // report can never be attributed.
+    if (!success || !attempt.acknowledged || !matchesRoute(success.route, current.url))
       throw new Error();
-    if (profile.success.kind === 'element') {
+    if (success.kind === 'element') {
       const results = await chrome.scripting.executeScript({
         target: { tabId, documentIds: [current.documentId] },
         func: (selector: string) => {
@@ -710,13 +793,13 @@ export class AssistantService {
             return true;
           });
         },
-        args: [profile.success.selector],
+        args: [success.selector],
       });
       if (results[0]?.result !== true) throw new Error();
     }
     this.assert(generation);
     const final = await this.probe(tabId);
-    if (final.documentId !== current.documentId || !matchesRoute(profile.success.route, final.url))
+    if (final.documentId !== current.documentId || !matchesRoute(success.route, final.url))
       throw new Error();
     this.assert(generation);
     if (
@@ -750,7 +833,7 @@ export class AssistantService {
     if (
       this.profile &&
       !matchesOrigin(this.profile.login, url) &&
-      !matchesRoute(this.profile.success.route, url)
+      !(this.profile.success && matchesRoute(this.profile.success.route, url))
     )
       await this.cancelTab(tabId);
   }

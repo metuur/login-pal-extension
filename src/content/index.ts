@@ -66,7 +66,7 @@ if (window === window.top && !scope.__oneChatContent) {
       }
       if (
         !matchesOrigin(profile.login, location.href) &&
-        !routeMatches(profile.success.route, location.href)
+        !(profile.success && routeMatches(profile.success.route, location.href))
       ) {
         cancel();
         return;

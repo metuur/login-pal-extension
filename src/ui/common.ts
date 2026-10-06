@@ -65,9 +65,25 @@ export function button(
   return b;
 }
 export function icon(
-  name: 'key' | 'settings' | 'external' | 'back' | 'trash' | 'search' | 'upload' | 'shield',
+  name:
+    | 'key'
+    | 'settings'
+    | 'external'
+    | 'back'
+    | 'trash'
+    | 'search'
+    | 'upload'
+    | 'shield'
+    | 'copy'
+    | 'check'
+    | 'cross'
+    | 'details',
 ): SVGSVGElement {
   const paths = {
+    copy: 'M9 9h10v12H9zM15 5H5v12h2',
+    details: 'm9 5 7 7-7 7',
+    check: 'm5 13 4 4 10-10',
+    cross: 'm6 6 12 12M18 6 6 18',
     key: 'M8 14a4 4 0 1 1 3.5-6H21v4h-3v3h-3v-3h-3.5A4 4 0 0 1 8 14Z',
     settings:
       'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm-2-5h4l1 3 3-1 2 3-2 3 2 3-2 3-3-1-1 3h-4l-1-3-3 1-2-3 2-3-2-3 2-3 3 1Z',
@@ -145,18 +161,101 @@ export function featuredHeading(account: AccountSummary) {
     heading.append(el('span', 'badge featured-badge environment-badge', environment));
   return heading;
 }
+const COPY_FEEDBACK_MS = 2000;
+/** Writes a value to the clipboard without ever placing it in the DOM. */
+function copyIconButton(
+  noun: string,
+  read: () => Promise<string>,
+  status: HTMLElement,
+  showLabel = false,
+) {
+  // The glyph lives in its own span so success/failure feedback can swap the
+  // icon without discarding a visible label.
+  const glyph = el('span', 'copy-glyph');
+  glyph.append(icon('copy'));
+  const b = button('', async () => {
+    if (b.disabled) return;
+    b.disabled = true;
+    let ok = true;
+    // Report which stage failed: reading the value from the background and
+    // writing it to the clipboard fail for very different reasons.
+    let failure = '';
+    let value: string | undefined;
+    try {
+      value = await read();
+    } catch (error) {
+      ok = false;
+      failure = `Could not read the ${noun}: ${error instanceof Error ? error.message : 'unknown error'}`;
+    }
+    if (ok)
+      try {
+        await navigator.clipboard.writeText(value!);
+      } catch (error) {
+        ok = false;
+        failure = `Could not reach the clipboard: ${error instanceof Error ? error.message : 'unknown error'}`;
+      }
+    b.classList.add(ok ? 'copy-ok' : 'copy-fail');
+    glyph.replaceChildren(icon(ok ? 'check' : 'cross'));
+    b.title = ok ? `Copy ${noun}` : failure;
+    status.textContent = ok
+      ? `${noun[0].toUpperCase()}${noun.slice(1)} copied to the clipboard.`
+      : failure;
+    setTimeout(
+      () => {
+        b.classList.remove('copy-ok', 'copy-fail');
+        glyph.replaceChildren(icon('copy'));
+        b.title = `Copy ${noun}`;
+        b.disabled = false;
+      },
+      // Leave a failure on screen long enough to read it.
+      ok ? COPY_FEEDBACK_MS : COPY_FEEDBACK_MS * 4,
+    );
+  });
+  b.className = showLabel ? 'icon-button copy-icon has-label' : 'icon-button copy-icon';
+  b.setAttribute('aria-label', `Copy ${noun}`);
+  b.title = `Copy ${noun}`;
+  b.append(glyph);
+  if (showLabel) b.append(el('span', 'copy-label', noun));
+  return b;
+}
+function copyStatus() {
+  const status = el('span', 'sr-only');
+  status.setAttribute('role', 'status');
+  status.setAttribute('aria-live', 'polite');
+  return status;
+}
+function readPassword(account: AccountSummary) {
+  return () => request<string>({ type: 'COPY_PASSWORD', accountId: account.accountId });
+}
+/** Standalone copy controls for views that show an account outside the detail list. */
+export function copyActions(account: AccountSummary) {
+  const wrap = el('div', 'copy-actions');
+  const status = copyStatus();
+  wrap.append(
+    copyIconButton('username', async () => account.username, status, true),
+    copyIconButton('password', readPassword(account), status, true),
+    status,
+  );
+  return wrap;
+}
 export function metadata(account: AccountSummary) {
   const details = el('details', 'metadata');
   details.append(el('summary', '', 'Account details'));
+  const status = copyStatus();
   const dl = el('dl');
-  for (const [key, value] of Object.entries({
-    account_id: account.accountId,
-    username: account.username,
-    ...account.metadata,
-  })) {
-    dl.append(el('dt', '', key), el('dd', '', value));
-  }
-  details.append(dl);
+  const row = (key: string, value: string, read?: () => Promise<string>, masked = false) => {
+    const dd = el('dd');
+    const text = el('span', 'copy-value', value);
+    if (masked) text.setAttribute('aria-hidden', 'true');
+    dd.append(text);
+    if (read) dd.append(copyIconButton(key, read, status));
+    dl.append(el('dt', '', key), dd);
+  };
+  row('account_id', account.accountId);
+  row('username', account.username, async () => account.username);
+  row('password', '••••••••', readPassword(account), true);
+  for (const [key, value] of Object.entries(account.metadata)) row(key, value);
+  details.append(dl, status);
   return details;
 }
 export function accountRow(
@@ -164,6 +263,7 @@ export function accountRow(
   action: () => unknown,
   management = false,
   origin = '',
+  onDetails?: () => unknown,
 ) {
   const row = el('article', 'account-row');
   const avatar = el(
@@ -195,7 +295,11 @@ export function accountRow(
   const act = management
     ? iconButton('trash', `Delete ${account.accountId}`, action)
     : button('Fill it…', action, 'select-button');
-  row.append(avatar, content, act);
+  if (onDetails) {
+    const actions = el('div', 'row-actions');
+    actions.append(act, iconButton('details', `Open ${account.accountId} details`, onDetails));
+    row.append(avatar, content, actions);
+  } else row.append(avatar, content, act);
   return row;
 }
 export function sectionLabel(text: string, count?: number) {

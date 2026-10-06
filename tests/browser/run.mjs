@@ -199,8 +199,32 @@ try {
   await options.getByLabel('Profile name', { exact: true }).fill(profile.name);
   await options.getByLabel('Authorized login domain', { exact: true }).fill(profile.loginUrl);
   await options
-    .getByLabel('Exact success / observation URL', { exact: true })
+    .getByRole('combobox', { name: 'Success detection', exact: true })
+    .selectOption('url');
+  await options
+    .getByLabel('Exact success URL (after login)', { exact: true })
     .fill(profile.successUrl);
+  await options
+    .getByRole('combobox', { name: 'Success detection', exact: true })
+    .selectOption('none');
+  check(
+    await options.getByLabel('Exact success URL (after login)', { exact: true }).isHidden(),
+    'Turning off success tracking hides its URL field instead of requiring one',
+  );
+  await options
+    .getByRole('combobox', { name: 'Success detection', exact: true })
+    .selectOption('element');
+  check(
+    (await options.getByLabel('Observation URL (page to watch)', { exact: true }).count()) === 1,
+    'Success detection relabels its URL field for element mode',
+  );
+  await options
+    .getByRole('combobox', { name: 'Success detection', exact: true })
+    .selectOption('url');
+  check(
+    (await options.getByLabel('Exact success URL (after login)', { exact: true }).count()) === 1,
+    'Success detection relabels its URL field back for URL mode',
+  );
   await options.getByRole('button', { name: 'Save & authorize website', exact: true }).click();
   await options.getByText('Website profile saved.', { exact: true }).waitFor();
   check(
@@ -442,14 +466,125 @@ try {
   await options.setViewportSize({ width: 430, height: 800 });
   await settingsTab('Indexed accounts').click();
   await options.screenshot({ path: 'artifacts/settings.png', fullPage: true });
+  // Grant only read, so the copy buttons exercise the real write path rather
+  // than a pre-authorized one. Read-back is the assertion mechanism.
+  await context.grantPermissions(['clipboard-read']);
+  const firstRow = options.locator('.account-row').first();
+  await firstRow.locator('.metadata summary').click();
+  check(
+    (await firstRow.getByRole('button', { name: 'Copy username', exact: true }).count()) === 1 &&
+      (await firstRow.getByRole('button', { name: 'Copy password', exact: true }).count()) === 1,
+    'Account details offer separate copy actions for username and password',
+  );
+  const rowAccountId = await firstRow.locator('dd').first().innerText();
+  const expected = Object.fromEntries(
+    csv
+      .split('\n')
+      .slice(1)
+      .map((line) => line.split(','))
+      .map(([id, username, password]) => [id, { username, password }]),
+  )[rowAccountId];
+  await firstRow.getByRole('button', { name: 'Copy username', exact: true }).click();
+  check(
+    (await options.evaluate(() => navigator.clipboard.readText())) === expected.username,
+    'Copy username places the account username on the clipboard',
+  );
+  await firstRow.getByRole('button', { name: 'Copy password', exact: true }).click();
+  await firstRow.locator('.icon-button.copy-ok').first().waitFor();
+  check(
+    (await options.evaluate(() => navigator.clipboard.readText())) === expected.password,
+    'Copy password places the account password on the clipboard',
+  );
+  check(
+    (await firstRow.locator('.metadata .sr-only').innerText()).includes('copied to the clipboard'),
+    'A successful copy is announced to assistive technology and marked with the success icon',
+  );
+  check(
+    !(await options.locator('body').innerText()).includes(expected.password) &&
+      !(await options.content()).includes(expected.password),
+    'Copying a password never renders it in the settings document',
+  );
+  await options.screenshot({ path: 'artifacts/account-details.png', fullPage: true });
+  check(
+    await options.evaluate(() => {
+      const dt = document.querySelector('.metadata dl dt');
+      return (
+        !!dt &&
+        getComputedStyle(dt).overflowWrap === 'break-word' &&
+        dt.getBoundingClientRect().height <= parseFloat(getComputedStyle(dt).lineHeight) * 1.5
+      );
+    }),
+    'Account detail labels fit on one line instead of breaking mid-word',
+  );
   check(
     (await popup.locator('body').innerText()).includes('OneChat'),
     'Popup renders the branded interface',
   );
+  check(
+    (await popup.locator('.account-row').first().locator('.row-actions .icon-button').count()) ===
+      1,
+    'Each list row offers a details action beside the direct fill button',
+  );
+  await site.goto(origin + '/login');
+  await site.bringToFront();
+  await popup.bringToFront();
+  await popup.locator('.account-row').first().locator('.select-button').click();
+  await popup.waitForTimeout(1200);
+  check(
+    (await popup.locator('.confirm-heading').count()) === 0,
+    'Fill it fills straight from the list instead of opening the confirm view',
+  );
+  // popup.html is a tab in this harness, so focusing it deactivates the target
+  // tab and fill() rejects. The credential write itself is covered by the
+  // FILL command tests; here we only prove the button routes to a fill.
+  check(
+    (await popup.locator('.popup-body, #app').first().innerText()).includes('filling') ||
+      (await popup.locator('[role="status"]').first().innerText()).length > 0,
+    'Fill it reports a fill attempt rather than navigating to a confirm step',
+  );
+  await popup.locator('.account-row').first().locator('.row-actions .icon-button').click();
+  await popup.locator('.confirm-heading').waitFor();
+  check(
+    (await popup
+      .locator('.confirm-heading')
+      .getByRole('button', { name: 'Copy username' })
+      .count()) === 1 &&
+      (await popup
+        .locator('.confirm-heading')
+        .getByRole('button', { name: 'Copy password' })
+        .count()) === 1,
+    'Confirm account view offers copy actions beside the account name',
+  );
+  await popup.locator('.confirm-heading').getByRole('button', { name: 'Copy password' }).click();
+  await popup.locator('.confirm-heading .copy-ok').waitFor();
+  check(
+    !(await popup.content()).includes('synthetic-only-'),
+    'The confirm view copy never renders a password',
+  );
+  await popup.getByRole('button', { name: '← Back to accounts', exact: true }).click();
+  await site.bringToFront();
   await settingsTab('Import CSV').click();
   check(
     (await options.locator('body').innerText()).includes('Merge'),
     'Settings renders account import modes',
+  );
+  await settingsTab('Import CSV').click();
+  check(
+    await options.locator('.change-domain').isHidden(),
+    'The change-domain offer stays hidden while the typed domain matches the group',
+  );
+  await options.getByLabel('Authorized domain *', { exact: true }).fill('https://other.example');
+  check(
+    !(await options.locator('.change-domain').isHidden()) &&
+      (await options.locator('.change-domain button').innerText()).includes(
+        'https://other.example',
+      ),
+    'Typing a different domain offers to re-point the group and names the target',
+  );
+  await options.getByLabel('Authorized domain *', { exact: true }).fill(origin);
+  check(
+    await options.locator('.change-domain').isHidden(),
+    'Restoring the current domain withdraws the change-domain offer',
   );
   await settingsTab('Login page setup').click();
   await options
@@ -460,6 +595,29 @@ try {
     .getByRole('combobox', { name: 'Password match method', exact: true })
     .selectOption('autocomplete');
   await options.getByLabel('Password match value', { exact: true }).fill('current-password');
+  // Success tracking is optional: a profile saved without it must still fill.
+  await options
+    .getByRole('combobox', { name: 'Success detection', exact: true })
+    .selectOption('none');
+  await options.getByRole('button', { name: 'Save & authorize website', exact: true }).click();
+  await options.getByText('Website profile saved.', { exact: true }).waitFor();
+  check(
+    (await state()).profile.success === undefined,
+    'A profile saves with no success condition at all',
+  );
+  await site.goto(origin + '/login');
+  await send({ type: 'FILL', accountId: 'ACC-1234', tabId }, popup);
+  check(
+    (await site.locator('#username').inputValue()) === 'john@example.test' &&
+      (await site.locator('#password').inputValue()).length > 0,
+    'Autofill works for a profile that does not track successful logins',
+  );
+  await options
+    .getByRole('combobox', { name: 'Success detection', exact: true })
+    .selectOption('url');
+  await options
+    .getByLabel('Exact success URL (after login)', { exact: true })
+    .fill(profile.successUrl);
   await options.getByRole('button', { name: 'Save & authorize website', exact: true }).click();
   await options.getByText('Website profile saved.', { exact: true }).waitFor();
   await site.goto(origin + '/login');
@@ -468,6 +626,39 @@ try {
     (await site.locator('#username').inputValue()) === 'john@example.test',
     'Label and autocomplete matching configured in Settings fills the browser form',
   );
+  const detectPage = await context.newPage();
+  detectPage.on('pageerror', (e) => errors.push(e.message));
+  // Settings opens in its own tab with no sourceTab, exactly as it does when
+  // reached from an already-open settings window rather than from the popup.
+  await detectPage.goto(`${base}options.html#profile`);
+  await detectPage.bringToFront();
+  await detectPage
+    .getByRole('button', { name: 'Detect fields from the login page', exact: true })
+    .click();
+  await detectPage.getByRole('button', { name: 'id: username', exact: true }).waitFor();
+  check(
+    (await detectPage.getByRole('button', { name: 'id: password', exact: true }).count()) === 1,
+    'Field detection lists login page inputs by their most stable attribute',
+  );
+  check(
+    !(await detectPage.locator('.detected').innerHTML()).includes('john@example.test') &&
+      !(await detectPage.content()).includes('synthetic-only-'),
+    'Field detection reports attributes without reporting any input value',
+  );
+  await detectPage.getByRole('button', { name: 'id: username', exact: true }).click();
+  check(
+    (await detectPage
+      .getByRole('combobox', { name: 'Username match method', exact: true })
+      .inputValue()) === 'id' &&
+      (await detectPage.getByLabel('Username match value', { exact: true }).inputValue()) ===
+        'username',
+    'Choosing a detected candidate sets the matching method and value',
+  );
+  check(
+    (await detectPage.evaluate(() => location.search)) === '',
+    'Field detection works from a settings tab that was not opened from the login page',
+  );
+  await detectPage.close();
   await site.locator('#username').fill('edited@example.test');
   await site.locator('#login').click();
   await settingsTab('Import CSV').click();
@@ -685,6 +876,24 @@ try {
   check(
     restartedState.initialized && !restartedState.migrationRequired,
     'Browser restart opens the catalog without a password',
+  );
+  const beforeRule = await send({ type: 'STATE' }, restartedOptions);
+  await send({ type: 'SET_CATALOG_RULE', rule: 'https://elsewhere.example' }, restartedOptions);
+  const afterRule = await send({ type: 'STATE' }, restartedOptions);
+  check(
+    beforeRule.rule !== afterRule.rule &&
+      afterRule.rule === 'https://elsewhere.example' &&
+      afterRule.total === beforeRule.total,
+    'A saved group can be re-pointed at another domain without re-importing its CSV',
+  );
+  check(
+    !afterRule.authorized,
+    'Changing the group domain leaves the saved profile unauthorized until it is saved again',
+  );
+  await reject(
+    { type: 'SET_CATALOG_RULE', rule: 'https://elsewhere.example' },
+    'Re-sending the same group domain is rejected',
+    restartedOptions,
   );
   await send({ type: 'RESET' }, restartedOptions);
   check(

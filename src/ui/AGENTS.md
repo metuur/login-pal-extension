@@ -1,1 +1,1 @@
-Shared UI helpers only. Render imported values with textContent. Never accept account passwords in view models. Keep controls accessible, statuses truthful, and user edits intact across background notifications.
+Shared UI helpers only. Render imported values with textContent. Never accept account passwords in view models; the copy-password gesture requests one transiently and passes it straight to the clipboard without binding it to any node. Keep controls accessible, statuses truthful, and user edits intact across background notifications.

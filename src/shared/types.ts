@@ -25,7 +25,8 @@ export interface LoginProfile {
   passwordSelector: string;
   usernameMatch?: FieldMatch;
   passwordMatch?: FieldMatch;
-  success: { kind: 'url'; route: Route } | { kind: 'element'; route: Route; selector: string };
+  /** Optional: success tracking only records which account last signed in. */
+  success?: { kind: 'url'; route: Route } | { kind: 'element'; route: Route; selector: string };
 }
 export interface ProfileInput {
   name: string;
@@ -34,7 +35,7 @@ export interface ProfileInput {
   passwordSelector: string;
   usernameMatch?: FieldMatch;
   passwordMatch?: FieldMatch;
-  successKind: 'url' | 'element';
+  successKind: 'none' | 'url' | 'element';
   successUrl: string;
   successSelector?: string;
 }
@@ -134,7 +135,10 @@ export type Command =
   | { type: 'PREVIEW_IMPORT'; bytes: number[]; rule: string; mode: ImportMode }
   | { type: 'COMMIT_IMPORT'; token: string }
   | { type: 'SAVE_PROFILE'; profile: ProfileInput }
-  | { type: 'DELETE' | 'FILL'; accountId: string; tabId?: number };
+  | { type: 'DELETE' | 'FILL'; accountId: string; tabId?: number }
+  | { type: 'COPY_PASSWORD'; accountId: string }
+  | { type: 'DETECT_FIELDS'; tabId?: number }
+  | { type: 'SET_CATALOG_RULE'; rule: string };
 export type Reply<T = unknown> = { ok: true; data: T } | { ok: false; error: string };
 export type ContentRequest =
   { type: 'CONTENT_CONTEXT' } | { type: 'SUCCESS_OBSERVED' | 'CANCEL_ATTEMPT'; token: string };
@@ -152,6 +156,16 @@ export type ContentInstruction =
       attempt?: Attempt;
     }
   | { type: 'TRACK'; attempt: Attempt; profile: LoginProfile };
+/** Identifying attributes only. Detection never reports input values. */
+export interface DetectedInput {
+  password: boolean;
+  id: string;
+  name: string;
+  autocomplete: string;
+  placeholder: string;
+  ariaLabel: string;
+  label: string;
+}
 export interface FillResult {
   ok: boolean;
   error?: string;

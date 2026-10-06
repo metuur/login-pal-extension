@@ -28,16 +28,18 @@ export function visible(element: Element, doc: Document): boolean {
   return true;
 }
 export function successVisible(profile: LoginProfile, doc: Document): boolean {
-  if (!routeMatches(profile.success.route, doc.location.href)) return false;
-  if (profile.success.kind === 'url') return true;
+  const success = profile.success;
+  // No configured condition means success is never observed, so a fill is never
+  // attributed. Autofill itself does not depend on this.
+  if (!success || !routeMatches(success.route, doc.location.href)) return false;
+  if (success.kind === 'url') return true;
   try {
-    return [...doc.querySelectorAll(profile.success.selector)].some((node) => visible(node, doc));
+    return [...doc.querySelectorAll(success.selector)].some((node) => visible(node, doc));
   } catch {
     return false;
   }
 }
 function candidates(doc: Document, mode: FieldMatch, value: string, password: boolean): Element[] {
-  if (mode === 'css') return [...doc.querySelectorAll(value)];
   const normalize = (text: string) => text.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
   return [...doc.querySelectorAll('input')].filter((input) => {
     if (
@@ -48,6 +50,10 @@ function candidates(doc: Document, mode: FieldMatch, value: string, password: bo
     )
       return false;
     switch (mode) {
+      case 'css':
+        // Scoped like every other mode: hidden, disabled or unsupported inputs
+        // must not count toward the exactly-one requirement in R-5.2.
+        return input.matches(value);
       case 'id':
         return input.id === value;
       case 'name':

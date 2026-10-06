@@ -1,4 +1,11 @@
-import type { Route, CatalogRule, ProfileInput, LoginProfile } from '../shared/types';
+import type {
+  Route,
+  CatalogRule,
+  ProfileInput,
+  LoginProfile,
+  DetectedInput,
+  FieldMatch,
+} from '../shared/types';
 const invalid = () => new Error('Enter a valid authorized HTTPS URL, or http:// on localhost.');
 /** Loopback hosts may use plain http so a local development server can be authorized. */
 export function isLoopbackHost(hostname: string): boolean {
@@ -91,14 +98,15 @@ export function validateProfile(
   ruleRevision: number,
   previous?: LoginProfile | null,
 ): LoginProfile {
-  const login = parseRoute(input.loginUrl),
-    success = parseRoute(input.successUrl);
+  const login = parseRoute(input.loginUrl);
   if (!matchesRule(rule, input.loginUrl))
     throw new Error('Login domain must match the imported catalog domain.');
-  if (login.origin !== success.origin)
-    throw new Error('Login and success URLs must share one origin.');
-  if (input.successKind !== 'url' && input.successKind !== 'element')
+  if (!['none', 'url', 'element'].includes(input.successKind))
     throw new Error('Choose a supported success condition.');
+  const tracking = input.successKind !== 'none';
+  const success = tracking ? parseRoute(input.successUrl) : undefined;
+  if (success && login.origin !== success.origin)
+    throw new Error('Login and success URLs must share one origin.');
   if (input.successKind === 'url' && matchesRoute(login, input.successUrl))
     throw new Error('Success URL must differ from the login URL.');
   const selector = (s: unknown) => {
@@ -133,9 +141,37 @@ export function validateProfile(
     passwordSelector,
     usernameMatch,
     passwordMatch,
-    success:
-      input.successKind === 'url'
-        ? { kind: 'url', route: success }
-        : { kind: 'element', route: success, selector: selector(input.successSelector) },
+    ...(input.successKind === 'url'
+      ? { success: { kind: 'url' as const, route: success! } }
+      : input.successKind === 'element'
+        ? {
+            success: {
+              kind: 'element' as const,
+              route: success!,
+              selector: selector(input.successSelector),
+            },
+          }
+        : {}),
   };
+}
+
+/**
+ * Picks the most stable identifying attribute for a detected input, preferring
+ * attributes that survive copy edits and localization over visible text.
+ */
+export function suggestMatch(input: DetectedInput): { match: FieldMatch; value: string } | null {
+  const candidates: [FieldMatch, string][] = [
+    ['id', input.id],
+    ['name', input.name],
+    // "on"/"off" identify nothing; every field on a page can carry them.
+    ['autocomplete', /^(on|off)$/iu.test(input.autocomplete.trim()) ? '' : input.autocomplete],
+    ['aria-label', input.ariaLabel],
+    ['label', input.label],
+    ['placeholder', input.placeholder],
+  ];
+  for (const [match, value] of candidates) {
+    const trimmed = value.trim();
+    if (trimmed) return { match, value: trimmed };
+  }
+  return null;
 }

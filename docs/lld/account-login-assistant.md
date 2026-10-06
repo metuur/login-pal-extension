@@ -272,3 +272,7 @@ These sources support platform boundaries. Encryption parameters, timeout values
 ## Available-height constraint
 
 Per the user’s layout correction, both popup and settings panels fit within 600px. Settings, which renders in a tab, also yields to a smaller viewport and subtracts its outer spacing; the popup uses a fixed cap because viewport units collapse a Chrome action popup. Header and footer remain visible while the central content scrolls internally.
+
+Success detection is optional. `LoginProfile.success` is absent when the user picks "Do not track successful logins", which is the default for a new profile. Autofill never depends on it: the `authorized` state is computed from session, profile, catalog rule, tab URL and host permission only. Without a success condition, `successVisible` returns false, no attempt is ever attributed, and the popup simply omits the "Last successful account" card. Recent accounts are unaffected because they are recorded on fill acknowledgement, not on success.
+
+Account rows in the popup carry two actions: "Fill it…" autofills the account directly, and a chevron icon opens the same account's details view. The details view keeps its own Autofill button, so a deliberate confirmation path still exists for anyone who wants it; it is simply no longer forced on every fill. Settings rows keep their single delete action.

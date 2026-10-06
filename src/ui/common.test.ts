@@ -55,7 +55,7 @@ describe('password-free accessible views', () => {
     document.body.append(row, metadata(account));
     expect(document.querySelector('img,script')).toBeNull();
     expect(document.body.textContent).toContain(account.metadata.customer_name);
-    expect(row.querySelector('button')?.textContent).toBe('Fill it…');
+    expect(row.querySelector('.select-button')?.textContent).toBe('Fill it…');
     expect(row.querySelector('details')?.textContent).toContain('demo@example.test');
   });
   it('uses a distinct named delete action', () => {
@@ -65,7 +65,9 @@ describe('password-free accessible views', () => {
       true,
       'https://qa.example.test',
     );
-    expect(row.querySelector('button')?.getAttribute('aria-label')).toBe('Delete QA-1');
+    expect(row.querySelector(':scope > .icon-button')?.getAttribute('aria-label')).toBe(
+      'Delete QA-1',
+    );
     expect(row.textContent).toContain('https://qa.example.test');
   });
   it('only focuses search for an unmodified slash outside editable fields while unlocked', () => {

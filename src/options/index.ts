@@ -5,8 +5,15 @@ import type {
   ProfileInput,
   Route,
   FieldMatch,
+  DetectedInput,
 } from '../shared/types';
-import { parseRule, validateProfile, isAuthorizedScheme } from '../domain/rules';
+import {
+  parseRule,
+  matchesRule,
+  validateProfile,
+  isAuthorizedScheme,
+  suggestMatch,
+} from '../domain/rules';
 import {
   accountRow,
   groupPicker,
@@ -185,8 +192,61 @@ domainHelp.append(
   ),
   activeHint,
 );
+// A group's authorized domain is set at import. Allow re-pointing it at
+// another site without forcing a full CSV re-import.
+const changeDomain = button(
+  'Change this group domain',
+  () => {
+    const value = target.input.value.trim();
+    let rule: string;
+    try {
+      rule = parseRule(value).origin;
+    } catch {
+      message(importError, 'Enter a valid authorized domain before changing it.', true);
+      return;
+    }
+    confirmDialog(
+      'Change this group domain?',
+      `Accounts in "${state?.groupName ?? 'this group'}" will be allowed on ${rule} instead of ${state?.rule ?? 'the current domain'}. The saved login profile stops filling until you reopen Login page setup and save it again for the new domain.`,
+      'Change domain',
+      async () => {
+        await request({ type: 'SET_CATALOG_RULE', rule: value });
+        await refresh();
+        message(
+          importError,
+          `Group domain changed to ${rule}. Open Login page setup and save the profile again.`,
+        );
+      },
+    );
+  },
+  'text-button',
+);
+const changeDomainRow = el('div', 'stack change-domain');
+changeDomainRow.append(
+  el(
+    'p',
+    'subtle',
+    'This group is already imported. Changing its domain does not need a CSV file.',
+  ),
+  changeDomain,
+);
+changeDomainRow.hidden = true;
+/** Offer the change only when the typed domain really differs from the saved one. */
+function updateChangeDomain() {
+  const rule = state?.rule;
+  const value = target.input.value.trim();
+  let differs = false;
+  try {
+    differs = !!rule && !!value && parseRule(value).origin !== rule;
+  } catch {
+    differs = false;
+  }
+  changeDomainRow.hidden = !differs;
+  if (differs) changeDomain.textContent = `Change group domain to ${value}`;
+}
+target.input.addEventListener('input', updateChangeDomain);
 const domainFields = el('div', 'stack');
-domainFields.append(target.wrap, presets, domainHelp);
+domainFields.append(target.wrap, presets, changeDomainRow, domainHelp);
 importSetup.append(
   groupEditor,
   fileCard,
@@ -328,6 +388,7 @@ const passwordMatch = matchingControl('Password', passwordSelector, true);
 const kind = el('select');
 kind.setAttribute('aria-label', 'Success detection');
 for (const [value, label] of [
+  ['none', 'Do not track successful logins'],
   ['url', 'URL changes to success page'],
   ['element', 'A success element becomes visible'],
 ] as const) {
@@ -337,10 +398,7 @@ for (const [value, label] of [
 }
 const kindLabel = el('label', 'field');
 kindLabel.append(el('span', 'field-label', 'Successful login detection'), kind);
-kind.addEventListener('change', () => {
-  successSelector.wrap.hidden = kind.value !== 'element';
-  successSelector.input.required = kind.value === 'element';
-});
+
 const profileStatus = liveRegion(),
   save = button('Save & authorize website', () => {}, 'primary');
 save.type = 'submit';
@@ -363,6 +421,32 @@ matchingHelp.append(
 );
 const successFields = el('div', 'settings-grid');
 successFields.append(kindLabel, successUrl.wrap, successSelector.wrap);
+// The URL field means two different things depending on the detection mode, so
+// relabel and explain it instead of leaving one ambiguous required field.
+const successHint = el('p', 'subtle');
+function updateSuccessFields() {
+  const element = kind.value === 'element';
+  const none = kind.value === 'none';
+  successSelector.wrap.hidden = !element;
+  successSelector.input.required = element;
+  successUrl.wrap.hidden = none;
+  successUrl.input.required = !none;
+  successUrl.wrap.querySelector('.field-label')!.textContent = element
+    ? 'Observation URL (page to watch)'
+    : 'Exact success URL (after login)';
+  successUrl.input.placeholder = element
+    ? 'https://your-website.example/'
+    : 'https://your-website.example/dashboard';
+  successHint.textContent = none
+    ? 'Autofill works without this. Tracking only records which account last signed in, shown as "Last successful account" in the popup.'
+    : element
+      ? 'The page where the success element appears, often the login page itself. Use this mode when the URL does not change after signing in.'
+      : 'The exact URL the tab lands on after a successful login. Query strings are ignored, and it must differ from the login URL.';
+  // Watching the login page itself is the normal case for element detection.
+  if (element && !successUrl.input.value.trim() && login.input.value.trim())
+    successUrl.input.value = login.input.value.trim();
+}
+kind.addEventListener('change', updateSuccessFields);
 const selectorDefaults = el('div', 'actions');
 selectorDefaults.append(
   button(
@@ -379,6 +463,112 @@ selectorDefaults.append(
     'text-button',
   ),
 );
+const detected = el('div', 'detected stack');
+function applySuggestion(password: boolean, suggestion: { match: FieldMatch; value: string }) {
+  const control = password ? passwordMatch : usernameMatch;
+  const target = password ? passwordSelector : usernameSelector;
+  control.select.value = suggestion.match;
+  control.update();
+  target.input.value = suggestion.value;
+  message(
+    profileStatus,
+    `${password ? 'Password' : 'Username'} field set to ${suggestion.match} "${suggestion.value}". Save to apply it.`,
+  );
+}
+function renderDetected(inputs: DetectedInput[]) {
+  detected.replaceChildren();
+  for (const [heading, password] of [
+    ['Username field candidates', false],
+    ['Password field candidates', true],
+  ] as const) {
+    const group = inputs.filter((input) => input.password === password);
+    const suggestions = group
+      .map((input) => suggestMatch(input))
+      .filter((s): s is { match: FieldMatch; value: string } => !!s);
+    detected.append(el('p', 'field-label', heading));
+    if (!suggestions.length) {
+      detected.append(
+        el(
+          'p',
+          'subtle',
+          password
+            ? 'No visible password field on that page. A two-step login shows it only after submitting the username.'
+            : 'No visible text or email field on that page.',
+        ),
+      );
+      continue;
+    }
+    const row = el('div', 'presets');
+    for (const suggestion of suggestions)
+      row.append(
+        button(
+          `${suggestion.match}: ${suggestion.value}`,
+          () => applySuggestion(password, suggestion),
+          'preset',
+        ),
+      );
+    detected.append(row);
+  }
+}
+/**
+ * A CSV group is bound to the domain used at import, so a profile cannot point
+ * elsewhere. Name the remedy instead of only stating the rule.
+ */
+function catalogMismatch(): string | null {
+  const rule = state?.rule;
+  if (!rule || !login.input.value.trim()) return null;
+  try {
+    if (matchesRule(parseRule(rule), login.input.value)) return null;
+  } catch {
+    return null;
+  }
+  return `The CSV group "${state?.groupName ?? 'this group'}" is bound to ${rule}, so its profile can only fill that site. To set up another website, open Import CSV and use Create new group with this domain, or re-import this group with Wipe & Replace.`;
+}
+const detectButton = button(
+  'Detect fields from the login page',
+  () => {
+    const catalogRule = state?.rule;
+    let origin: string;
+    try {
+      const url = new URL(login.input.value);
+      origin = `${url.protocol}//${url.hostname}/*`;
+    } catch {
+      message(profileStatus, 'Enter the authorized login domain first, then detect.', true);
+      return;
+    }
+    const mismatch = catalogMismatch();
+    if (mismatch) {
+      message(profileStatus, mismatch, true);
+      return;
+    }
+    // Keep the permission request inside the user gesture, before any await.
+    const permission = chrome.permissions.request({ origins: [origin] });
+    void mutate(async () => {
+      if (!(await permission)) {
+        message(profileStatus, 'Website permission was denied, so the page was not read.', true);
+        return;
+      }
+      try {
+        // Settings is its own tab; the background finds the tab already open on
+        // the approved domain, preferring the one settings was opened from.
+        renderDetected(await request<DetectedInput[]>({ type: 'DETECT_FIELDS', tabId: sourceTab }));
+        message(profileStatus, 'Pick a candidate to set the matching method and value.');
+      } catch (error) {
+        detected.replaceChildren();
+        const reason = error instanceof Error ? error.message : 'The login page could not be read.';
+        message(
+          profileStatus,
+          catalogRule
+            ? `${reason} Open ${catalogRule} in another tab, leave it on the sign-in form, then detect again.`
+            : reason,
+          true,
+        );
+      }
+    }, 'Reading the login page…');
+  },
+  'preset accent',
+);
+selectorDefaults.append(detectButton);
 profileForm.append(
   el(
     'p',
@@ -388,6 +578,7 @@ profileForm.append(
   profileIdentity,
   fieldMatching,
   selectorDefaults,
+  detected,
   el(
     'p',
     'subtle',
@@ -395,6 +586,7 @@ profileForm.append(
   ),
   matchingHelp,
   successFields,
+  successHint,
   profileStatus,
   save,
 );
@@ -412,11 +604,10 @@ function populateProfile() {
   passwordMatch.update();
   usernameSelector.input.value = p?.usernameSelector ?? defaultUsernameSelector;
   passwordSelector.input.value = p?.passwordSelector ?? defaultPasswordSelector;
-  kind.value = p?.success.kind ?? 'url';
-  successUrl.input.value = p ? routeUrl(p.success.route) : '';
-  successSelector.input.value = p?.success.kind === 'element' ? p.success.selector : '';
-  successSelector.wrap.hidden = kind.value !== 'element';
-  successSelector.input.required = kind.value === 'element';
+  kind.value = p?.success?.kind ?? 'none';
+  successUrl.input.value = p?.success ? routeUrl(p.success.route) : '';
+  successSelector.input.value = p?.success?.kind === 'element' ? p.success.selector : '';
+  updateSuccessFields();
 }
 function invalidatePreview() {
   preview = undefined;
@@ -807,10 +998,15 @@ profileForm.addEventListener('submit', (event) => {
     passwordMatch: passwordMatch.select.value as FieldMatch,
     usernameSelector: usernameSelector.input.value,
     passwordSelector: passwordSelector.input.value,
-    successKind: kind.value === 'element' ? 'element' : 'url',
+    successKind: kind.value === 'element' ? 'element' : kind.value === 'url' ? 'url' : 'none',
     successUrl: successUrl.input.value,
     successSelector: successSelector.input.value,
   };
+  const mismatch = catalogMismatch();
+  if (mismatch) {
+    message(profileStatus, mismatch, true);
+    return;
+  }
   let url: URL;
   try {
     if (!state?.rule)
@@ -923,6 +1119,7 @@ function render() {
     groupName.input.value = s.groupName ?? 'Imported accounts';
     target.input.value = s.rule ?? '';
     populateProfile();
+    updateChangeDomain();
     const security = el('details', 'settings-help local-settings');
     security.append(
       el('summary', '', 'Local data & reset'),
