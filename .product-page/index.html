@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f6f7f9" />
+    <meta
+      name="description"
+      content="OneChat DEV Login Assistant brings your synthetic QA accounts into one local Chrome extension. Import, find, and intentionally fill your next test login."
+    />
+    <title>OneChat — A little less login. A lot more flow.</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%233d56e8'/%3E%3Cpath d='M12 12h16v13H18l-6 5z' fill='white'/%3E%3C/svg%3E"
+    />
+    <link rel="preload" href="geist-regular.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="main.js" defer></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="nav">
+      <a href="#" class="brand" aria-label="OneChat home"
+        ><span class="brand-icon" aria-hidden="true">◧</span>onechat<span class="dev">DEV</span></a
+      >
+      <nav aria-label="Main navigation">
+        <a href="#overview">Why OneChat</a><a href="#how-it-works">How it works</a
+        ><a href="#questions">Good to know</a>
+      </nav>
+      <a class="nav-cta" href="#setup">Get started <span aria-hidden="true">↗</span></a>
+      <button
+        class="menu-button"
+        aria-label="Open menu"
+        aria-controls="mobile-menu"
+        aria-expanded="false"
+      >
+        <span></span><span></span>
+      </button>
+    </header>
+    <dialog id="mobile-menu" aria-label="Navigation">
+      <button class="menu-close" aria-label="Close menu">×</button>
+      <nav>
+        <a href="#overview">Why OneChat</a><a href="#how-it-works">How it works</a
+        ><a href="#questions">Good to know</a><a href="#setup">Get started ↗</a>
+      </nav>
+    </dialog>
+    <main id="main">
+      <section class="hero wrap">
+        <div class="hero-copy reveal">
+          <span class="eyebrow"><i></i> YOUR NEXT LOGIN, SIMPLIFIED</span>
+          <h1>
+            Less login.<br />More
+            <span class="flow"
+              >flow<svg viewBox="0 0 250 22" aria-hidden="true">
+                <path d="M4 17Q112-5 244 10" /></svg></span
+            >.
+          </h1>
+          <p class="lead">
+            All your test accounts. One calm place.<br />Find the right account and fill your login
+            form—without breaking your stride.
+          </p>
+          <div class="hero-actions">
+            <a href="#setup" class="button primary">Set up your extension <span>↗</span></a
+            ><a href="#how-it-works" class="text-link">See how it works <span>↓</span></a>
+          </div>
+          <div class="compatibility">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <circle cx="12" cy="12" r="3.7" />
+              <path d="M12 8.3h8M8.8 13.8l-4-7M13.8 15.2l-4 7" /></svg
+            >Built for Chrome <b>·</b> Made for QA & support
+          </div>
+        </div>
+        <div class="hero-scene reveal">
+          <div class="orbit orbit-one"></div>
+          <div class="orbit orbit-two"></div>
+          <div class="floating-note">
+            <span class="note-icon">↳</span> Your accounts. Within reach.
+          </div>
+          <div class="demo-shell">
+            <div class="demo-core">
+              <div class="demo-header">
+                <span class="app-symbol">◧</span>
+                <div><strong>Login Assistant</strong><small>ONECHAT WORKSPACE</small></div>
+                <span class="local-status"><i></i> Local</span>
+              </div>
+              <div class="demo-group">
+                <span>QA workspace</span><span class="demo-label">INTERACTIVE DEMO</span>
+              </div>
+              <label class="search"
+                ><svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="10" cy="10" r="6" />
+                  <path d="m15 15 5 5" /></svg
+                ><input
+                  id="account-search"
+                  type="search"
+                  placeholder="Find an account…"
+                  aria-label="Search demo accounts"
+                /><kbd>/</kbd></label
+              >
+              <div class="list-heading">
+                <span>YOUR TEST ACCOUNTS</span><span id="account-count">3 accounts</span>
+              </div>
+              <div id="account-list">
+                <button
+                  class="account selected"
+                  data-name="Alex Morgan"
+                  data-search="alex morgan qa-001 admin"
+                  aria-pressed="true"
+                >
+                  <span class="avatar lavender">AM</span
+                  ><span class="account-details"
+                    ><strong>Alex Morgan</strong><small>alex@qa.example.com</small></span
+                  ><span class="role">Admin</span><span class="selection"></span>
+                </button>
+                <button
+                  class="account"
+                  data-name="Jamie Chen"
+                  data-search="jamie chen qa-002 member"
+                  aria-pressed="false"
+                >
+                  <span class="avatar peach">JC</span
+                  ><span class="account-details"
+                    ><strong>Jamie Chen</strong><small>jamie@qa.example.com</small></span
+                  ><span class="role">Member</span><span class="selection"></span>
+                </button>
+                <button
+                  class="account"
+                  data-name="Sam Rivera"
+                  data-search="sam rivera qa-003 viewer"
+                  aria-pressed="false"
+                >
+                  <span class="avatar mint">SR</span
+                  ><span class="account-details"
+                    ><strong>Sam Rivera</strong><small>sam@qa.example.com</small></span
+                  ><span class="role">Viewer</span><span class="selection"></span>
+                </button>
+              </div>
+              <p id="no-results" hidden>No matching accounts. Try “admin”.</p>
+              <div class="demo-bottom">
+                <span class="domain"><i></i> qa.example.com</span
+                ><button id="demo-fill" class="button primary">Try autofill <span>↗</span></button>
+              </div>
+              <p id="demo-status" role="status">Sample data only. Nothing is sent or filled.</p>
+            </div>
+          </div>
+          <div class="small-note">
+            <span>✓</span>
+            <div>
+              <strong>You stay in control.</strong
+              ><small>Fill first. Submit when you’re ready.</small>
+            </div>
+          </div>
+        </div>
+      </section>
+      <div class="principles wrap reveal">
+        <span>SMALL TOOL. BETTER WORKDAY.</span>
+        <p><span>↳</span> CSV to account catalog</p>
+        <p><span>⌕</span> Find any test persona</p>
+        <p><span>◎</span> Local to your browser</p>
+      </div>
+      <section id="overview" class="section wrap">
+        <div class="section-heading reveal">
+          <div>
+            <span class="eyebrow">BUILT FOR THE IN-BETWEEN</span>
+            <h2>Switch accounts.<br />Keep your momentum.</h2>
+          </div>
+          <p>
+            Testing a new role. Reproducing a bug.<br />Checking one more edge case. Your next
+            account should be the easy part.
+          </p>
+        </div>
+        <div class="feature-grid">
+          <article class="bezel feature-wide reveal">
+            <div class="feature-inner">
+              <span class="feature-number">01 / ORGANIZE</span>
+              <h3>A home for every<br />test persona.</h3>
+              <p>
+                Import your CSV into named groups. Keep environments, roles, and account metadata
+                together—and search them in seconds.
+              </p>
+              <div class="group-art" aria-hidden="true">
+                <div class="group-row">
+                  <span class="folder">▱</span><strong>Staging workspace</strong
+                  ><span class="group-tag">12 accounts</span>
+                </div>
+                <div class="group-row">
+                  <span class="folder">▱</span><strong>Support scenarios</strong
+                  ><span class="group-tag">8 accounts</span>
+                </div>
+                <div class="group-caption">ILLUSTRATIVE GROUPS</div>
+              </div>
+            </div>
+          </article>
+          <article class="bezel feature-narrow reveal">
+            <div class="feature-inner">
+              <div class="target-art" aria-hidden="true">
+                <div><div>↗</div></div>
+                <span class="target-dot"></span>
+              </div>
+              <span class="feature-number">02 / STAY INTENTIONAL</span>
+              <h3>The right account.<br />The right site.</h3>
+              <p>
+                Authorize a domain, choose an account, and fill on your command. You always press
+                the site’s Login button yourself.
+              </p>
+            </div>
+          </article>
+        </div>
+      </section>
+      <section id="how-it-works" class="workflow section">
+        <div class="wrap workflow-grid">
+          <div class="workflow-intro reveal">
+            <span class="eyebrow">FROM CSV TO SIGN-IN</span>
+            <h2>A familiar flow.<br />A little faster.</h2>
+            <p>A few minutes of setup.<br />A smoother login every time after.</p>
+            <a class="button secondary" href="#setup">Start with installation <span>↗</span></a>
+            <div class="workflow-caption">
+              <span>01 → 02 → 03</span><small>Import. Configure. Choose.</small>
+            </div>
+          </div>
+          <ol class="steps">
+            <li class="reveal">
+              <span class="step-number">01</span>
+              <div>
+                <h3>Bring your test accounts.</h3>
+                <p>
+                  Open Settings, name a CSV group, and choose your file. Include
+                  <code>account_id</code>, <code>username</code>, and <code>password</code>; extra
+                  columns become searchable metadata. Set the authorized domain, verify the file,
+                  then confirm the import.
+                </p>
+                <span class="hint">Start with “Download sample CSV (3 rows)” in Settings.</span>
+              </div>
+            </li>
+            <li class="reveal">
+              <span class="step-number">02</span>
+              <div>
+                <h3>Tell it where to help.</h3>
+                <p>
+                  Configure the group’s login profile: your authorized login domain, username and
+                  password matching rules, and a success URL or visible element. Save and approve
+                  the site permission.
+                </p>
+                <span class="hint">Importing accounts alone doesn’t authorize autofill.</span>
+              </div>
+            </li>
+            <li class="reveal">
+              <span class="step-number">03</span>
+              <div>
+                <h3>Find. Fill. You take it from here.</h3>
+                <p>
+                  Visit the authorized login page and open the extension. Choose a group, search by
+                  ID, username, or metadata, and select an account. Review it, choose Autofill, then
+                  submit the website’s form yourself.
+                </p>
+                <span class="hint">“Recent” means filled. “Last successful” means verified.</span>
+              </div>
+            </li>
+          </ol>
+        </div>
+      </section>
+      <section id="setup" class="section wrap setup-grid">
+        <div class="reveal">
+          <span class="eyebrow">MAKE YOURSELF AT HOME</span>
+          <h2>Your browser.<br />Your little shortcut.</h2>
+          <p class="section-description">
+            Install the unpacked extension in Chrome 121 or newer. No account to create. No service
+            to connect.
+          </p>
+          <span class="install-note">DEVELOPER INSTALLATION · NOT A WEB STORE RELEASE</span>
+        </div>
+        <div class="bezel reveal">
+          <div class="install-inner">
+            <h3>Up and running in four steps.</h3>
+            <ol class="install-steps">
+              <li>
+                <span>1</span>
+                <p>
+                  <strong>Get the extension package.</strong> Extract
+                  <code>onechat-dev-login-assistant.zip</code> from your project or team maintainer.
+                  If you build from source, use the generated <code>dist</code> folder.
+                </p>
+              </li>
+              <li>
+                <span>2</span>
+                <p>
+                  <strong>Open Chrome’s extensions page.</strong> Enter
+                  <code>chrome://extensions</code> in the address bar and switch on
+                  <strong>Developer mode</strong>.
+                </p>
+              </li>
+              <li>
+                <span>3</span>
+                <p>
+                  <strong>Load your extension.</strong> Select <strong>Load unpacked</strong> and
+                  choose the extracted <code>dist</code> folder. Keep this folder in place.
+                </p>
+              </li>
+              <li>
+                <span>4</span>
+                <p>
+                  <strong>Pin it. Make it yours.</strong> Pin Login Assistant from Chrome’s
+                  Extensions menu, then open Settings to import your first group.
+                </p>
+              </li>
+            </ol>
+            <a href="#how-it-works" class="button primary"
+              >Continue to first-use guide <span>↑</span></a
+            >
+          </div>
+        </div>
+      </section>
+      <section class="privacy-section wrap reveal">
+        <div class="privacy-icon" aria-hidden="true">◎</div>
+        <div>
+          <span class="eyebrow">LOCAL BY DESIGN</span>
+          <h2>Your test data stays close.</h2>
+          <p>
+            Accounts and history stay in this browser. No application server, sync, or telemetry. No
+            master password or lock prompt, either: the local encryption key is stored alongside the
+            data. <strong>Use synthetic accounts only.</strong>
+          </p>
+        </div>
+        <span class="privacy-stamp">ON YOUR<br />COMPUTER ↙</span>
+      </section>
+      <section id="questions" class="section wrap faq-grid">
+        <div class="reveal">
+          <span class="eyebrow">A FEW USEFUL DETAILS</span>
+          <h2>Good to know.<br />Before you go.</h2>
+        </div>
+        <div class="faq-list reveal">
+          <details>
+            <summary>Will it work with every login page?<span>+</span></summary>
+            <p>
+              It supports top-level, visible, writable username and password inputs. Embedded
+              frames, closed shadow roots, SSO handoffs, and multi-step logins are outside this
+              version’s scope. Configure and test your own site’s field matching and success signal
+              before relying on it.
+            </p>
+          </details>
+          <details>
+            <summary>Can I use it on localhost?<span>+</span></summary>
+            <p>
+              Yes. HTTPS sites are supported, as is plain HTTP on localhost, *.localhost, and
+              127.0.0.1. Authorization matches the exact origin, including its port. Subdomains need
+              separate authorization; a path does not narrow autofill access.
+            </p>
+          </details>
+          <details>
+            <summary>What’s the difference between Merge and Replace?<span>+</span></summary>
+            <p>
+              Merge &amp; Update adds or updates accounts by ID and keeps omitted accounts in the
+              selected group. Wipe &amp; Replace replaces that group’s entire dataset. Invalid rows
+              are excluded, so review the verification results carefully before confirming Replace.
+              Other groups are unaffected.
+            </p>
+          </details>
+          <details>
+            <summary>How do recent and successful logins work?<span>+</span></summary>
+            <p>
+              Recent records a successful field fill. Last successful changes only when the
+              configured success condition is observed within two minutes. A failed login leaves the
+              previous successful account unchanged. Editing filled values cancels attribution.
+            </p>
+          </details>
+          <details>
+            <summary>What should I know about CSV files?<span>+</span></summary>
+            <p>
+              Imports support UTF-8 CSV files up to 2 MiB, 10,000 rows, and 100 columns. Account IDs
+              must be unique within a group. Export CSV downloads the entire selected group,
+              including synthetic passwords. Original and exported CSV files remain on your disk;
+              the extension does not encrypt or delete them.
+            </p>
+          </details>
+        </div>
+      </section>
+      <section class="closing wrap reveal">
+        <span class="eyebrow">LESS FRICTION. MORE FOCUS.</span>
+        <h2>Get back to the<br />work that matters.</h2>
+        <a href="#setup" class="button primary">Let’s get you set up <span>↗</span></a>
+        <p>A small assistant for your everyday testing.</p>
+      </section>
+    </main>
+    <footer class="wrap">
+      <a href="#" class="brand"
+        ><span class="brand-icon" aria-hidden="true">◧</span>onechat<span class="dev">DEV</span></a
+      >
+      <p>Account Login Assistant <span>·</span> Crafted by metuur</p>
+      <a href="#main">Back to top ↑</a>
+    </footer>
+  </body>
+</html>
