@@ -87,7 +87,7 @@ function setupWorkflowDemo() {
   const query = new URLSearchParams(location.search);
   const reduced = () => motionPreference.matches || query.get("reduce") === "1";
   const canAnimate = typeof Element.prototype.animate === "function";
-  const duration = 6e3;
+  const duration = 3e3;
   let active = 0;
   let visible = !("IntersectionObserver" in window);
   let wanted = !reduced() && canAnimate;
@@ -225,10 +225,12 @@ function setupWorkflowDemo() {
   showStep(0);
   const time = query.get("t");
   if (time !== null && time.trim() !== "" && Number.isFinite(Number(time))) {
-    const bounded = Math.max(0, Math.min(24, Number(time)));
+    const stageSeconds = duration / 1e3;
+    const totalSeconds = panels.length * stageSeconds;
+    const bounded = Math.max(0, Math.min(totalSeconds, Number(time)));
     wanted = false;
-    showStep(Math.min(3, Math.floor(bounded / 6)));
-    const localTime = bounded >= 24 ? duration : bounded % 6 * 1e3;
+    showStep(Math.min(panels.length - 1, Math.floor(bounded / stageSeconds)));
+    const localTime = bounded >= totalSeconds ? duration : bounded % stageSeconds * 1e3;
     if (clock) {
       clock.onfinish = null;
       clock.pause();

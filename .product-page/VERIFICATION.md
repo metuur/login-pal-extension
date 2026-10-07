@@ -52,3 +52,8 @@
 - Verified offscreen pause/resume, live reduced-motion preference changes, no autoplay under reduced motion, and a completed manual fade without movement. Mobile-menu opening pauses playback; Escape closes the menu.
 - Offline search, readable JavaScript-disabled fallback, and the shared documentation page passed. No JavaScript errors or remote requests observed.
 - Checks cover the standalone product page in Chromium. Extension runtime and real website autofill were not changed or exercised.
+
+## Faster hero pacing
+
+- Shortened each stage from six to three seconds, for a 12-second tour. Strict TypeScript check passed and browser JavaScript was regenerated.
+- Chromium observed all automatic transitions and completion at the new cadence. All four updated frozen-stage URLs resolve correctly; no browser errors observed.

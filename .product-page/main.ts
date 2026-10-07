@@ -109,7 +109,7 @@ function setupWorkflowDemo(): void {
   const query = new URLSearchParams(location.search);
   const reduced = (): boolean => motionPreference.matches || query.get('reduce') === '1';
   const canAnimate = typeof Element.prototype.animate === 'function';
-  const duration = 6000;
+  const duration = 3000;
   let active = 0;
   let visible = !('IntersectionObserver' in window);
   let wanted = !reduced() && canAnimate;
@@ -256,13 +256,15 @@ function setupWorkflowDemo(): void {
     ).observe(root);
   }
   showStep(0);
-  // Deterministic capture: ?t=0..24 freezes a moment; ?reduce=1 tests static navigation.
+  // Deterministic capture: ?t=seconds freezes a moment; ?reduce=1 tests static navigation.
   const time = query.get('t');
   if (time !== null && time.trim() !== '' && Number.isFinite(Number(time))) {
-    const bounded = Math.max(0, Math.min(24, Number(time)));
+    const stageSeconds = duration / 1000;
+    const totalSeconds = panels.length * stageSeconds;
+    const bounded = Math.max(0, Math.min(totalSeconds, Number(time)));
     wanted = false;
-    showStep(Math.min(3, Math.floor(bounded / 6)));
-    const localTime = bounded >= 24 ? duration : (bounded % 6) * 1000;
+    showStep(Math.min(panels.length - 1, Math.floor(bounded / stageSeconds)));
+    const localTime = bounded >= totalSeconds ? duration : (bounded % stageSeconds) * 1000;
     if (clock) {
       clock.onfinish = null;
       clock.pause();
