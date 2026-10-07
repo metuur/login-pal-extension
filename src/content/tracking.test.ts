@@ -18,7 +18,7 @@ let dom: JSDOM | undefined;
 afterEach(() => {
   dom?.window.close();
   vi.unstubAllGlobals();
-  delete (globalThis as { __oneChatContent?: boolean }).__oneChatContent;
+  delete (globalThis as { __accountLoginAssistantContent?: boolean }).__accountLoginAssistantContent;
   vi.resetModules();
 });
 it('cancels edits made immediately after fill acknowledgement without a later TRACK message', async () => {

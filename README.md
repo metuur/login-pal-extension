@@ -1,10 +1,10 @@
-# OneChat DEV Login Assistant
+# Account Login Assistant
 
 A Chrome extension for synthetic QA/support accounts. Import a local CSV, bind it to an authorized HTTPS site, search account metadata, and intentionally fill a configured login form. The extension never submits the form. Accounts and history stay on this computer, without a master password or lock flow.
 
 ## Install
 
-Requires Chrome 121 or newer. Extract `onechat-dev-login-assistant.zip`, open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the extracted `dist` folder. Keep that folder in place. Pin the extension using Chrome's Extensions menu.
+Requires Chrome 121 or newer. Extract `account-login-assistant.zip`, open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the extracted `dist` folder. Keep that folder in place. Pin the extension using Chrome's Extensions menu.
 
 The repository's `dist` folder is also directly loadable after building. This is an unpacked developer installation, not a Chrome Web Store release.
 

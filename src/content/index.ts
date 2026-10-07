@@ -9,9 +9,9 @@ import type {
 } from '../shared/types';
 import { fillFields, inspectFields, loginFields, routeMatches, successVisible } from './fields';
 
-const scope = globalThis as typeof globalThis & { __oneChatContent?: boolean };
-if (window === window.top && !scope.__oneChatContent) {
-  scope.__oneChatContent = true;
+const scope = globalThis as typeof globalThis & { __accountLoginAssistantContent?: boolean };
+if (window === window.top && !scope.__accountLoginAssistantContent) {
+  scope.__accountLoginAssistantContent = true;
   let stopTracking = () => {};
   async function request(message: ContentRequest): Promise<ContentContext | undefined> {
     try {

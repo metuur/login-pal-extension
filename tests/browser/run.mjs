@@ -6,7 +6,7 @@ import { tmpdir, platform, arch, cpus } from 'node:os';
 import { join, resolve } from 'node:path';
 import assert from 'node:assert/strict';
 
-const temp = await mkdtemp(join(tmpdir(), 'onechat-acceptance-'));
+const temp = await mkdtemp(join(tmpdir(), 'account-login-assistant-acceptance-'));
 let context, server;
 const results = [],
   errors = [],
@@ -521,7 +521,7 @@ try {
     'Account detail labels fit on one line instead of breaking mid-word',
   );
   check(
-    (await popup.locator('body').innerText()).includes('OneChat'),
+    (await popup.locator('body').innerText()).includes('Account Login Assistant'),
     'Popup renders the branded interface',
   );
   check(

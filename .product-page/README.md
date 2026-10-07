@@ -1,4 +1,4 @@
-# OneChat product page
+# Account Login Assistant product page
 
 Open `index.html` directly in a browser. All fonts, styles, and scripts are local; there are no runtime dependencies or network services. The page is independent of the extension build.
 

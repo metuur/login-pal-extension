@@ -37,7 +37,7 @@ export default function App() {
             <div className="logo">
               <Icon name="key" />
             </div>
-            <strong>OneChat DEV Login Assistant</strong>
+            <strong>Account Login Assistant</strong>
           </div>
           <div className="header-actions">
             {settings ? (

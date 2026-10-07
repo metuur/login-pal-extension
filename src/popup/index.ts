@@ -30,7 +30,7 @@ const top = el('div', 'header-line');
 const brand = el('div', 'brand');
 const logo = el('div', 'logo');
 logo.append(icon('key'));
-brand.append(logo, el('strong', '', 'OneChat DEV Login Assistant'));
+brand.append(logo, el('strong', '', 'Account Login Assistant'));
 const actions = el('div', 'header-actions');
 let tabId: number | undefined,
   state: AppState | undefined,

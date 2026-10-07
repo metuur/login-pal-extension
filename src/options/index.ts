@@ -47,7 +47,7 @@ logo.append(icon('key'));
 const brand = el('div', 'brand');
 const title = el('div');
 title.append(
-  el('strong', '', 'OneChat DEV Login Assistant'),
+  el('strong', '', 'Account Login Assistant'),
   el('p', 'subtle', 'Account settings'),
 );
 brand.append(logo, title);

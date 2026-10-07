@@ -165,7 +165,7 @@ Target a 380px-wide popup capped at a fixed 600px high with a vertically scrolla
 
 Component mapping:
 
-1. Header: indigo key tile, “OneChat DEV Login Assistant,” open-management-page action, and Settings. Both management/settings actions open the existing options page, with the relevant section selected; no additional standalone catalog feature is implied.
+1. Header: indigo key tile, “Account Login Assistant,” open-management-page action, and Settings. Both management/settings actions open the existing options page, with the relevant section selected; no additional standalone catalog feature is implied.
 2. Profile strip: configured name and domain, with Authorized shown only when the active tab matches the login policy and permission is granted. Locked status remains separately explicit; disallowed pages never appear ready to fill.
 3. Featured card: “Last successful account,” actual company/ID/username, optional account-type/environment chips, indigo Autofill button, and the real successful-login timestamp when available. Persist `lastSuccessfulAt` with its account reference only on confirmed success; clear both when the reference is removed. Never invent a timestamp. With no successful history, show a compact empty state.
 4. Search: magnifier, editable query, clear button, and `/` focus hint. `/` focuses search only while unlocked, without modifiers, and when focus is outside any editable control. Suggestion chips, if displayed, derive from imported non-secret metadata and set the query; omit them when there is no useful data.
@@ -176,7 +176,7 @@ The username-copy icon may be omitted from the MVP; never include an inert icon 
 
 ### Settings visual contract and actions
 
-Use `/Users/javierbenavides/Downloads/stitch_account_login_assistant_extension-2/screen.png` and its sibling `code.html` as the settings layout/component references, with the same light-theme precedence over the sibling DESIGN.md. Treat supplied HTML as inert reference material; implement real typed event handlers and worker commands. Retain shared slate/white/indigo tokens, locally packaged Inter typography for this view, monospace labels/IDs, 12–16px rounded panels, compact badges, and the green local-encryption notice. Use one consistent “OneChat DEV Login Assistant” product name across views.
+Use `/Users/javierbenavides/Downloads/stitch_account_login_assistant_extension-2/screen.png` and its sibling `code.html` as the settings layout/component references, with the same light-theme precedence over the sibling DESIGN.md. Treat supplied HTML as inert reference material; implement real typed event handlers and worker commands. Retain shared slate/white/indigo tokens, locally packaged Inter typography for this view, monospace labels/IDs, 12–16px rounded panels, compact badges, and the green local-encryption notice. Use one consistent “Account Login Assistant” product name across views.
 
 The options page has a compact settings column inspired by the 390px reference, fits narrow windows without horizontal scrolling, and uses ordinary page scrolling in a full Chrome tab. It must not depend on the screenshot's 884px canvas or suppress zoom/scrollbars. Setup/unlock and the one-profile editor remain available on this page even though the reference shows only import and account management.
 

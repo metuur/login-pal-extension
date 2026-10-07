@@ -43,15 +43,15 @@ export function createBridge(): PreviewBridge {
   const listeners = new Set<Listener>();
   const registrations = new Map<string, unknown>();
   const grants = new Set<string>(
-    JSON.parse(localStorage.getItem('onechat-preview-permissions') ?? '[]'),
+    JSON.parse(localStorage.getItem('account-login-assistant-preview-permissions') ?? '[]'),
   );
   const api = {
     storage: {
-      local: area(localStorage, 'onechat-preview-local'),
-      session: area(sessionStorage, 'onechat-preview-session'),
+      local: area(localStorage, 'account-login-assistant-preview-local'),
+      session: area(sessionStorage, 'account-login-assistant-preview-session'),
     },
     runtime: {
-      id: 'onechat-preview',
+      id: 'account-login-assistant-preview',
       getURL: (path: string) =>
         path === 'sample-accounts.csv' ? sampleCsv : new URL(path, location.origin + '/').href,
       getManifest: () => ({ version }),
@@ -62,7 +62,10 @@ export function createBridge(): PreviewBridge {
     permissions: {
       async request({ origins }: { origins: string[] }) {
         origins.forEach((origin) => grants.add(origin));
-        localStorage.setItem('onechat-preview-permissions', JSON.stringify([...grants]));
+        localStorage.setItem(
+          'account-login-assistant-preview-permissions',
+          JSON.stringify([...grants]),
+        );
         return true;
       },
       async contains({ origins }: { origins: string[] }) {
@@ -73,7 +76,10 @@ export function createBridge(): PreviewBridge {
       },
       async remove({ origins }: { origins: string[] }) {
         origins.forEach((origin) => grants.delete(origin));
-        localStorage.setItem('onechat-preview-permissions', JSON.stringify([...grants]));
+        localStorage.setItem(
+          'account-login-assistant-preview-permissions',
+          JSON.stringify([...grants]),
+        );
         return true;
       },
     },
