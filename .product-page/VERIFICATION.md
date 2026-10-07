@@ -79,3 +79,4 @@
 - Capped the walkthrough width at 460px, reduced scene headings to 24–28px, lowered minimum panel height, and tightened card, row, and frame spacing. Compacted the development form and repositioned its notes. Navigation controls retain a 44px minimum height and account rows retain 46px.
 - Reduced travel distances, rotation, and scale effects while retaining the same five-scene loop and timing.
 - Strict TypeScript, JavaScript generation, CSS syntax parsing, formatting, and whitespace checks passed. Browser visual verification remains unavailable under the local-file navigation restriction; the updated layout needs a manual preview review.
+- Follow-up sizing adjustment: reduced maximum width to 420px, scene headings to 23–26px, and panel/header spacing again. CSS syntax, formatting, and whitespace checks passed; control sizes and animation behavior remain unchanged.
