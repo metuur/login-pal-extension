@@ -1,3 +1,7 @@
+/* Hallmark · audit remediation · genre: modern-minimal · tone: practical · anchor hue: blue
+ * Existing split demo / workflow structure and Geist brand preserved.
+ * Pre-emit critique: Philosophy 4 · Hierarchy 4 · Execution 4 · Specificity 5 · Restraint 4 · Variety 3 */
+@import url('./tokens.css');
 @font-face {
   font-family: Geist;
   src: url('./geist-regular.woff2') format('woff2');
@@ -2277,5 +2281,361 @@ dialog nav a:nth-child(4) {
   .reveal.pending {
     opacity: 1;
     transform: none;
+  }
+}
+
+/* Focused product-guide audit improvements; legacy rules above are preserved. */
+html,
+body {
+  overflow-x: clip;
+}
+body {
+  font-family: var(--font-body);
+}
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-style: normal;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.wrap {
+  max-width: 1200px;
+}
+.section {
+  padding-block: var(--space-section);
+}
+.hero {
+  min-height: auto;
+  padding-block: var(--space-hero);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-xl);
+}
+.product-kicker {
+  font-size: var(--text-small);
+  color: var(--color-accent);
+  font-weight: 600;
+}
+.hero .brand-headline {
+  font-size: clamp(40px, 5.2vw, 72px);
+  letter-spacing: -0.055em;
+  margin-block: var(--space-md);
+}
+.lead {
+  font-size: var(--text-lead);
+  line-height: 1.7;
+  max-width: 43ch;
+}
+.hero-actions {
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+.button,
+.text-link,
+.nav a,
+.footer-nav a {
+  white-space: nowrap;
+}
+.button,
+.text-link,
+.nav nav,
+.nav-cta,
+.footer-nav a {
+  font-size: var(--text-small);
+}
+.compatibility {
+  font-size: var(--text-caption);
+  flex-wrap: wrap;
+}
+.offline-link {
+  font-size: var(--text-small);
+}
+.hero-scene {
+  padding: 0;
+}
+.hero-scene::before {
+  display: none;
+}
+.demo-instruction {
+  font-size: var(--text-small);
+  color: var(--color-muted);
+  margin-bottom: var(--space-sm);
+}
+.demo-shell {
+  transform: none;
+  padding: 0;
+  border: 1px solid var(--color-rule);
+  box-shadow: none;
+  border-radius: var(--radius-panel);
+}
+.demo-core {
+  padding: var(--space-md);
+  border-radius: var(--radius-panel);
+}
+.account {
+  min-height: 68px;
+}
+.account-details strong {
+  font-size: var(--text-small);
+}
+.account-details small {
+  font-size: var(--text-caption);
+}
+.demo-label,
+.demo-header small,
+.list-heading,
+.local-status,
+.role,
+.domain {
+  font-size: var(--text-caption);
+  letter-spacing: 0;
+}
+#demo-status {
+  font-size: var(--text-caption);
+  min-height: 3.4em;
+  color: var(--color-muted);
+}
+.principles {
+  padding-block: var(--space-md);
+}
+.principles p {
+  font-size: var(--text-small);
+}
+.section-description {
+  max-width: 48ch;
+}
+.section-description,
+.section-heading p,
+.feature-inner p,
+.steps p,
+.install-steps p,
+.privacy-section p,
+.access-panel p,
+.access-controls p,
+.faq-list p,
+.doc-note,
+.offline-checks li,
+.doc-body p,
+.doc-body li,
+.doc-body dd {
+  font-size: var(--text-body);
+  line-height: 1.75;
+}
+.hint,
+.install-note,
+.permission-details dd {
+  font-size: var(--text-small);
+}
+.install-note {
+  letter-spacing: 0;
+}
+.install-inner .button {
+  font-size: var(--text-small);
+}
+.workflow-intro > p {
+  font-size: var(--text-body);
+  max-width: 34ch;
+}
+.workflow {
+  padding-block: var(--space-hero);
+}
+.feature-inner h3,
+.access-panel h3 {
+  margin-top: 0;
+}
+.bezel {
+  box-shadow: none;
+  background: var(--color-rule);
+  padding: 1px;
+}
+.offline-panel,
+.access-panel,
+.install-inner {
+  box-shadow: none;
+}
+.section-heading {
+  align-items: start;
+}
+.faq-list summary,
+.permission-details summary {
+  font-size: var(--text-body);
+}
+.closing {
+  background: none;
+  padding-block: var(--space-hero);
+}
+.closing > p,
+footer p,
+.footer-bottom > a {
+  font-size: var(--text-small);
+}
+.reveal,
+.reveal.pending {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+dialog nav a {
+  animation: none;
+  font-size: clamp(22px, 6vw, 30px);
+  white-space: nowrap;
+}
+.menu-button {
+  min-width: 44px;
+  min-height: 44px;
+}
+.button:hover span {
+  transform: none;
+}
+.button:hover {
+  filter: brightness(0.94);
+}
+.button:disabled:hover {
+  filter: none;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+summary:focus-visible {
+  outline-color: var(--color-accent);
+}
+@media (max-width: 1000px) {
+  .nav {
+    gap: 18px;
+  }
+  .nav nav {
+    gap: 16px;
+  }
+  .hero {
+    gap: var(--space-lg);
+  }
+}
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .hero-copy,
+  .hero-scene {
+    width: 100%;
+    max-width: 640px;
+    margin-inline: auto;
+  }
+  .hero-actions {
+    flex-direction: row;
+    align-items: center;
+  }
+  .hero .lead {
+    max-width: 50ch;
+  }
+  .nav nav,
+  .nav-cta {
+    display: none;
+  }
+  .nav {
+    width: calc(100% - 32px);
+  }
+  .menu-button {
+    display: block;
+    border: 0;
+    background: var(--color-paper);
+    border-radius: 50%;
+  }
+  .menu-button::before {
+    content: '☰';
+    font-size: 20px;
+  }
+  .menu-button span {
+    display: none;
+  }
+}
+@media (max-width: 767px) {
+  .section {
+    padding-block: var(--space-xl);
+  }
+  .hero {
+    padding-block: var(--space-xl);
+    gap: var(--space-xl);
+  }
+  .hero .brand-headline {
+    font-size: clamp(40px, 10vw, 64px);
+  }
+  .section-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-md);
+  }
+  .demo-core {
+    padding: var(--space-sm);
+  }
+  .account {
+    padding-inline: 8px;
+    gap: 8px;
+  }
+  .account-details {
+    min-width: 0;
+  }
+  .account-details small {
+    font-size: 11px;
+  }
+  .role {
+    display: none;
+  }
+  .demo-bottom {
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+  }
+  .install-inner {
+    padding: var(--space-md);
+  }
+  .install-inner .button {
+    padding-left: 14px;
+    gap: 12px;
+    font-size: 12px;
+  }
+  .privacy-section {
+    margin-block: var(--space-md);
+  }
+  .closing h2 {
+    font-size: clamp(36px, 9vw, 54px);
+  }
+  .footer-nav {
+    gap: 8px 16px;
+  }
+  .footer-nav a {
+    font-size: 12px;
+  }
+}
+
+.search input {
+  font-size: var(--text-small);
+  min-height: 24px;
+}
+.demo-bottom .button {
+  font-size: var(--text-small);
+  min-height: 44px;
+}
+.demo-bottom .button span {
+  width: 28px;
+  height: 28px;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+.account-details small,
+.domain,
+.demo-label,
+.list-heading,
+.demo-header small {
+  color: var(--color-muted);
+}
+@media (max-width: 600px) {
+  .docs-nav {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .docs-nav a,
+  .docs-nav a span {
+    font-size: var(--text-small);
+    white-space: nowrap;
   }
 }

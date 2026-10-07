@@ -16,3 +16,9 @@ rtk proxy node_modules/.bin/esbuild .product-page/main.ts --outfile=.product-pag
 ```
 
 Geist fonts are packaged under the license in `FONT-LICENSE.txt`. Demo names and example.com addresses are fictional. No passwords are included or used by this demo.
+
+## Hallmark audit improvements — 2026-10-07
+
+The homepage now defines Login Pal in its opening paragraph and leads with installation and a synthetic demo. It follows with account organization, the first-login workflow, installation, offline behavior, local data, permissions, and questions. Headings describe the task rather than repeating promotional slogans. Synthetic-only usage and manual submission are stated at the start.
+
+Shared typography is larger, the demo is upright, instructions no longer animate into view, and the docs topic navigation uses one column on narrow screens. `tokens.css` supplies semantic tokens for the focused improvements; `styles.css` preserves the legacy stylesheet and appends overrides. This is an audit remediation pass, not a replacement brand or full Hallmark theme migration. See `AUDIT.md` for findings and remaining design debt.

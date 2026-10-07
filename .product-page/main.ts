@@ -84,24 +84,3 @@ document.addEventListener('keydown', (event: KeyboardEvent) => {
     search.focus();
   }
 });
-
-if (
-  !window.matchMedia('(prefers-reduced-motion: reduce)').matches &&
-  'IntersectionObserver' in window
-) {
-  const observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.remove('pending');
-          observer.unobserve(entry.target);
-        }
-      });
-    },
-    { threshold: 0.08 },
-  );
-  document.querySelectorAll('.reveal').forEach((element) => {
-    element.classList.add('pending');
-    observer.observe(element);
-  });
-}

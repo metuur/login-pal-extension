@@ -30,3 +30,14 @@
 - Added three captioned, locally rendered HTML/CSS figures for setup flow, origin matching, and field detection. Only synthetic metadata and empty mock inputs appear.
 - Visually reviewed desktop setup/domain illustrations and mobile detection illustration. All three have accessible caption associations.
 - Topic navigation and expanded figures passed at 320, 390, 768, 1024, and 1440 pixels without document overflow or JavaScript errors.
+
+## Hallmark audit remediation — 2026-10-07
+
+- Strict TypeScript check passed; browser JavaScript regenerated from main.ts.
+- Chromium checked homepage and documentation at 320, 375, 414, 768, 1024, and 1440 pixels: no horizontal document overflow. Documentation topics were expanded during the checks.
+- Desktop and mobile screenshots inspected, including all four Hallmark widths (320 / 375 / 414 / 768). Primary links remain on one line; documentation navigation becomes a single column on small screens.
+- Demo role search, account selection, empty results, disabled action, recovery after clearing, and selected-account response passed using fictional metadata.
+- Slash-to-search, native mobile dialog, Escape dismissal, cross-page Docs navigation, direct storage-topic opening, and local anchors passed.
+- Reduced-motion rendering and offline demo search passed. No browser runtime errors were observed.
+- The first Escape assertion read aria-expanded before the native close event ran; waiting for the close event's observable state confirmed the behavior without changing the implementation.
+- Shared documentation layout was checked; detailed documentation content and extension behavior were not redesigned. Full extension tests were not needed for this standalone page-only change.

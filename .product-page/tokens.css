@@ -1,0 +1,20 @@
+:root {
+  --color-paper: oklch(97.5% 0.003 265);
+  --color-ink: oklch(28% 0.024 275);
+  --color-muted: oklch(45% 0.027 270);
+  --color-accent: oklch(49% 0.2 272);
+  --color-rule: oklch(89% 0.013 265);
+  --font-body: Geist, sans-serif;
+  --font-display: Geist, sans-serif;
+  --space-sm: 16px;
+  --space-md: 24px;
+  --space-lg: 32px;
+  --space-xl: 48px;
+  --space-section: 72px;
+  --space-hero: 80px;
+  --text-caption: 12px;
+  --text-small: 14px;
+  --text-body: 16px;
+  --text-lead: 18px;
+  --radius-panel: 20px;
+}
