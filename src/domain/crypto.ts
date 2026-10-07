@@ -1,4 +1,4 @@
-import type { Envelope, VaultPayload } from '../shared/types';
+import type { CatalogRule, Envelope, VaultPayload } from '../shared/types';
 import { parseRule, formatRule } from './rules';
 const ITERATIONS = 600000,
   MAX_BYTES = 5 * 1024 * 1024;
@@ -55,6 +55,36 @@ function record(v: unknown): v is Record<string, unknown> {
 function integer(v: unknown): v is number {
   return typeof v === 'number' && Number.isSafeInteger(v) && v >= 0;
 }
+/** Catalogs written before multi-origin support carry a single catalogRule. */
+export function migrateVaultPayload(v: unknown) {
+  if (!record(v) || Array.isArray(v.catalogRules)) return;
+  v.catalogRules = v.catalogRule ? [v.catalogRule] : [];
+  delete v.catalogRule;
+}
+function validRule(r: unknown): boolean {
+  if (
+    !record(r) ||
+    typeof r.origin !== 'string' ||
+    typeof r.pathname !== 'string' ||
+    typeof r.hash !== 'string' ||
+    !['exact', 'prefix'].includes(String(r.pathMatch))
+  )
+    return false;
+  try {
+    const rule = r as unknown as CatalogRule;
+    return (
+      JSON.stringify(parseRule(formatRule(rule))) ===
+      JSON.stringify({
+        origin: rule.origin,
+        pathname: rule.pathname,
+        hash: rule.hash,
+        pathMatch: rule.pathMatch,
+      })
+    );
+  } catch {
+    return false;
+  }
+}
 function validPayload(v: unknown): v is VaultPayload {
   if (
     !record(v) ||
@@ -67,32 +97,9 @@ function validPayload(v: unknown): v is VaultPayload {
     !record(v.history)
   )
     return false;
-  if (v.catalogRule !== null) {
-    if (
-      !record(v.catalogRule) ||
-      typeof v.catalogRule.origin !== 'string' ||
-      typeof v.catalogRule.pathname !== 'string' ||
-      typeof v.catalogRule.hash !== 'string' ||
-      !['exact', 'prefix'].includes(String(v.catalogRule.pathMatch))
-    )
-      return false;
-    try {
-      const r = v.catalogRule as unknown as VaultPayload['catalogRule'];
-      if (
-        !r ||
-        JSON.stringify(parseRule(formatRule(r))) !==
-          JSON.stringify({
-            origin: r.origin,
-            pathname: r.pathname,
-            hash: r.hash,
-            pathMatch: r.pathMatch,
-          })
-      )
-        return false;
-    } catch {
-      return false;
-    }
-  } else if (v.accounts.length) return false;
+  if (!Array.isArray(v.catalogRules) || v.catalogRules.length > 20) return false;
+  if (!v.catalogRules.every(validRule)) return false;
+  if (!v.catalogRules.length && v.accounts.length) return false;
   const ids = new Set<string>();
   for (const a of v.accounts) {
     if (
@@ -208,6 +215,7 @@ export async function decryptVault(envelope: Envelope, raw: string): Promise<Vau
       throw fail();
     decode(envelope.salt, 16);
     const payload = await unseal<unknown>(envelope, raw, aad(envelope.salt));
+    migrateVaultPayload(payload);
     if (!validPayload(payload)) throw fail();
     return payload;
   } catch {

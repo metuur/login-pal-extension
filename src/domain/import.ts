@@ -12,7 +12,7 @@ export function emptyVault(): VaultPayload {
     schemaVersion: 1,
     revision: 0,
     snapshotRevision: 0,
-    catalogRule: null,
+    catalogRules: [],
     catalogRuleRevision: 0,
     accounts: [],
     history: {},
@@ -32,12 +32,17 @@ function same(a: Account, b: Account): boolean {
 export function planImport(
   current: VaultPayload,
   parsed: CsvResult,
-  rule: CatalogRule,
+  rules: CatalogRule[],
   mode: ImportMode,
 ): { payload: VaultPayload; counts: ImportCounts } {
   if (!parsed.accounts.length) throw new Error('Import needs at least one valid account.');
   if (mode !== 'merge' && mode !== 'replace') throw new Error('Choose a supported import mode.');
-  const changed = !current.catalogRule || current.catalogRule.origin !== rule.origin;
+  const origins = (list: CatalogRule[]) =>
+    list
+      .map((r) => r.origin)
+      .sort()
+      .join(' ');
+  const changed = origins(current.catalogRules) !== origins(rules);
   if (mode === 'merge' && current.accounts.length && changed)
     throw new Error('Use Wipe & Replace to change the catalog URL rule.');
   const old = new Map(current.accounts.map((a) => [a.accountId, a])),
@@ -87,7 +92,7 @@ export function planImport(
       ...current,
       revision: current.revision + 1,
       snapshotRevision: current.snapshotRevision + 1,
-      catalogRule: rule,
+      catalogRules: rules,
       catalogRuleRevision: current.catalogRuleRevision + (changed ? 1 : 0),
       accounts: [...next.values()],
       history,

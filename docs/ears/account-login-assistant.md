@@ -109,6 +109,9 @@ Status: Planning baseline accepted through the user’s request to continue plan
 
 | ID | EARS statement |
 | --- | --- |
+| R-2.21 | THE SYSTEM SHALL let one CSV group authorize up to 20 distinct origins, entered as a comma or newline separated list, so the same application can be filled across environments. Duplicate origins SHALL be rejected. |
+| R-5.1a | THE SYSTEM SHALL give a group exactly one login profile whose field selectors and success condition apply to every authorized origin, and SHALL hold host permission for each of them. Per the user's 2026-10-06 decision this is the multi-environment model; separate applications still require separate CSV groups. |
+| R-2.22 | Per the user's 2026-10-06 decision, THE SYSTEM SHALL accept http:// as well as https:// for authorized domains on any host, not only loopback. Other schemes, userinfo and wildcard origins remain rejected, and each origin is still granted explicitly by the user. |
 | R-5.1 | WHEN an autofill action is requested, THE SYSTEM SHALL validate the trusted extension-page sender, unlocked session, account, active tab, permission, current approved catalog-rule revision, current-page match against both the catalog rule and exact profile login route, and current top-frame document. |
 | R-5.2 | IF either selector fails to resolve to exactly one distinct visible enabled writable supported input, or a form explicitly targets another origin, THE SYSTEM SHALL reject autofill before writing credentials. |
 | R-5.3 | THE SYSTEM SHALL support text/email username inputs and password-type password inputs only in the top-level light DOM. |

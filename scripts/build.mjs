@@ -18,14 +18,13 @@ const manifest = {
   icons,
   name: 'OneChat DEV Login Assistant',
   description: 'A local encrypted account catalog for authorized QA login pages.',
-  minimum_chrome_version: '120',
+  // 121 is the first version with tabs.lastAccessed, used to offer the most
+  // recently used tabs as field-detection sources.
+  minimum_chrome_version: '121',
   permissions: ['storage', 'scripting', 'activeTab', 'clipboardWrite'],
-  optional_host_permissions: [
-    'https://*/*',
-    'http://localhost/*',
-    'http://*.localhost/*',
-    'http://127.0.0.1/*',
-  ],
+  // http is requestable on any host so QA environments served over plain http
+  // can be authorized; the user still grants each origin explicitly.
+  optional_host_permissions: ['https://*/*', 'http://*/*'],
   background: {
     service_worker: 'background.js',
   },
@@ -67,7 +66,7 @@ await build({
   bundle: true,
   format: 'iife',
   platform: 'browser',
-  target: 'chrome120',
+  target: 'chrome121',
   legalComments: 'none',
   minify: false,
 });

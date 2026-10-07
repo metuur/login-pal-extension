@@ -6,7 +6,7 @@ const profile: LoginProfile = {
   revision: 1,
   approvedCatalogRuleRevision: 1,
   name: 'QA',
-  login: { origin: 'https://qa.example.test', pathname: '/login', hash: '' },
+  logins: [{ origin: 'https://qa.example.test', pathname: '/login', hash: '' }],
   usernameSelector: '#user',
   passwordSelector: '#pass',
   success: {

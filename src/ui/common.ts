@@ -266,6 +266,7 @@ export function accountRow(
   onDetails?: () => unknown,
 ) {
   const row = el('article', 'account-row');
+  row.dataset.account = account.accountId;
   const avatar = el(
     'div',
     'avatar',

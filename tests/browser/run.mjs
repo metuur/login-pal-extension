@@ -56,13 +56,13 @@ try {
   check(manifest.version === packageInfo.version, 'Generated manifest uses the package version');
   check(
     !manifest.host_permissions &&
-      manifest.optional_host_permissions?.join(' ') ===
-        'https://*/* http://localhost/* http://*.localhost/* http://127.0.0.1/*',
-    'Shipping manifest has optional host access only, https plus loopback http',
+      manifest.optional_host_permissions?.join(' ') === 'https://*/* http://*/*',
+    'Shipping manifest has optional host access only, over http and https',
   );
   // Headless Chrome cannot approve the host dialog. Grant only the controlled
   // localhost fixture in this disposable copy; production permissions are unchanged.
-  manifest.host_permissions = ['https://localhost/*'];
+  // Two origins served by the same fixture stand in for prod and staging.
+  manifest.host_permissions = ['https://localhost/*', 'https://127.0.0.1/*'];
   await writeFile(join(extension, 'manifest.json'), JSON.stringify(manifest));
   context = await chromium.launchPersistentContext(join(temp, 'profile'), {
     channel: 'chromium',
@@ -534,6 +534,15 @@ try {
     (await popup.locator('.confirm-heading').count()) === 0,
     'Fill it fills straight from the list instead of opening the confirm view',
   );
+  const filled = popup.locator(
+    '.account-row .select-button.fill-ok, .account-row .select-button.fill-fail',
+  );
+  await filled.first().waitFor();
+  check(
+    (await filled.first().locator('svg').count()) === 1 &&
+      (await filled.first().innerText()).trim() === '',
+    'The fill outcome is shown as an icon on the row button, not as a banner',
+  );
   // popup.html is a tab in this harness, so focusing it deactivates the target
   // tab and fill() rejects. The credential write itself is covered by the
   // FILL command tests; here we only prove the button routes to a fill.
@@ -586,6 +595,10 @@ try {
     await options.locator('.change-domain').isHidden(),
     'Restoring the current domain withdraws the change-domain offer',
   );
+  check(
+    (await options.locator('.presets button').allInnerTexts()).some((t) => t.includes(origin)),
+    'Every authorized domain of the group is offered as a chip',
+  );
   await settingsTab('Login page setup').click();
   await options
     .getByRole('combobox', { name: 'Username match method', exact: true })
@@ -612,6 +625,47 @@ try {
       (await site.locator('#password').inputValue()).length > 0,
     'Autofill works for a profile that does not track successful logins',
   );
+  // One group, the same application on two environments, one set of selectors.
+  const second = `https://127.0.0.1:${server.address().port}`;
+  await send({ type: 'SET_CATALOG_RULE', rule: `${origin}, ${second}` });
+  await send({
+    type: 'SAVE_PROFILE',
+    profile: { ...profile, loginUrl: `${origin}, ${second}`, successKind: 'none', successUrl: '' },
+  });
+  const twoEnv = await state();
+  check(
+    twoEnv.rules.length === 2 &&
+      twoEnv.rules.includes(origin) &&
+      twoEnv.rules.includes(second) &&
+      twoEnv.profile.logins.length === 2,
+    'One CSV group authorizes the same application on two environments',
+  );
+  check(
+    twoEnv.profile.usernameSelector === profile.usernameSelector &&
+      twoEnv.profile.passwordSelector === profile.passwordSelector,
+    'Both environments share one set of field selectors',
+  );
+  const secondSite = await context.newPage();
+  secondSite.on('pageerror', (e) => errors.push(e.message));
+  await secondSite.goto(second + '/login');
+  await secondSite.bringToFront();
+  const secondTabId = await secondSite
+    .evaluate(() => 0)
+    .then(async () => {
+      const tabs = await options.evaluate(() => chrome.tabs.query({}));
+      return tabs.find((t) => t.url?.startsWith('https://127.0.0.1'))?.id;
+    });
+  await send({ type: 'FILL', accountId: 'ACC-1234', tabId: secondTabId }, popup);
+  check(
+    (await secondSite.locator('#username').inputValue()) === 'john@example.test' &&
+      (await secondSite.locator('#password').inputValue()).length > 0,
+    'Autofill works on the second environment without a second profile',
+  );
+  await secondSite.close();
+  await site.bringToFront();
+  await send({ type: 'SET_CATALOG_RULE', rule: origin });
+  // The form still holds both origins; narrow it back to match the group.
+  await options.getByLabel('Authorized login domain', { exact: true }).fill(origin);
   await options
     .getByRole('combobox', { name: 'Success detection', exact: true })
     .selectOption('url');
@@ -619,13 +673,19 @@ try {
     .getByLabel('Exact success URL (after login)', { exact: true })
     .fill(profile.successUrl);
   await options.getByRole('button', { name: 'Save & authorize website', exact: true }).click();
-  await options.getByText('Website profile saved.', { exact: true }).waitFor();
+  // A concurrent refresh can overwrite the global banner, so assert the panel's own notice.
+  await options.getByText('Profile saved.', { exact: false }).first().waitFor();
   await site.goto(origin + '/login');
   await send({ type: 'FILL', accountId: 'ACC-1234', tabId }, popup);
   check(
     (await site.locator('#username').inputValue()) === 'john@example.test',
     'Label and autocomplete matching configured in Settings fills the browser form',
   );
+  // A second tab on the same authorized origin proves the picker lists every
+  // matching tab, most recently used first, not just one.
+  const otherTab = await context.newPage();
+  otherTab.on('pageerror', (e) => errors.push(e.message));
+  await otherTab.goto(origin + '/dashboard');
   const detectPage = await context.newPage();
   detectPage.on('pageerror', (e) => errors.push(e.message));
   // Settings opens in its own tab with no sourceTab, exactly as it does when
@@ -635,6 +695,30 @@ try {
   await detectPage
     .getByRole('button', { name: 'Detect fields from the login page', exact: true })
     .click();
+  // One poll resolves as soon as the spinner exists, so the assertion cannot
+  // race the spinner's removal once the lookup finishes.
+  const spinning = await detectPage
+    .waitForFunction(() => {
+      const node = document.querySelector('button.loading .spinner');
+      return node ? getComputedStyle(node).animationName : null;
+    })
+    .then((handle) => handle.jsonValue());
+  check(spinning === 'spin', 'The detect action spins a loader on the button while it works');
+  const tabChoice = detectPage.locator('.tab-choices button');
+  await tabChoice.first().waitFor();
+  const offered = await tabChoice.allInnerTexts();
+  check(
+    offered.length === 2 &&
+      offered[0].includes('Dashboard') &&
+      offered[1].includes('Local synthetic login'),
+    'Detection offers every recently used tab on the authorized domain, newest first',
+  );
+  check(
+    offered[1].includes('/login'),
+    'Each offered tab names its path so same-titled pages stay distinguishable',
+  );
+  await otherTab.close();
+  await tabChoice.filter({ hasText: 'Local synthetic login' }).first().click();
   await detectPage.getByRole('button', { name: 'id: username', exact: true }).waitFor();
   check(
     (await detectPage.getByRole('button', { name: 'id: password', exact: true }).count()) === 1,
@@ -704,7 +788,7 @@ try {
     await new Promise((r) => setTimeout(r, 100));
   check(
     (await groupState()).total === 1 &&
-      (await groupState()).rule === 'https://performance.example.test',
+      (await groupState()).rules.join() === 'https://performance.example.test',
     'CSV group stores its own URL and duplicate account ID',
   );
   const chooserEvent = options.waitForEvent('filechooser');
@@ -824,6 +908,8 @@ try {
       (url) =>
         url.startsWith(base) ||
         url.startsWith(origin) ||
+        // The staging stand-in is the same local fixture on a second origin.
+        url.startsWith(second) ||
         url.startsWith('data:') ||
         url.startsWith(`blob:${base}`),
     ),
@@ -881,8 +967,8 @@ try {
   await send({ type: 'SET_CATALOG_RULE', rule: 'https://elsewhere.example' }, restartedOptions);
   const afterRule = await send({ type: 'STATE' }, restartedOptions);
   check(
-    beforeRule.rule !== afterRule.rule &&
-      afterRule.rule === 'https://elsewhere.example' &&
+    beforeRule.rules.join() !== afterRule.rules.join() &&
+      afterRule.rules.join() === 'https://elsewhere.example' &&
       afterRule.total === beforeRule.total,
     'A saved group can be re-pointed at another domain without re-importing its CSV',
   );

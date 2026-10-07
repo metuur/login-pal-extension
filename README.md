@@ -4,7 +4,7 @@ A Chrome extension for synthetic QA/support accounts. Import a local CSV, bind i
 
 ## Install
 
-Requires Chrome 120 or newer. Extract `onechat-dev-login-assistant.zip`, open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the extracted `dist` folder. Keep that folder in place. Pin the extension using Chrome's Extensions menu.
+Requires Chrome 121 or newer. Extract `onechat-dev-login-assistant.zip`, open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the extracted `dist` folder. Keep that folder in place. Pin the extension using Chrome's Extensions menu.
 
 The repository's `dist` folder is also directly loadable after building. This is an unpacked developer installation, not a Chrome Web Store release.
 

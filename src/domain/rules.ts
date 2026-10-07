@@ -6,13 +6,18 @@ import type {
   DetectedInput,
   FieldMatch,
 } from '../shared/types';
-const invalid = () => new Error('Enter a valid authorized HTTPS URL, or http:// on localhost.');
+const invalid = () => new Error('Enter a valid authorized http:// or https:// URL.');
 /** Loopback hosts may use plain http so a local development server can be authorized. */
 export function isLoopbackHost(hostname: string): boolean {
   return hostname === 'localhost' || hostname.endsWith('.localhost') || hostname === '127.0.0.1';
 }
+/**
+ * Per the user's 2026-10-06 decision, http is accepted on any host, not only
+ * loopback. Plain http carries credentials in clear text; this is a QA tool for
+ * synthetic accounts and the origin is still matched exactly.
+ */
 export function isAuthorizedScheme(u: URL): boolean {
-  return u.protocol === 'https:' || (u.protocol === 'http:' && isLoopbackHost(u.hostname));
+  return u.protocol === 'https:' || u.protocol === 'http:';
 }
 /** Content pages reach the worker over https, or over http while on a loopback host. */
 export function isAuthorizedPageUrl(value: string | undefined): boolean {
@@ -92,14 +97,44 @@ export function parseDomainRule(value: string): CatalogRule {
   const parsed = parseRule(value);
   return { origin: parsed.origin, pathname: '/', hash: '', pathMatch: 'prefix' };
 }
+/**
+ * One group may authorize the same application on several environments.
+ * Accepts a comma or newline separated list and rejects duplicate origins.
+ */
+export function parseDomainRules(value: string): CatalogRule[] {
+  const parts = value
+    .split(/[\s,]+/u)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (!parts.length) throw invalid();
+  if (parts.length > 20) throw new Error('A CSV group accepts at most 20 authorized domains.');
+  const rules = parts.map(parseDomainRule);
+  const origins = new Set(rules.map((r) => r.origin));
+  if (origins.size !== rules.length) throw new Error('Remove the duplicate authorized domain.');
+  return rules;
+}
+export function matchesAnyRule(rules: CatalogRule[], value: string): boolean {
+  return rules.some((rule) => matchesRule(rule, value));
+}
+export function matchesAnyOrigin(routes: Pick<Route, 'origin'>[], value: string): boolean {
+  return routes.some((route) => matchesOrigin(route, value));
+}
 export function validateProfile(
   input: ProfileInput,
-  rule: CatalogRule,
+  rules: CatalogRule[],
   ruleRevision: number,
   previous?: LoginProfile | null,
 ): LoginProfile {
-  const login = parseRoute(input.loginUrl);
-  if (!matchesRule(rule, input.loginUrl))
+  // One profile covers every authorized environment with the same selectors.
+  const logins = parseDomainRules(input.loginUrl).map((r) => ({
+    origin: r.origin,
+    pathname: '/',
+    hash: '',
+  }));
+  // Compare success against the login URL as typed, not the normalized origin,
+  // so "success must differ from login" still catches an identical path.
+  const login = parseRoute(input.loginUrl.split(/[\s,]+/u).filter(Boolean)[0] ?? input.loginUrl);
+  if (!logins.every((l) => matchesAnyRule(rules, l.origin)))
     throw new Error('Login domain must match the imported catalog domain.');
   if (!['none', 'url', 'element'].includes(input.successKind))
     throw new Error('Choose a supported success condition.');
@@ -136,7 +171,7 @@ export function validateProfile(
     revision: (previous?.revision ?? 0) + 1,
     approvedCatalogRuleRevision: ruleRevision,
     name: input.name.trim(),
-    login: { origin: login.origin, pathname: '/', hash: '' },
+    logins,
     usernameSelector,
     passwordSelector,
     usernameMatch,

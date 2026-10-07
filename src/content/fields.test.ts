@@ -7,7 +7,7 @@ const profile: LoginProfile = {
   revision: 1,
   approvedCatalogRuleRevision: 1,
   name: 'QA',
-  login: { origin: 'https://qa.example.test', pathname: '/login', hash: '' },
+  logins: [{ origin: 'https://qa.example.test', pathname: '/login', hash: '' }],
   usernameSelector: '#user',
   passwordSelector: '#pass',
   success: {
@@ -165,7 +165,7 @@ describe('validated credential delivery', () => {
     );
     const p = {
       ...profile,
-      success: { kind: 'element' as const, route: profile.login, selector: '#success' },
+      success: { kind: 'element' as const, route: profile.logins[0], selector: '#success' },
     };
     expect(inspectFields(p, dom.window.document).baseline).toBe(true);
     dom.window.close();
@@ -180,7 +180,7 @@ describe('validated credential delivery', () => {
     p.value = 'synthetic-value';
     const config = {
       ...profile,
-      success: { kind: 'element' as const, route: profile.login, selector: '#success' },
+      success: { kind: 'element' as const, route: profile.logins[0], selector: '#success' },
     };
     expect(fillFields(config, u.value, p.value, dom.window.document).ok).toBe(false);
     expect(u.value.length > 0 && p.value.length > 0).toBe(true);

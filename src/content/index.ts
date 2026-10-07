@@ -1,4 +1,4 @@
-import { matchesOrigin } from '../domain/rules';
+import { matchesAnyOrigin } from '../domain/rules';
 import type {
   Attempt,
   ContentContext,
@@ -44,7 +44,7 @@ if (window === window.top && !scope.__oneChatContent) {
       void request({ type: 'CANCEL_ATTEMPT', token: attempt.token });
     };
     function onEdit(event: Event) {
-      if (!matchesOrigin(profile.login, location.href)) return;
+      if (!matchesAnyOrigin(profile.logins, location.href)) return;
       const node = event.target;
       if (node instanceof Element) {
         try {
@@ -65,7 +65,7 @@ if (window === window.top && !scope.__oneChatContent) {
         return;
       }
       if (
-        !matchesOrigin(profile.login, location.href) &&
+        !matchesAnyOrigin(profile.logins, location.href) &&
         !(profile.success && routeMatches(profile.success.route, location.href))
       ) {
         cancel();

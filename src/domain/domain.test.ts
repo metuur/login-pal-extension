@@ -1,3 +1,4 @@
+import type { CatalogRule } from '../shared/types';
 import { exportCsv as serializeAccounts } from './csv';
 import { describe, it, expect } from 'vitest';
 import {
@@ -7,6 +8,7 @@ import {
   decryptVault,
   sealValue,
   unsealValue,
+  migrateVaultPayload,
 } from './crypto';
 import { parseCsv } from './csv';
 import {
@@ -18,6 +20,9 @@ import {
   validateProfile,
   isAuthorizedPageUrl,
   suggestMatch,
+  parseDomainRules,
+  matchesAnyOrigin,
+  matchesAnyRule,
 } from './rules';
 import { emptyVault, planImport } from './import';
 import { searchAccounts } from './search';
@@ -63,7 +68,8 @@ describe('authorization rules', () => {
   });
   it('rejects broad or ambiguous policy', () => {
     for (const u of [
-      'http://qa.example.com/*',
+      'ftp://qa.example.com/*',
+      'file:///tmp/*',
       'https://*.example.com/*',
       'https://u:p@qa.example.com/*',
       'https://qa.example.com/a*b',
@@ -73,16 +79,13 @@ describe('authorization rules', () => {
       expect(() => parseRule(u)).toThrow();
     expect(parseRule('https://qa.example.com/%2A').pathMatch).toBe('exact');
   });
-  it('allows plain http only on loopback hosts', () => {
+  it('allows plain http on any host while keeping the scheme part of the origin', () => {
     expect(parseRule('http://localhost:3000/*').origin).toBe('http://localhost:3000');
     expect(parseRule('http://app.localhost/login*').origin).toBe('http://app.localhost');
     expect(parseRule('http://127.0.0.1:8080/*').origin).toBe('http://127.0.0.1:8080');
-    for (const u of [
-      'http://localhost.example.com/*',
-      'http://notlocalhost/*',
-      'http://[::1]:3000/*',
-      'http://10.0.0.1/*',
-    ])
+    expect(parseRule('http://qa.example.com/*').origin).toBe('http://qa.example.com');
+    expect(parseRule('http://10.0.0.1/*').origin).toBe('http://10.0.0.1');
+    for (const u of ['ftp://qa.example.com/*', 'file:///tmp/*', 'chrome://settings/*'])
       expect(() => parseRule(u)).toThrow();
     const r = parseRule('http://localhost:3000/*');
     expect(matchesRule(r, 'http://localhost:3000/login')).toBe(true);
@@ -98,17 +101,18 @@ describe('authorization rules', () => {
           successKind: 'url',
           successUrl: 'http://localhost:3000/home',
         },
-        r,
+        [r],
         1,
-      ).login.origin,
+      ).logins[0].origin,
     ).toBe('http://localhost:3000');
   });
-  it('trusts content senders on https or loopback http only', () => {
+  it('trusts content senders on http and https only', () => {
     expect(isAuthorizedPageUrl('https://qa.example.com/login')).toBe(true);
     expect(isAuthorizedPageUrl('http://localhost:3000/login')).toBe(true);
     expect(isAuthorizedPageUrl('http://127.0.0.1/login')).toBe(true);
-    expect(isAuthorizedPageUrl('http://qa.example.com/login')).toBe(false);
+    expect(isAuthorizedPageUrl('http://qa.example.com/login')).toBe(true);
     expect(isAuthorizedPageUrl('file:///tmp/login.html')).toBe(false);
+    expect(isAuthorizedPageUrl('ftp://qa.example.com/login')).toBe(false);
     expect(isAuthorizedPageUrl(undefined)).toBe(false);
   });
   it('profile requires matching login and distinct URL success', () => {
@@ -121,42 +125,43 @@ describe('authorization rules', () => {
       successUrl: 'https://qa.example.com/home',
     };
     expect(
-      validateProfile(p, parseRule('https://qa.example.com/login*'), 2).approvedCatalogRuleRevision,
+      validateProfile(p, [parseRule('https://qa.example.com/login*')], 2)
+        .approvedCatalogRuleRevision,
     ).toBe(2);
     expect(() =>
-      validateProfile({ ...p, successUrl: p.loginUrl }, parseRule('https://qa.example.com/*'), 2),
+      validateProfile({ ...p, successUrl: p.loginUrl }, [parseRule('https://qa.example.com/*')], 2),
     ).toThrow();
   });
 });
 describe('transaction planning', () => {
   it('merges complete records and invalidates credential history', () => {
     const rule = parseRule('https://qa.example.com/*');
-    const a = planImport(emptyVault(), csv(header + '\na,u,p,c\nb,v,p,c'), rule, 'merge').payload;
+    const a = planImport(emptyVault(), csv(header + '\na,u,p,c\nb,v,p,c'), [rule], 'merge').payload;
     a.history.p = {
       lastSuccessfulAccountId: 'a',
       lastSuccessfulAt: 10,
       recentAccountIds: ['a', 'b'],
     };
-    const r = planImport(a, csv(header + '\na,u,new,d'), rule, 'merge');
+    const r = planImport(a, csv(header + '\na,u,new,d'), [rule], 'merge');
     expect(r.counts).toEqual({ added: 0, updated: 1, removed: 0, unchanged: 0 });
     expect(r.payload.accounts).toHaveLength(2);
     expect(r.payload.history.p?.lastSuccessfulAt).toBeNull();
     expect(a.history.p.lastSuccessfulAt).toBe(10);
     expect(() =>
-      planImport(a, csv(header + '\nx,u,p,c'), parseRule('https://other.example/*'), 'merge'),
+      planImport(a, csv(header + '\nx,u,p,c'), [parseRule('https://other.example/*')], 'merge'),
     ).toThrow();
   });
   it('replace clears rule history and counts removed IDs', () => {
     const a = planImport(
       emptyVault(),
       csv(header + '\na,u,p,c'),
-      parseRule('https://qa.example.com/*'),
+      [parseRule('https://qa.example.com/*')],
       'replace',
     ).payload;
     const r = planImport(
       a,
       csv(header + '\nb,u,p,c'),
-      parseRule('https://other.example/*'),
+      [parseRule('https://other.example/*')],
       'replace',
     );
     expect(r.counts.removed).toBe(1);
@@ -208,7 +213,7 @@ describe('limits and non-secret search performance', () => {
   });
   it('blocks final merged catalog limit without mutating input', () => {
     const initial = emptyVault();
-    initial.catalogRule = parseRule('https://qa.example.com/*');
+    initial.catalogRules = [parseRule('https://qa.example.com/*')];
     initial.accounts = Array.from({ length: 10000 }, (_, i) => ({
       accountId: String(i),
       username: 'u',
@@ -216,7 +221,7 @@ describe('limits and non-secret search performance', () => {
       metadata: {},
     }));
     expect(() =>
-      planImport(initial, csv(header + '\nnew,u,p,c'), initial.catalogRule!, 'merge'),
+      planImport(initial, csv(header + '\nnew,u,p,c'), initial.catalogRules, 'merge'),
     ).toThrow('10,000');
     expect(initial.accounts.length).toBe(10000);
   });
@@ -226,7 +231,7 @@ describe('limits and non-secret search performance', () => {
     const payload = planImport(
       emptyVault(),
       csv(header + '\na,u,p,c'),
-      parseRule('https://qa.example.com/*'),
+      [parseRule('https://qa.example.com/*')],
       'merge',
     ).payload;
     const encrypted = await encryptVault(payload, key, salt);
@@ -285,7 +290,7 @@ describe('strict import regressions', () => {
     const current = planImport(
       emptyVault(),
       csv(header + '\na,u,p,c\nb,u,p,c'),
-      rule,
+      [rule],
       'merge',
     ).payload;
     current.history.profile = {
@@ -293,13 +298,13 @@ describe('strict import regressions', () => {
       lastSuccessfulAt: 10,
       recentAccountIds: ['b', 'a'],
     };
-    const changed = planImport(current, csv(header + '\na,u,p,changed'), rule, 'replace');
+    const changed = planImport(current, csv(header + '\na,u,p,changed'), [rule], 'replace');
     expect(changed.payload.history.profile).toEqual({
       lastSuccessfulAccountId: 'a',
       lastSuccessfulAt: 10,
       recentAccountIds: ['a'],
     });
-    const removed = planImport(current, csv(header + '\nb,u,p,c'), rule, 'replace');
+    const removed = planImport(current, csv(header + '\nb,u,p,c'), [rule], 'replace');
     expect(removed.payload.history.profile?.lastSuccessfulAccountId).toBeNull();
     expect(removed.payload.history.profile?.lastSuccessfulAt).toBeNull();
   });
@@ -376,10 +381,10 @@ it('normalizes imported URLs to a domain and merges same-domain CSVs across path
   const existing = planImport(
     emptyVault(),
     csv(header + '\na,u,p,c'),
-    parseRule('https://qa.example.com/old'),
+    [parseRule('https://qa.example.com/old')],
     'merge',
   ).payload;
-  const next = planImport(existing, csv(header + '\nb,u,p,c'), rule, 'merge');
+  const next = planImport(existing, csv(header + '\nb,u,p,c'), [rule], 'merge');
   expect(next.payload.accounts).toHaveLength(2);
   expect(next.payload.catalogRuleRevision).toBe(existing.catalogRuleRevision);
 });
@@ -444,30 +449,30 @@ describe('optional success tracking', () => {
     successKind: 'none' as const,
   };
   it('saves a profile with no success condition', () => {
-    const profile = validateProfile(base, rule, 1);
+    const profile = validateProfile(base, [rule], 1);
     expect(profile.success).toBeUndefined();
     expect(profile.usernameSelector).toBe('#user');
   });
   it('ignores the success URL entirely when tracking is off', () => {
     expect(
-      validateProfile({ ...base, successUrl: 'https://other.example/nope' }, rule, 1).success,
+      validateProfile({ ...base, successUrl: 'https://other.example/nope' }, [rule], 1).success,
     ).toBeUndefined();
   });
   it('still validates the success URL when tracking is on', () => {
     expect(() =>
-      validateProfile({ ...base, successKind: 'url', successUrl: '' }, rule, 1),
+      validateProfile({ ...base, successKind: 'url', successUrl: '' }, [rule], 1),
     ).toThrow();
     expect(() =>
       validateProfile(
         { ...base, successKind: 'url', successUrl: 'https://qa.example.test/login' },
-        rule,
+        [rule],
         1,
       ),
     ).toThrow('Success URL must differ from the login URL.');
     expect(
       validateProfile(
         { ...base, successKind: 'url', successUrl: 'https://qa.example.test/home' },
-        rule,
+        [rule],
         1,
       ).success,
     ).toEqual({
@@ -476,8 +481,103 @@ describe('optional success tracking', () => {
     });
   });
   it('rejects an unsupported success condition', () => {
-    expect(() => validateProfile({ ...base, successKind: 'maybe' as never }, rule, 1)).toThrow(
+    expect(() => validateProfile({ ...base, successKind: 'maybe' as never }, [rule], 1)).toThrow(
       'Choose a supported success condition.',
     );
+  });
+});
+
+describe('multiple authorized environments', () => {
+  const rules = parseDomainRules('https://app.example.test, https://staging.example.test');
+  const base = {
+    name: 'QA',
+    loginUrl: 'https://app.example.test, https://staging.example.test',
+    usernameSelector: '#user',
+    passwordSelector: '#pass',
+    successUrl: '',
+    successKind: 'none' as const,
+  };
+  it('parses a comma or newline separated list', () => {
+    expect(rules.map((r) => r.origin)).toEqual([
+      'https://app.example.test',
+      'https://staging.example.test',
+    ]);
+    expect(parseDomainRules('https://a.test\nhttps://b.test').map((r) => r.origin)).toEqual([
+      'https://a.test',
+      'https://b.test',
+    ]);
+  });
+  it('rejects duplicates and empty input', () => {
+    expect(() => parseDomainRules('https://a.test, https://a.test')).toThrow('duplicate');
+    expect(() => parseDomainRules('   ')).toThrow();
+  });
+  it('gives one profile every environment with shared selectors', () => {
+    const profile = validateProfile(base, rules, 1);
+    expect(profile.logins.map((l) => l.origin)).toEqual([
+      'https://app.example.test',
+      'https://staging.example.test',
+    ]);
+    expect(profile.usernameSelector).toBe('#user');
+    expect(profile.passwordSelector).toBe('#pass');
+  });
+  it('rejects a login origin outside the catalog', () => {
+    expect(() =>
+      validateProfile(
+        { ...base, loginUrl: 'https://app.example.test, https://other.test' },
+        rules,
+        1,
+      ),
+    ).toThrow('Login domain must match the imported catalog domain.');
+  });
+  it('matches any authorized origin', () => {
+    const profile = validateProfile(base, rules, 1);
+    expect(matchesAnyOrigin(profile.logins, 'https://staging.example.test/login')).toBe(true);
+    expect(matchesAnyOrigin(profile.logins, 'https://app.example.test/x')).toBe(true);
+    expect(matchesAnyOrigin(profile.logins, 'https://evil.test/login')).toBe(false);
+    expect(matchesAnyRule(rules, 'https://staging.example.test/anything')).toBe(true);
+    expect(matchesAnyRule(rules, 'https://nope.test/')).toBe(false);
+  });
+});
+
+describe('legacy single-domain catalog migration', () => {
+  it('rewrites a single catalogRule into catalogRules', () => {
+    const legacy: Record<string, unknown> = {
+      schemaVersion: 1,
+      catalogRule: parseRule('https://legacy.example.test/*'),
+      catalogRuleRevision: 1,
+      accounts: [{ accountId: 'A1', username: 'u@e.test', password: 'p', metadata: {} }],
+    };
+    migrateVaultPayload(legacy);
+    expect((legacy.catalogRules as CatalogRule[]).map((r) => r.origin)).toEqual([
+      'https://legacy.example.test',
+    ]);
+    expect('catalogRule' in legacy).toBe(false);
+  });
+  it('treats a legacy empty catalog as no authorized domains', () => {
+    const legacy: Record<string, unknown> = { catalogRule: null };
+    migrateVaultPayload(legacy);
+    expect(legacy.catalogRules).toEqual([]);
+  });
+  it('leaves an already-migrated payload untouched', () => {
+    const current: Record<string, unknown> = {
+      catalogRules: [parseRule('https://a.test/*'), parseRule('https://b.test/*')],
+    };
+    migrateVaultPayload(current);
+    expect((current.catalogRules as CatalogRule[]).map((r) => r.origin)).toEqual([
+      'https://a.test',
+      'https://b.test',
+    ]);
+  });
+  it('round-trips a multi-origin vault through encrypt and decrypt', async () => {
+    const salt = randomSalt();
+    const key = await deriveVaultKey('synthetic-passphrase-only', salt);
+    const payload = emptyVault();
+    payload.catalogRules = parseDomainRules('https://app.test, https://staging.test');
+    payload.accounts = [{ accountId: 'A1', username: 'u@e.test', password: 'p', metadata: {} }];
+    const restored = await decryptVault(await encryptVault(payload, key, salt), key);
+    expect(restored.catalogRules.map((r) => r.origin)).toEqual([
+      'https://app.test',
+      'https://staging.test',
+    ]);
   });
 });

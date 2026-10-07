@@ -6,10 +6,12 @@ import type {
   Route,
   FieldMatch,
   DetectedInput,
+  DetectTab,
 } from '../shared/types';
 import {
   parseRule,
-  matchesRule,
+  parseDomainRules,
+  matchesAnyRule,
   validateProfile,
   isAuthorizedScheme,
   suggestMatch,
@@ -59,7 +61,7 @@ const groupBar = el('div', 'group-bar');
 const tabs = el('div', 'settings-tabs');
 tabs.setAttribute('role', 'tablist');
 tabs.setAttribute('aria-label', 'Account settings');
-app.replaceChildren(header, groupBar, tabs, status, content, footer, versionFooter());
+app.replaceChildren(header, groupBar, tabs, status, content, footer);
 const rawSource = new URL(location.href).searchParams.get('sourceTab');
 const sourceTab = rawSource !== null && /^\d+$/.test(rawSource) ? Number(rawSource) : undefined;
 let state: AppState | undefined,
@@ -141,11 +143,10 @@ fileIcon.append(icon('upload'));
 fileCard.append(fileIcon, fileText, change, fileInput);
 const target = field('Authorized domain *');
 target.input.required = true;
-target.input.placeholder = 'https://your-website.example';
+target.input.placeholder = 'https://your-website.example, https://staging.your-website.example';
 target.input.autocomplete = 'off';
 target.input.spellcheck = false;
 const presets = el('div', 'presets');
-const activeHint = el('p', 'subtle');
 const modeWrap = el('fieldset', 'mode-switch');
 modeWrap.append(el('legend', 'sr-only', 'Import mode'));
 const modeExplanation = el(
@@ -188,9 +189,8 @@ domainHelp.append(
   el(
     'p',
     'subtle',
-    'Enter the HTTPS domain, for example https://qa.example.com, or http://localhost:3000 for a local server. Paths, queries and fragments are ignored. Subdomains and ports must match.',
+    'Enter the HTTPS domain, for example https://qa.example.com, or http://localhost:3000 for a local server. Separate several domains with commas to authorize the same application on more than one environment; they share one set of login field selectors. Paths, queries and fragments are ignored. Subdomains and ports must match.',
   ),
-  activeHint,
 );
 // A group's authorized domain is set at import. Allow re-pointing it at
 // another site without forcing a full CSV re-import.
@@ -200,14 +200,16 @@ const changeDomain = button(
     const value = target.input.value.trim();
     let rule: string;
     try {
-      rule = parseRule(value).origin;
+      rule = parseDomainRules(value)
+        .map((r) => r.origin)
+        .join(', ');
     } catch {
       message(importError, 'Enter a valid authorized domain before changing it.', true);
       return;
     }
     confirmDialog(
       'Change this group domain?',
-      `Accounts in "${state?.groupName ?? 'this group'}" will be allowed on ${rule} instead of ${state?.rule ?? 'the current domain'}. The saved login profile stops filling until you reopen Login page setup and save it again for the new domain.`,
+      `Accounts in "${state?.groupName ?? 'this group'}" will be allowed on ${rule} instead of ${state?.rules.join(', ') || 'the current domain'}. The saved login profile stops filling until you reopen Login page setup and save it again for the new domains.`,
       'Change domain',
       async () => {
         await request({ type: 'SET_CATALOG_RULE', rule: value });
@@ -233,11 +235,17 @@ changeDomainRow.append(
 changeDomainRow.hidden = true;
 /** Offer the change only when the typed domain really differs from the saved one. */
 function updateChangeDomain() {
-  const rule = state?.rule;
+  const current = (state?.rules ?? []).join(' ');
   const value = target.input.value.trim();
   let differs = false;
   try {
-    differs = !!rule && !!value && parseRule(value).origin !== rule;
+    differs =
+      !!current &&
+      !!value &&
+      parseDomainRules(value)
+        .map((r) => r.origin)
+        .sort()
+        .join(' ') !== [...(state?.rules ?? [])].sort().join(' ');
   } catch {
     differs = false;
   }
@@ -348,7 +356,7 @@ const defaultUsernameSelector = [
 ].join(', ');
 const defaultPasswordSelector = 'input[type="password"]';
 const profileName = field('Profile name'),
-  login = field('Authorized login domain', 'url'),
+  login = field('Authorized login domain'),
   usernameSelector = field('Username field CSS selector'),
   passwordSelector = field('Password field CSS selector'),
   successUrl = field('Exact success / observation URL', 'url'),
@@ -515,23 +523,113 @@ function renderDetected(inputs: DetectedInput[]) {
  * elsewhere. Name the remedy instead of only stating the rule.
  */
 function catalogMismatch(): string | null {
-  const rule = state?.rule;
-  if (!rule || !login.input.value.trim()) return null;
+  const rules = state?.rules ?? [];
+  if (!rules.length || !login.input.value.trim()) return null;
   try {
-    if (matchesRule(parseRule(rule), login.input.value)) return null;
+    const catalog = rules.map((r) => parseRule(r));
+    const wanted = parseDomainRules(login.input.value);
+    const stray = wanted.filter((w) => !matchesAnyRule(catalog, w.origin));
+    if (!stray.length) return null;
+    return `The CSV group "${state?.groupName ?? 'this group'}" authorizes ${rules.join(', ')}, so its profile cannot cover ${stray.map((r) => r.origin).join(', ')}. Add that domain to the group in Import CSV, or create a new group for it.`;
   } catch {
     return null;
   }
-  return `The CSV group "${state?.groupName ?? 'this group'}" is bound to ${rule}, so its profile can only fill that site. To set up another website, open Import CSV and use Create new group with this domain, or re-import this group with Wipe & Replace.`;
+}
+const tabChoices = el('div', 'tab-choices stack');
+tabChoices.hidden = true;
+function detectFailed(error: unknown) {
+  const catalogRule = state?.rules.join(', ');
+  const reason = error instanceof Error ? error.message : 'The login page could not be read.';
+  message(
+    profileStatus,
+    catalogRule
+      ? `${reason} Open ${catalogRule} in another tab, leave it on the sign-in form, then detect again.`
+      : reason,
+    true,
+  );
+}
+/** Marks the clicked action itself as working, not only the status banner. */
+async function withSpinner(target: HTMLButtonElement, action: () => Promise<void>) {
+  const spinner = el('span', 'spinner');
+  spinner.setAttribute('aria-hidden', 'true');
+  target.prepend(spinner);
+  target.classList.add('loading');
+  target.setAttribute('aria-busy', 'true');
+  const started = Date.now();
+  try {
+    await action();
+  } finally {
+    // Reading local tabs takes a few milliseconds, so hold the spinner long
+    // enough to be seen rather than letting it flash and vanish.
+    const remaining = 450 - (Date.now() - started);
+    if (remaining > 0) await new Promise((resolve) => setTimeout(resolve, remaining));
+    spinner.remove();
+    target.classList.remove('loading');
+    target.removeAttribute('aria-busy');
+  }
+}
+function readTab(tabId: number, source: HTMLButtonElement) {
+  void withSpinner(source, () =>
+    mutate(async () => {
+      try {
+        renderDetected(await request<DetectedInput[]>({ type: 'DETECT_FIELDS', tabId }));
+        // The panel carries the outcome, so drop the global pending banner.
+        message(status, '');
+        message(profileStatus, 'Pick a candidate to set the matching method and value.');
+      } catch (error) {
+        detected.replaceChildren();
+        detectFailed(error);
+      }
+    }, 'Reading the login page…'),
+  );
+}
+/** Several tabs of one site share a title, so the path tells them apart. */
+function tabLabel(tab: DetectTab) {
+  let path = '';
+  try {
+    const { pathname } = new URL(tab.url);
+    path = pathname === '/' ? '' : ` · ${pathname}`;
+  } catch {
+    path = '';
+  }
+  return `${tab.title}${path}`.slice(0, 80);
+}
+/** Settings runs in its own tab, so the user names the page to read. */
+function renderTabChoices(tabs: DetectTab[]) {
+  detected.replaceChildren();
+  tabChoices.replaceChildren(el('p', 'field-label', 'Recent tabs on the authorized domain'));
+  const row = el('div', 'presets');
+  for (const tab of tabs) {
+    const choice: HTMLButtonElement = button(
+      tabLabel(tab),
+      () => readTab(tab.id, choice),
+      'preset',
+    );
+    choice.title = tab.url;
+    row.append(choice);
+  }
+  tabChoices.append(row);
+  // A short list reads as a failure unless the filter explains itself.
+  const rules = state?.rules ?? [];
+  if (tabs.length < 3 && rules.length)
+    tabChoices.append(
+      el(
+        'p',
+        'subtle',
+        `Up to three of your most recently used tabs are listed. Only tabs open on ${rules.join(', ')} can be read, so open the login page in another tab to see it here.`,
+      ),
+    );
+  tabChoices.hidden = false;
 }
 const detectButton = button(
   'Detect fields from the login page',
   () => {
-    const catalogRule = state?.rule;
-    let origin: string;
+    let origins: string[];
     try {
-      const url = new URL(login.input.value);
-      origin = `${url.protocol}//${url.hostname}/*`;
+      origins = parseDomainRules(login.input.value).map((r) => {
+        const url = new URL(r.origin);
+        return `${url.protocol}//${url.hostname}/*`;
+      });
     } catch {
       message(profileStatus, 'Enter the authorized login domain first, then detect.', true);
       return;
@@ -542,29 +640,34 @@ const detectButton = button(
       return;
     }
     // Keep the permission request inside the user gesture, before any await.
-    const permission = chrome.permissions.request({ origins: [origin] });
-    void mutate(async () => {
-      if (!(await permission)) {
-        message(profileStatus, 'Website permission was denied, so the page was not read.', true);
-        return;
-      }
-      try {
-        // Settings is its own tab; the background finds the tab already open on
-        // the approved domain, preferring the one settings was opened from.
-        renderDetected(await request<DetectedInput[]>({ type: 'DETECT_FIELDS', tabId: sourceTab }));
-        message(profileStatus, 'Pick a candidate to set the matching method and value.');
-      } catch (error) {
-        detected.replaceChildren();
-        const reason = error instanceof Error ? error.message : 'The login page could not be read.';
-        message(
-          profileStatus,
-          catalogRule
-            ? `${reason} Open ${catalogRule} in another tab, leave it on the sign-in form, then detect again.`
-            : reason,
-          true,
-        );
-      }
-    }, 'Reading the login page…');
+    const permission = chrome.permissions.request({ origins });
+    void withSpinner(detectButton, () =>
+      mutate(async () => {
+        if (!(await permission)) {
+          message(profileStatus, 'Website permission was denied, so the page was not read.', true);
+          return;
+        }
+        try {
+          // Offer the three most recently used tabs already on the approved
+          // domain; the user chooses which one detection reads.
+          const tabs = await request<DetectTab[]>({ type: 'DETECT_TABS' });
+          if (!tabs.length) {
+            tabChoices.replaceChildren();
+            tabChoices.hidden = true;
+            detectFailed(new Error('No open tab is on the approved login domain.'));
+            return;
+          }
+          renderTabChoices(tabs);
+          message(status, '');
+          message(profileStatus, 'Choose the tab to read the login fields from.');
+        } catch (error) {
+          tabChoices.replaceChildren();
+          tabChoices.hidden = true;
+          detected.replaceChildren();
+          detectFailed(error);
+        }
+      }, 'Looking for open tabs…'),
+    );
   },
   'preset accent',
 );
@@ -578,6 +681,7 @@ profileForm.append(
   profileIdentity,
   fieldMatching,
   selectorDefaults,
+  tabChoices,
   detected,
   el(
     'p',
@@ -597,7 +701,9 @@ function routeUrl(route: Route) {
 function populateProfile() {
   const p = state?.profile;
   profileName.input.value = p?.name ?? '';
-  login.input.value = p ? p.login.origin : state?.rule ? new URL(state.rule).origin : '';
+  login.input.value = p
+    ? p.logins.map((l) => l.origin).join(', ')
+    : (state?.rules.join(', ') ?? '');
   usernameMatch.select.value = p?.usernameMatch ?? 'css';
   passwordMatch.select.value = p?.passwordMatch ?? 'css';
   usernameMatch.update();
@@ -762,7 +868,7 @@ async function commit(token: string) {
     );
   }, 'Importing encrypted accounts…');
   if (imported) {
-    if (!login.input.value && state?.rule) login.input.value = new URL(state.rule).origin;
+    if (!login.input.value && state?.rules.length) login.input.value = state.rules.join(', ');
     selectTab('profile', true);
   }
 }
@@ -866,7 +972,7 @@ function updateAccounts() {
   if (query) list.append(el('p', 'mono subtle', `${s.matches} matches of ${s.total} accounts`));
   let origin = '';
   try {
-    origin = s.rule ? new URL(s.rule).origin : '';
+    origin = s.rules[0] ?? '';
   } catch {
     /* The worker validates all rules. */
   }
@@ -930,63 +1036,31 @@ function updateAccounts() {
   } else if (wasVisible && !busy)
     message(status, 'Undo no longer available. The vault changed or the recovery window ended.');
 }
-async function activeSource() {
-  try {
-    if (sourceTab === undefined) throw new Error();
-    const tab = await chrome.tabs.get(sourceTab);
-    if (!tab.url) throw new Error();
-    const url = new URL(tab.url);
-    if (!isAuthorizedScheme(url) || url.username || url.password) throw new Error();
-    return url.origin;
-  } catch {
-    return undefined;
-  }
-}
 function updatePresets() {
   presets.replaceChildren();
   const values = new Set(
-    [state?.rule, state?.profile?.login.origin].filter((v): v is string => !!v),
+    [...(state?.rules ?? []), ...(state?.profile?.logins ?? []).map((l) => l.origin)].filter(
+      (v): v is string => !!v,
+    ),
   );
   for (const value of values)
     presets.append(
       button(
         `+ ${value}`,
         () => {
-          target.input.value = value;
+          // Append rather than replace, so several environments can be built up.
+          const current = target.input.value
+            .split(/[\s,]+/u)
+            .map((part) => part.trim())
+            .filter(Boolean);
+          if (!current.includes(value)) current.push(value);
+          target.input.value = current.join(', ');
           invalidatePreview();
+          updateChangeDomain();
         },
         'preset',
       ),
     );
-  const active = button(
-    '+ Active Tab',
-    async () => {
-      const url = await activeSource();
-      if (url) {
-        target.input.value = url;
-        invalidatePreview();
-        activeHint.textContent = 'URL suggested for review. No permission has been granted.';
-      } else {
-        active.disabled = true;
-        activeHint.textContent =
-          'Open settings from the extension on the target website, or enter the URL.';
-      }
-    },
-    'preset accent',
-  );
-  active.disabled = sourceTab === undefined;
-  presets.append(active);
-  activeHint.textContent =
-    sourceTab === undefined
-      ? 'Open settings from the extension on the target website, or enter the URL.'
-      : '';
-  void activeSource().then((url) => {
-    if (!url) {
-      active.disabled = true;
-      activeHint.textContent =
-        'Open settings from the extension on the target website, or enter the URL.';
-    }
-  });
 }
 profileForm.addEventListener('submit', (event) => {
   event.preventDefault();
@@ -1007,12 +1081,20 @@ profileForm.addEventListener('submit', (event) => {
     message(profileStatus, mismatch, true);
     return;
   }
-  let url: URL;
+  let origins: string[];
   try {
-    if (!state?.rule)
+    if (!state?.rules.length)
       throw new Error('Import accounts with an authorized URL rule before saving a profile.');
-    validateProfile(profile, parseRule(state.rule), 1, state.profile);
-    url = new URL(profile.loginUrl);
+    validateProfile(
+      profile,
+      state.rules.map((r) => parseRule(r)),
+      1,
+      state.profile,
+    );
+    origins = parseDomainRules(profile.loginUrl).map((r) => {
+      const url = new URL(r.origin);
+      return `${url.protocol}//${url.hostname}/*`;
+    });
   } catch (error) {
     message(
       profileStatus,
@@ -1036,9 +1118,7 @@ profileForm.addEventListener('submit', (event) => {
     return;
   }
   // Keep the permission request directly in the user gesture, before any await.
-  const permission = chrome.permissions.request({
-    origins: [`${url.protocol}//${url.hostname}/*`],
-  });
+  const permission = chrome.permissions.request({ origins });
   void mutate(async () => {
     if (!(await permission)) {
       message(
@@ -1095,7 +1175,7 @@ function render() {
       () => busy,
     ),
   );
-  footer.replaceChildren();
+  footer.replaceChildren(versionFooter());
   if (s.migrationRequired) {
     tabs.hidden = true;
     mounted = false;
@@ -1117,9 +1197,8 @@ function render() {
   tabs.hidden = false;
   if (!mounted) {
     groupName.input.value = s.groupName ?? 'Imported accounts';
-    target.input.value = s.rule ?? '';
+    target.input.value = s.rules.join(', ');
     populateProfile();
-    updateChangeDomain();
     const security = el('details', 'settings-help local-settings');
     security.append(
       el('summary', '', 'Local data & reset'),
@@ -1136,8 +1215,11 @@ function render() {
     if (!tabButtons.get(activeTab)?.hasAttribute('aria-selected')) activeTab = tabFromHash();
     selectTab(activeTab);
     mounted = true;
-    updatePresets();
   }
+  // These follow the group's current rules, so they must refresh on every
+  // render, not only on first mount.
+  updatePresets();
+  updateChangeDomain();
   updateAccounts();
   footer.append(
     el(

@@ -15,7 +15,7 @@ describe('accepted limits and first rejected sizes', () => {
     const planned = planImport(
       emptyVault(),
       parsed,
-      parseRule('https://qa.example.test/*'),
+      [parseRule('https://qa.example.test/*')],
       'merge',
     );
     expect(planned.payload.accounts.length).toBe(10_000);
@@ -60,7 +60,7 @@ describe('accepted limits and first rejected sizes', () => {
     const payload = planImport(
       emptyVault(),
       parseCsv(encode(`${header},notes\nA,test@example.test,fixture,x`)),
-      rule,
+      [rule],
       'replace',
     ).payload;
     const salt = randomSalt();

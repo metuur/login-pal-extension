@@ -6,12 +6,14 @@ import type {
   ContentContext,
   ContentRequest,
   DetectedInput,
+  DetectTab,
   Envelope,
   FillResult,
   ImportPreview,
   LoginProfile,
   ProfileHistory,
   Reply,
+  Route,
   VaultPayload,
 } from '../shared/types';
 import {
@@ -24,10 +26,12 @@ import {
 } from '../domain/crypto';
 import {
   parseDomainRule,
+  parseDomainRules,
   formatRule,
   matchesRule,
+  matchesAnyRule,
   matchesRoute,
-  matchesOrigin,
+  matchesAnyOrigin,
   validateProfile,
   isAuthorizedPageUrl,
 } from '../domain/rules';
@@ -40,7 +44,7 @@ const empty = (): VaultPayload => ({
   schemaVersion: 1,
   revision: 0,
   snapshotRevision: 0,
-  catalogRule: null,
+  catalogRules: [],
   catalogRuleRevision: 0,
   accounts: [],
   history: {},
@@ -59,6 +63,22 @@ type Undo = {
 type Session = { key: string; attempts: Attempt[]; undo: Undo | null };
 type Preview = { public: ImportPreview; payload: VaultPayload; revision: number };
 // @spec R-1.1..R-1.9, R-3.1..R-3.6: worker owns the encrypted vault and session.
+/**
+ * Profiles are stored outside the encrypted vault, so they need their own
+ * migration: pre-multi-environment records carry a single `login` route.
+ */
+function migrateProfile(stored: unknown): LoginProfile | null {
+  if (!stored || typeof stored !== 'object') return null;
+  const record = stored as LoginProfile & { login?: Route };
+  if (!Array.isArray(record.logins)) {
+    if (!record.login) return null;
+    record.logins = [record.login];
+  }
+  delete record.login;
+  return record.logins.length ? record : null;
+}
+/** The popup shows only the handful of accounts the user actually alternates between. */
+const RECENT_LIMIT = 2;
 const ACCOUNT_NOT_IN_GROUP = 'That account is not in the selected CSV group.';
 const DETECT_OFF_DOMAIN = 'Open the imported catalog domain in that tab, then detect again.';
 const DETECT_NO_TAB = 'No open tab is on the approved login domain.';
@@ -72,7 +92,7 @@ const SAFE_ERRORS = new Set<string>([
   'Choose a supported import mode.',
   'Use Wipe & Replace to change the catalog URL rule.',
   'The resulting catalog exceeds 10,000 accounts.',
-  'Enter a valid authorized HTTPS URL.',
+  'Enter a valid authorized http:// or https:// URL.',
   'Login URL must match the imported catalog rule.',
   'Login and success URLs must share one origin.',
   'Choose a supported success condition.',
@@ -136,8 +156,8 @@ export class AssistantService {
   ownsAttempt(token?: string, tabId?: number) {
     return !!this.session?.attempts.some((a) => (token ? a.token === token : a.tabId === tabId));
   }
-  authorizedHost() {
-    return this.profile ? this.host(this.profile) : null;
+  authorizedHosts(): string[] {
+    return this.profile ? this.hosts(this.profile) : [];
   }
 
   private async initialize() {
@@ -150,7 +170,7 @@ export class AssistantService {
       chrome.storage.session.get(this.sessionKey),
     ]);
     this.envelope = (local.vault as Envelope | undefined) ?? null;
-    this.profile = (local.profile as LoginProfile | undefined) ?? null;
+    this.profile = migrateProfile(local.profile);
     const previous = temporary[this.sessionKey] as Session | undefined;
     const key = typeof local.catalogKey === 'string' ? local.catalogKey : previous?.key;
     if (this.envelope && key) {
@@ -301,12 +321,12 @@ export class AssistantService {
     const authorized = !!(
       this.session &&
       this.profile &&
-      this.payload?.catalogRule &&
+      this.payload?.catalogRules.length &&
       this.profile.approvedCatalogRuleRevision === this.payload.catalogRuleRevision &&
       tab?.url &&
-      matchesRule(this.payload.catalogRule, tab.url) &&
-      matchesOrigin(this.profile.login, tab.url) &&
-      (await chrome.permissions.contains({ origins: [this.host(this.profile)] }))
+      matchesAnyRule(this.payload.catalogRules, tab.url) &&
+      matchesAnyOrigin(this.profile.logins, tab.url) &&
+      (await chrome.permissions.contains({ origins: this.hosts(this.profile) }))
     );
     if (generation !== this.generation) return this.state(command);
     const last = h?.lastSuccessfulAccountId ? byId(h.lastSuccessfulAccountId) : undefined;
@@ -315,7 +335,7 @@ export class AssistantService {
       initialized: !!this.envelope,
       migrationRequired: !this.session,
       profile: this.profile,
-      rule: this.payload?.catalogRule ? this.payload.catalogRule.origin : null,
+      rules: (this.payload?.catalogRules ?? []).map((r) => r.origin),
       total: accounts.length,
       matches: result.matches,
       page: result.page,
@@ -361,9 +381,9 @@ export class AssistantService {
       });
       if (registered.length)
         await chrome.scripting.unregisterContentScripts({ ids: [this.registration] });
-      const oldHost = this.authorizedHost();
+      const oldHosts = this.authorizedHosts();
       this.profile = null;
-      if (oldHost) await this.removeHost(oldHost);
+      for (const host of oldHosts) await this.removeHost(host);
       await this.removeLocal(['vault', 'profile', 'catalogKey']);
       this.envelope = null;
       this.profile = null;
@@ -383,14 +403,25 @@ export class AssistantService {
       return account.password;
     }
     if (command.type === 'DETECT_FIELDS') return this.detect(command.tabId);
+    if (command.type === 'DETECT_TABS') return this.detectTabs();
     // Re-point an existing group at another site without re-importing its CSV.
     // Bumping the revision leaves the saved profile inert until the user
     // re-authorizes it against the new domain.
     if (command.type === 'SET_CATALOG_RULE') {
-      const rule = parseDomainRule(command.rule);
-      if (this.payload!.catalogRule?.origin === rule.origin) throw new Error(RULE_UNCHANGED);
+      const rules = parseDomainRules(command.rule);
+      const current = this.payload!.catalogRules.map((r) => r.origin)
+        .sort()
+        .join(' ');
+      if (
+        current ===
+        rules
+          .map((r) => r.origin)
+          .sort()
+          .join(' ')
+      )
+        throw new Error(RULE_UNCHANGED);
       const next = structuredClone(this.payload!);
-      next.catalogRule = rule;
+      next.catalogRules = rules;
       next.catalogRuleRevision = this.payload!.catalogRuleRevision + 1;
       await this.write(next);
       this.notify();
@@ -406,8 +437,8 @@ export class AssistantService {
       )
         throw new Error();
       const parsed = parseCsv(new Uint8Array(command.bytes));
-      const rule = parseDomainRule(command.rule);
-      const planned = planImport(this.payload!, parsed, rule, command.mode);
+      const rules = parseDomainRules(command.rule);
+      const planned = planImport(this.payload!, parsed, rules, command.mode);
       const preview: ImportPreview = {
         ...planned.counts,
         token: crypto.randomUUID(),
@@ -415,7 +446,7 @@ export class AssistantService {
         valid: parsed.valid,
         invalid: parsed.invalid,
         diagnostics: parsed.diagnostics,
-        rule: formatRule(rule),
+        rule: rules.map(formatRule).join(', '),
         mode: command.mode,
       };
       this.preview = {
@@ -449,7 +480,7 @@ export class AssistantService {
         sealed,
         expiresAt: Date.now() + 30_000,
         revision: next.snapshotRevision,
-        rule: next.catalogRule ? formatRule(next.catalogRule) : null,
+        rule: next.catalogRules.map(formatRule).join(' ') || null,
       };
       await this.persistSession();
       this.notify();
@@ -461,7 +492,7 @@ export class AssistantService {
         !undo ||
         undo.expiresAt <= Date.now() ||
         undo.revision !== this.payload!.snapshotRevision ||
-        undo.rule !== (this.payload!.catalogRule ? formatRule(this.payload!.catalogRule) : null)
+        undo.rule !== (this.payload!.catalogRules.map(formatRule).join(' ') || null)
       )
         throw new Error();
       const generation = this.generation;
@@ -489,7 +520,7 @@ export class AssistantService {
         try {
           const url = new URL(command.profile.loginUrl);
           const candidate = `${url.protocol}//${url.hostname}/*`;
-          if (candidate !== this.authorizedHost()) await this.removeHost(candidate);
+          if (!this.authorizedHosts().includes(candidate)) await this.removeHost(candidate);
         } catch {
           /* Invalid profile input has no usable host grant. */
         }
@@ -500,12 +531,12 @@ export class AssistantService {
           await chrome.scripting.unregisterContentScripts({ ids: [this.registration] });
         if (
           this.profile &&
-          (await chrome.permissions.contains({ origins: [this.host(this.profile)] }))
+          (await chrome.permissions.contains({ origins: this.hosts(this.profile) }))
         )
           await chrome.scripting.registerContentScripts([
             {
               id: this.registration,
-              matches: [this.host(this.profile)],
+              matches: this.hosts(this.profile),
               js: ['content.js'],
               allFrames: false,
               runAt: 'document_idle',
@@ -533,18 +564,21 @@ export class AssistantService {
       }
     }
   }
-  private host(profile: LoginProfile) {
-    return `${new URL(profile.login.origin).protocol}//${new URL(profile.login.origin).hostname}/*`;
+  /** One host pattern per authorized environment. */
+  private hosts(profile: LoginProfile) {
+    return profile.logins.map(
+      (l) => `${new URL(l.origin).protocol}//${new URL(l.origin).hostname}/*`,
+    );
   }
   private async saveProfile(input: Extract<Command, { type: 'SAVE_PROFILE' }>['profile']) {
-    if (!this.payload!.catalogRule) throw new Error();
+    if (!this.payload!.catalogRules.length) throw new Error();
     const next = validateProfile(
       input,
-      this.payload!.catalogRule,
+      this.payload!.catalogRules,
       this.payload!.catalogRuleRevision,
       this.profile ?? undefined,
     );
-    if (!(await chrome.permissions.contains({ origins: [this.host(next)] }))) throw new Error();
+    if (!(await chrome.permissions.contains({ origins: this.hosts(next) }))) throw new Error();
     const generation = this.generation;
     const previous = this.profile;
     this.session!.attempts = [];
@@ -559,7 +593,7 @@ export class AssistantService {
     await chrome.scripting.registerContentScripts([
       {
         id: this.registration,
-        matches: [this.host(next)],
+        matches: this.hosts(next),
         js: ['content.js'],
         allFrames: false,
         runAt: 'document_idle',
@@ -571,8 +605,9 @@ export class AssistantService {
     await this.saveLocal({ profile: next });
     this.assert(generation);
     this.profile = next;
-    if (previous && this.host(previous) !== this.host(next))
-      await this.removeHost(this.host(previous));
+    if (previous)
+      for (const host of this.hosts(previous))
+        if (!this.hosts(next).includes(host)) await this.removeHost(host);
     this.notify();
   }
   private async targetTab(id?: number) {
@@ -594,22 +629,39 @@ export class AssistantService {
     return { documentId: top.documentId, url: top.result };
   }
   /**
-   * Reports identifying attributes of the login inputs on the source tab so the
+   * Lists the recently used tabs already on the approved catalog domain so the
+   * user picks which page detection reads instead of the worker guessing. Tab
+   * titles and URLs are only readable where the user granted that host.
+   */
+  private async detectTabs(): Promise<DetectTab[]> {
+    const rules = this.payload!.catalogRules;
+    if (!rules.length) throw new Error(DETECT_OFF_DOMAIN);
+    const open = await chrome.tabs.query({});
+    return open
+      .filter((t) => t.id !== undefined && t.url && matchesAnyRule(rules, t.url))
+      .sort((a, b) => (b.lastAccessed ?? 0) - (a.lastAccessed ?? 0))
+      .slice(0, 3)
+      .map((t) => ({ id: t.id!, title: t.title?.trim() || t.url!, url: t.url! }));
+  }
+  /**
+   * Reports identifying attributes of the login inputs on the chosen tab so the
    * user can configure matching without DevTools. Scoped to the imported
    * catalog domain; never reads or returns input values.
    */
   private async detect(tabId?: number): Promise<DetectedInput[]> {
-    const rule = this.payload!.catalogRule;
-    if (!rule) throw new Error(DETECT_OFF_DOMAIN);
+    const rules = this.payload!.catalogRules;
+    if (!rules.length) throw new Error(DETECT_OFF_DOMAIN);
     // Settings runs in its own tab, so the active tab is Settings itself. Look
     // for any open tab already on the approved catalog domain instead.
     const open = await chrome.tabs.query({});
-    const candidates = open.filter((t) => t.id !== undefined && t.url && matchesRule(rule, t.url));
+    const candidates = open.filter(
+      (t) => t.id !== undefined && t.url && matchesAnyRule(rules, t.url),
+    );
     const tab =
       candidates.find((t) => t.id === tabId) ?? candidates.find((t) => t.active) ?? candidates[0];
     if (!tab) throw new Error(DETECT_NO_TAB);
     const current = await this.probe(tab.id!);
-    if (!matchesRule(rule, current.url)) throw new Error(DETECT_OFF_DOMAIN);
+    if (!matchesAnyRule(rules, current.url)) throw new Error(DETECT_OFF_DOMAIN);
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id!, documentIds: [current.documentId] },
       func: () =>
@@ -645,20 +697,20 @@ export class AssistantService {
     const generation = this.generation;
     const authorization = this.authorizationRevision;
     const profile = this.profile;
-    const rule = this.payload!.catalogRule;
+    const rules = this.payload!.catalogRules;
     const account = this.payload!.accounts.find((a) => a.accountId === accountId);
     if (
       !account ||
       !profile ||
-      !rule ||
+      !rules.length ||
       profile.approvedCatalogRuleRevision !== this.payload!.catalogRuleRevision ||
-      !(await chrome.permissions.contains({ origins: [this.host(profile)] }))
+      !(await chrome.permissions.contains({ origins: this.hosts(profile) }))
     )
       throw new Error();
     const tab = await this.targetTab(tabId);
     if (!tab.active) throw new Error();
     const current = await this.probe(tab.id!);
-    if (!matchesRule(rule, current.url) || !matchesOrigin(profile.login, current.url))
+    if (!matchesAnyRule(rules, current.url) || !matchesAnyOrigin(profile.logins, current.url))
       throw new Error();
     await chrome.scripting.executeScript({
       target: { tabId: tab.id!, documentIds: [current.documentId] },
@@ -689,7 +741,7 @@ export class AssistantService {
     this.assert(generation);
     if (
       authorization !== this.authorizationRevision ||
-      !(await chrome.permissions.contains({ origins: [this.host(profile)] }))
+      !(await chrome.permissions.contains({ origins: this.hosts(profile) }))
     ) {
       await this.cancelTab(tab.id!);
       throw new Error();
@@ -727,7 +779,7 @@ export class AssistantService {
     const h = (next.history[profile.id] ??= history());
     h.recentAccountIds = [accountId, ...h.recentAccountIds.filter((id) => id !== accountId)].slice(
       0,
-      10,
+      RECENT_LIMIT,
     );
     await this.write(next);
   }
@@ -740,7 +792,7 @@ export class AssistantService {
     this.assert();
     const generation = this.generation;
     const profile = this.profile;
-    if (!(await chrome.permissions.contains({ origins: [this.host(profile)] })))
+    if (!(await chrome.permissions.contains({ origins: this.hosts(profile) })))
       return { profile: null, attempt: null };
     const tabId = sender.tab!.id!;
     const current = await this.probe(tabId);
@@ -749,7 +801,7 @@ export class AssistantService {
     let attempt = this.session!.attempts.find((a) => a.tabId === tabId);
     const success = profile.success;
     const routeAllowed =
-      matchesOrigin(profile.login, current.url) ||
+      matchesAnyOrigin(profile.logins, current.url) ||
       !!(success && matchesRoute(success.route, current.url));
     if (
       attempt &&
@@ -832,7 +884,7 @@ export class AssistantService {
     await this.ready;
     if (
       this.profile &&
-      !matchesOrigin(this.profile.login, url) &&
+      !matchesAnyOrigin(this.profile.logins, url) &&
       !(this.profile.success && matchesRoute(this.profile.success.route, url))
     )
       await this.cancelTab(tabId);

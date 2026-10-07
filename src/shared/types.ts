@@ -20,7 +20,8 @@ export interface LoginProfile {
   revision: number;
   approvedCatalogRuleRevision: number;
   name: string;
-  login: Route;
+  /** Every authorized origin shares one set of field selectors. */
+  logins: Route[];
   usernameSelector: string;
   passwordSelector: string;
   usernameMatch?: FieldMatch;
@@ -48,7 +49,10 @@ export interface VaultPayload {
   schemaVersion: 1;
   revision: number;
   snapshotRevision: number;
-  catalogRule: CatalogRule | null;
+  /** Legacy single-domain form. Migrated into catalogRules on read. */
+  catalogRule?: CatalogRule | null;
+  /** Origins this group's accounts may be filled on, e.g. prod and staging. */
+  catalogRules: CatalogRule[];
   catalogRuleRevision: number;
   accounts: Account[];
   history: Record<string, ProfileHistory>;
@@ -111,7 +115,7 @@ export interface AppState {
   initialized: boolean;
   migrationRequired: boolean;
   profile: LoginProfile | null;
-  rule: string | null;
+  rules: string[];
   total: number;
   matches: number;
   page: number;
@@ -138,6 +142,7 @@ export type Command =
   | { type: 'DELETE' | 'FILL'; accountId: string; tabId?: number }
   | { type: 'COPY_PASSWORD'; accountId: string }
   | { type: 'DETECT_FIELDS'; tabId?: number }
+  | { type: 'DETECT_TABS' }
   | { type: 'SET_CATALOG_RULE'; rule: string };
 export type Reply<T = unknown> = { ok: true; data: T } | { ok: false; error: string };
 export type ContentRequest =
@@ -156,6 +161,12 @@ export type ContentInstruction =
       attempt?: Attempt;
     }
   | { type: 'TRACK'; attempt: Attempt; profile: LoginProfile };
+/** A recently used tab on an authorized domain, offered as a detection source. */
+export interface DetectTab {
+  id: number;
+  title: string;
+  url: string;
+}
 /** Identifying attributes only. Detection never reports input values. */
 export interface DetectedInput {
   password: boolean;

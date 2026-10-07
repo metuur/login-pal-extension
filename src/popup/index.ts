@@ -7,7 +7,6 @@ import {
   button,
   copyActions,
   el,
-  featuredHeading,
   icon,
   iconButton,
   liveRegion,
@@ -56,24 +55,58 @@ const strip = el('div', 'profile-strip');
 header.append(strip);
 const footer = el('footer', 'app-footer');
 const groupBar = el('div', 'group-bar');
-app.replaceChildren(header, groupBar, status, body, footer, versionFooter());
+app.replaceChildren(header, groupBar, status, body, footer);
 const search = searchBox((value) => {
   query = value;
   page = 0;
   void refresh(true);
 });
 slashSearch(search.input, () => !!state && !state.migrationRequired);
-async function fill(account: AccountSummary) {
+const FILL_FEEDBACK_MS = 2500;
+type FillSection = 'recent' | 'all';
+let fillFeedback: { accountId: string; section: FillSection; ok: boolean } | undefined;
+let fillFeedbackTimer: ReturnType<typeof setTimeout> | undefined;
+/**
+ * A fill triggers a re-render, so the outcome is held in state and re-applied
+ * to the row's button after each render instead of being shown as a banner.
+ */
+function markFill(accountId: string, section: FillSection, ok: boolean) {
+  fillFeedback = { accountId, section, ok };
+  clearTimeout(fillFeedbackTimer);
+  fillFeedbackTimer = setTimeout(() => {
+    fillFeedback = undefined;
+    render();
+  }, FILL_FEEDBACK_MS);
+}
+function applyFillFeedback() {
+  if (!fillFeedback) return;
+  const outcome = fillFeedback;
+  // The same account appears under both Recent and All accounts; mark only the
+  // row the user actually used.
+  const button = body.querySelector<HTMLButtonElement>(
+    `.account-row[data-account="${CSS.escape(outcome.accountId)}"][data-section="${outcome.section}"] .select-button`,
+  );
+  if (!button) return;
+  button.classList.add(outcome.ok ? 'fill-ok' : 'fill-fail');
+  button.title = outcome.ok
+    ? 'Fields filled — click Login on the website.'
+    : 'Could not fill this page.';
+  button.replaceChildren(icon(outcome.ok ? 'check' : 'cross'));
+}
+async function fill(account: AccountSummary, section: FillSection = 'recent') {
   if (busy) return;
   busy = true;
   body.querySelectorAll('button').forEach((b) => (b.disabled = true));
   message(status, 'Checking this page and filling the selected account…');
   try {
     await request({ type: 'FILL', accountId: account.accountId, tabId });
+    markFill(account.accountId, section, true);
+    message(status, '');
     await refresh();
-    message(status, 'Fields filled — click Login on the website.');
   } catch (error) {
+    markFill(account.accountId, section, false);
     await refresh();
+    // Failures still need an explanation; success does not.
     message(status, error instanceof Error ? error.message : 'Could not fill this page.', true);
   } finally {
     busy = false;
@@ -104,7 +137,7 @@ function render(resultsOnly = false) {
   if (!state) return;
   const s = state;
   const profileLabel = s.profile
-    ? `${s.profile.name} (${new URL(s.profile.login.origin).host})`
+    ? `${s.profile.name} (${s.profile.logins.map((l) => new URL(l.origin).host).join(', ')})`
     : 'No login profile configured';
   const profileName = el('span', 'mono truncate', profileLabel);
   profileName.title = profileLabel;
@@ -127,7 +160,7 @@ function render(resultsOnly = false) {
       () => busy,
     ),
   );
-  footer.replaceChildren();
+  footer.replaceChildren(versionFooter());
   if (s.migrationRequired) {
     body.replaceChildren(migrationForm(refresh));
     footer.append(
@@ -136,28 +169,32 @@ function render(resultsOnly = false) {
     );
     return;
   }
-  footer.append(
-    el('span', 'mono subtle', `${s.total.toLocaleString()} imported accounts`),
-    button('Manage accounts', () => openOptions(), 'text-button'),
-  );
+  // The imported total lives next to the All accounts heading, leaving the
+  // footer strip to the action and the credit on one line.
+  footer.append(button('Manage accounts', () => openOptions(), 'text-button'));
   const oldResults = body.querySelector('#results');
   const results = el('div', 'stack');
   results.id = 'results';
   if (!query && s.recent.length) {
     results.append(sectionLabel('Recent accounts', s.recent.length));
-    s.recent.forEach((a) =>
-      results.append(
-        accountRow(
-          a,
-          () => fill(a),
-          false,
-          '',
-          () => select(a),
-        ),
-      ),
-    );
+    s.recent.forEach((a) => {
+      const row = accountRow(
+        a,
+        () => fill(a, 'recent'),
+        false,
+        '',
+        () => select(a),
+      );
+      row.dataset.section = 'recent';
+      results.append(row);
+    });
   }
-  results.append(sectionLabel(query ? 'Search results' : 'All accounts', s.matches));
+  const allLabel = sectionLabel(query ? 'Search results' : 'All accounts', s.matches);
+  allLabel.insertBefore(
+    el('span', 'mono subtle', `${s.total.toLocaleString()} imported`),
+    allLabel.lastChild,
+  );
+  results.append(allLabel);
   if (!s.accounts.length)
     results.append(
       el(
@@ -168,17 +205,17 @@ function render(resultsOnly = false) {
           : 'No accounts yet. Import a CSV in Settings to get started.',
       ),
     );
-  s.accounts.forEach((a) =>
-    results.append(
-      accountRow(
-        a,
-        () => fill(a),
-        false,
-        '',
-        () => select(a),
-      ),
-    ),
-  );
+  s.accounts.forEach((a) => {
+    const row = accountRow(
+      a,
+      () => fill(a, 'all'),
+      false,
+      '',
+      () => select(a),
+    );
+    row.dataset.section = 'all';
+    results.append(row);
+  });
   if (s.matches > 50)
     results.append(
       pagination(s, (p) => {
@@ -188,6 +225,7 @@ function render(resultsOnly = false) {
     );
   if (resultsOnly && oldResults) {
     oldResults.replaceWith(results);
+    applyFillFeedback();
     return;
   }
   body.replaceChildren();
@@ -205,36 +243,11 @@ function render(resultsOnly = false) {
     );
     body.append(note);
   }
-  body.append(sectionLabel('Last successful account'));
-  if (s.lastSuccessful) {
-    const account = s.lastSuccessful;
-    const featured = el('article', 'featured stack');
-    featured.append(
-      featuredHeading(account),
-      el('span', 'mono subtle wrap', `ID: ${account.accountId}`),
-      el('div', 'credential mono', account.username),
-    );
-    const fillButton = button(`↪ Autofill ${account.username}`, () => fill(account), 'primary');
-    fillButton.disabled = !s.authorized;
-    featured.append(fillButton);
-    if (s.lastSuccessfulAt) {
-      const date = new Date(s.lastSuccessfulAt);
-      const stamp = el(
-        'time',
-        'subtle italic',
-        `Last successful login at ${date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`,
-      );
-      stamp.dateTime = date.toISOString();
-      stamp.title = date.toLocaleString();
-      stamp.setAttribute('aria-label', `Last successful login: ${date.toLocaleString()}`);
-      featured.append(stamp);
-    }
-    body.append(featured);
-  } else body.append(el('div', 'empty compact', 'No confirmed successful login yet.'));
   const label = sectionLabel('Search accounts');
   label.append(el('span', '', 'Press / to focus'));
   body.append(label, search.wrap, results);
   search.input.value = query;
+  applyFillFeedback();
 }
 async function refresh(resultsOnly = false) {
   const current = ++sequence;

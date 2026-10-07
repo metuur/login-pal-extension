@@ -1,4 +1,4 @@
-import { matchesOrigin } from '../domain/rules';
+import { matchesAnyOrigin } from '../domain/rules';
 import type { FieldMatch, FillResult, LoginProfile, Route } from '../shared/types';
 
 export function routeMatches(route: Route, href: string): boolean {
@@ -87,7 +87,7 @@ export function loginFields(
   profile: LoginProfile,
   doc: Document,
 ): [HTMLInputElement, HTMLInputElement] {
-  if (!matchesOrigin(profile.login, doc.location.href))
+  if (!matchesAnyOrigin(profile.logins, doc.location.href))
     throw new Error('The current page is not on the authorized login domain.');
   const username = candidates(doc, profile.usernameMatch ?? 'css', profile.usernameSelector, false),
     password = candidates(doc, profile.passwordMatch ?? 'css', profile.passwordSelector, true);
@@ -109,7 +109,9 @@ export function loginFields(
       throw new Error('Both login fields must be visible and writable.');
     if (
       field.form?.hasAttribute('action') &&
-      new URL(field.form.action, doc.location.href).origin !== profile.login.origin
+      !profile.logins.some(
+        (l) => l.origin === new URL(field.form!.action, doc.location.href).origin,
+      )
     )
       throw new Error('The form sends data to a different origin.');
   }

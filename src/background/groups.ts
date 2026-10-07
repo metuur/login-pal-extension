@@ -22,7 +22,7 @@ export class GroupService {
   }
   private create(id: string) {
     return new AssistantService(id, async (host) => {
-      if (![...this.services.values()].some((service) => service.authorizedHost() === host))
+      if (![...this.services.values()].some((service) => service.authorizedHosts().includes(host)))
         await chrome.permissions.remove({ origins: [host] });
     });
   }

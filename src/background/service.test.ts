@@ -456,9 +456,9 @@ describe('named CSV groups', () => {
     ).toBe(false);
 
     expect((await run(service, { type: 'STATE', groupId: group.id })).total).toBe(1);
-    expect((await run(service, { type: 'STATE', groupId: group.id })).rule).toBe(
+    expect((await run(service, { type: 'STATE', groupId: group.id })).rules).toEqual([
       'https://performance.example.com',
-    );
+    ]);
     await ingest(service, 'default', ['C'], 'replace');
     expect((await run(service, { type: 'STATE', groupId: group.id })).accounts[0].accountId).toBe(
       'A',
@@ -531,5 +531,32 @@ describe('named CSV groups', () => {
     expect((await run(service, { type: 'STATE', groupId: group.id })).groupName).toBe(
       'QA Platform X',
     );
+  });
+});
+
+describe('migrating records written before multi-environment support', () => {
+  it('reads a stored profile that still carries a single login route', async () => {
+    local.profile = {
+      id: 'legacy',
+      revision: 2,
+      approvedCatalogRuleRevision: 1,
+      name: 'legacy',
+      login: { origin: 'https://legacy.example.test', pathname: '/', hash: '' },
+      usernameSelector: '#user',
+      passwordSelector: '#pass',
+      usernameMatch: 'css',
+      passwordMatch: 'css',
+    };
+    const service = await setup();
+    const state = await command<AppState>(service, { type: 'STATE' });
+    expect(state.profile?.logins.map((l) => l.origin)).toEqual(['https://legacy.example.test']);
+    expect(state.profile && 'login' in state.profile).toBe(false);
+  });
+  it('discards a stored profile with no usable origin instead of breaking state', async () => {
+    local.profile = { id: 'broken', revision: 1, name: 'broken' };
+    const service = await setup();
+    const state = await command<AppState>(service, { type: 'STATE' });
+    expect(state.profile).toBeNull();
+    expect(state.rules).toEqual([]);
   });
 });
