@@ -80,6 +80,39 @@
                   <span class="doc-toggle" aria-hidden="true">+</span>
                 </summary>
                 <div class="doc-body">
+                  <figure class="guide-figure" aria-labelledby="setup-figure-caption">
+                    <div class="figure-label">
+                      <span>01 / THE SETUP FLOW</span><span>ILLUSTRATION</span>
+                    </div>
+                    <div class="setup-illustration">
+                      <div class="illustration-node">
+                        <div class="mini-file" aria-hidden="true">
+                          <span>CSV</span><i></i><i></i><i></i>
+                        </div>
+                        <strong>Bring your CSV</strong><small>Synthetic test accounts</small>
+                      </div>
+                      <span class="diagram-arrow" aria-hidden="true">→</span>
+                      <div class="illustration-node">
+                        <div class="mini-catalog" aria-hidden="true">
+                          <span>QA workspace</span><i><b>AM</b><em></em></i
+                          ><i><b>JC</b><em></em></i>
+                        </div>
+                        <strong>Review your group</strong><small>Verify, then confirm import</small>
+                      </div>
+                      <span class="diagram-arrow" aria-hidden="true">→</span>
+                      <div class="illustration-node">
+                        <div class="mini-profile" aria-hidden="true">
+                          <span>◎</span><i>qa.example.com</i><b>Username + password</b>
+                        </div>
+                        <strong>Set up the login</strong
+                        ><small>Match fields, save &amp; authorize</small>
+                      </div>
+                    </div>
+                    <figcaption id="setup-figure-caption">
+                      From a local file to a ready-to-use group. Importing accounts and authorizing
+                      a website are separate steps.
+                    </figcaption>
+                  </figure>
                   <p>
                     Choose a group at the top of Settings. Each group keeps its own accounts,
                     authorized domains, login profile, and history. The popup’s group picker chooses
@@ -132,6 +165,39 @@
                   <span class="doc-toggle" aria-hidden="true">+</span>
                 </summary>
                 <div class="doc-body">
+                  <figure class="guide-figure" aria-labelledby="domain-figure-caption">
+                    <div class="figure-label">
+                      <span>02 / ANATOMY OF AN ORIGIN</span><span>ILLUSTRATION</span>
+                    </div>
+                    <div class="origin-illustration">
+                      <div class="origin-piece"><code>https://</code><span>SCHEME</span></div>
+                      <div class="origin-piece">
+                        <code>qa.example.com</code><span>HOSTNAME</span>
+                      </div>
+                      <div class="origin-piece"><code>:8443</code><span>PORT</span></div>
+                      <div class="origin-piece origin-path">
+                        <code>/login</code><span>PATH</span>
+                      </div>
+                    </div>
+                    <div class="origin-key">
+                      <span><i></i> These three must match exactly</span
+                      ><span><i></i> Path does not limit authorization</span>
+                    </div>
+                    <div class="origin-comparisons">
+                      <div>
+                        <span class="comparison-pass">✓ Same origin</span
+                        ><code>https://qa.example.com:8443/dashboard</code>
+                      </div>
+                      <div>
+                        <span class="comparison-change">↗ Different origin</span
+                        ><code>https://qa.example.com:9443/login</code>
+                      </div>
+                    </div>
+                    <figcaption id="domain-figure-caption">
+                      A different path stays within the same authorized origin. A different port
+                      needs its own authorization.
+                    </figcaption>
+                  </figure>
                   <p>
                     Use a full <code>https://</code> or <code>http://</code> URL. Both schemes are
                     accepted on regular hosts and local development hosts. Prefer HTTPS: HTTP does
@@ -186,6 +252,50 @@
                   <span class="doc-toggle" aria-hidden="true">+</span>
                 </summary>
                 <div class="doc-body">
+                  <figure class="guide-figure" aria-labelledby="detection-figure-caption">
+                    <div class="figure-label">
+                      <span>03 / FROM FORM TO MATCHING RULE</span><span>ILLUSTRATION</span>
+                    </div>
+                    <div class="detection-illustration">
+                      <div class="illustration-shell">
+                        <div class="illustration-window">
+                          <div class="mini-browser-bar">
+                            <i></i><i></i><i></i><span>qa.example.com/login</span>
+                          </div>
+                          <div class="mini-form">
+                            <strong>Welcome back</strong
+                            ><span class="field-annotation">Username <b>01</b></span>
+                            <div class="empty-field">Empty input</div>
+                            <span class="field-annotation">Password <b>02</b></span>
+                            <div class="empty-field">Empty input</div>
+                          </div>
+                        </div>
+                      </div>
+                      <span class="diagram-arrow" aria-hidden="true">→</span>
+                      <div class="detected-rules">
+                        <span class="rules-eyebrow">DETECTED ATTRIBUTES</span>
+                        <div class="detected-rule">
+                          <span>01</span>
+                          <div>
+                            <strong>Username field</strong><small>Match by input ID</small
+                            ><code>email</code>
+                          </div>
+                        </div>
+                        <div class="detected-rule">
+                          <span>02</span>
+                          <div>
+                            <strong>Password field</strong><small>Match by autocomplete</small
+                            ><code>current-password</code>
+                          </div>
+                        </div>
+                        <span class="rules-note">Review → Save &amp; authorize</span>
+                      </div>
+                    </div>
+                    <figcaption id="detection-figure-caption">
+                      Detection reads field identifiers, not the values you type. These example
+                      rules are illustrative; use the attributes detected on your own site.
+                    </figcaption>
+                  </figure>
                   <ol>
                     <li>
                       Open the actual sign-in form in another browser tab. Leave the username and

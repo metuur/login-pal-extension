@@ -24,3 +24,9 @@
 - Verified identical header and footer markup across both pages, cross-page navigation, direct topic URLs, and mobile-menu navigation back to the homepage.
 - Confirmed homepage demo still works and shared JavaScript runs without errors on the documentation page without demo elements.
 - Expanded topics checked at 320, 390, 768, and 1440 pixels with no horizontal overflow. Desktop/mobile documentation screenshots reviewed. Strict TypeScript check passed.
+
+## Documentation illustrations
+
+- Added three captioned, locally rendered HTML/CSS figures for setup flow, origin matching, and field detection. Only synthetic metadata and empty mock inputs appear.
+- Visually reviewed desktop setup/domain illustrations and mobile detection illustration. All three have accessible caption associations.
+- Topic navigation and expanded figures passed at 320, 390, 768, 1024, and 1440 pixels without document overflow or JavaScript errors.
