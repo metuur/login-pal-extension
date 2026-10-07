@@ -66,3 +66,10 @@
 - All stages retain equal panel heights with no horizontal overflow at 320, 375, 768, and 1440 pixels. Desktop and mobile screenshots, intermediate frames, the loop seam, and the reduced-motion version were visually reviewed.
 - Reduced motion retains manual navigation with a short fade and no automatic progression or inner movement. Frozen timestamps now wrap across loop boundaries.
 - Strict TypeScript and formatting checks passed. No browser errors or remote requests observed. Generated browser JavaScript updated; extension runtime unchanged.
+
+## Development login before-and-after scene
+
+- Added an opening development login illustration with three animated notes showing the search for a test account. The final fill scene uses the same development-page frame. There are no editable credential fields or real sign-in actions in either illustration.
+- The loop now contains five 2.5-second scenes (12.5 seconds total). Updated direct scene buttons, fill/back actions, slash-to-search, demo-link entry, and frozen timestamps for the new opening scene.
+- Strict TypeScript and formatting checks passed; CSS parsed successfully. Local JSDOM simulation executed the generated script with animation/visibility APIs stubbed and checked the five-scene loop, pause, animation targets, search, account selection, fill-name transfer, keyboard focus, reduced motion, unique IDs, and frozen positions.
+- Browser rendering was not repeated in this pass: the preview tool blocks local file navigation. Layout and actual animation timing need visual confirmation after a manual preview reload; simulated DOM checks do not establish visual correctness.

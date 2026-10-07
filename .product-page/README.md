@@ -19,11 +19,11 @@ Geist fonts are packaged under the license in `FONT-LICENSE.txt`. Demo names and
 
 ## Hero walkthrough
 
-The hero explains Import → Authorize → Choose → Fill in four 2.5-second stages, looping automatically every 10 seconds. Browser-native motion brings CSV rows into the catalog, confirms field configuration and site approval, highlights the selected account, and illustrates each field filling. Pause, Play, and direct step controls share the same playback state as the detail animations. The picker preserves search and account selection; “Try autofill” carries the selected fictional name into the last stage. The website's Login action remains the user's responsibility.
+The hero shows Before → Import → Authorize → Choose → Fill in five 2.5-second scenes, looping automatically every 12.5 seconds. The opening development login page is interrupted by an old CSV, setup notes, and a team-chat request for a test account. The walkthrough then brings CSV rows into the catalog, confirms field configuration and site approval, highlights the selected account, and returns to the same development login page with illustrative fill indicators. Pause, Play, and direct step controls share the same playback state as the detail animations. The picker preserves search and account selection; “Try autofill” carries the selected fictional name into the last scene. The website's Login action remains the user's responsibility.
 
 Interacting with a panel stops automatic progression. Playback also pauses when the walkthrough leaves the viewport, the browser tab is hidden, or the mobile menu opens. Reduced-motion preferences disable autoplay and movement; manual step changes use a 120ms fade. Inactive stages reserve layout space but are hidden from assistive technology and keyboard focus. Without JavaScript, the original sample picker remains readable.
 
-For deterministic visual review, open `index.html?t=1.8`, `?t=4.3`, `?t=6.8`, or `?t=9.3` to freeze each stage. Times wrap with the loop: `?t=10.3` shows the next cycle's import entrance. `?reduce=1` forces reduced-motion navigation. The walkthrough uses the existing page files and requires no animation library, video, iframe, or remote asset.
+For deterministic visual review, open `index.html?t=1.8`, `?t=4.3`, `?t=6.8`, `?t=9.3`, or `?t=11.8` to freeze each scene. Times wrap with the loop: `?t=12.8` shows the next cycle's opening login page. `?reduce=1` forces reduced-motion navigation. The walkthrough uses the existing page files and requires no animation library, video, iframe, or remote asset. Both development login pages are illustrations, with no editable credential fields or working submission action.
 
 ## Hallmark audit improvements — 2026-10-07
 

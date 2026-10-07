@@ -33,7 +33,7 @@ function setupAccountDemo() {
   fill.addEventListener("click", () => {
     if (selected) {
       demoStatus.textContent = `Demo: ${selected.dataset.name} is ready. In the extension, review \u2192 Autofill \u2192 press the site\u2019s Login button yourself.`;
-      openWorkflowStep?.(3, true);
+      openWorkflowStep?.(4, true);
     }
   });
 }
@@ -67,7 +67,7 @@ document.addEventListener("keydown", (event) => {
   const editing = target instanceof HTMLElement && (target.matches("input, textarea, select") || target.isContentEditable);
   if (search && event.key === "/" && !editing && !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey && !menu.open) {
     event.preventDefault();
-    openWorkflowStep?.(2, true);
+    openWorkflowStep?.(3, true);
     search.focus();
   }
 });
@@ -144,6 +144,30 @@ function setupWorkflowDemo() {
       { opacity: 0, transform: "scaleX(1)", offset: 1 }
     ];
     if (step === 0) {
+      tween(".dev-login-page", rise, 40, 320);
+      tween(
+        ".dev-login-waiting",
+        [
+          { transform: "translateX(0)" },
+          { transform: "translateX(-3px)" },
+          { transform: "translateX(3px)" },
+          { transform: "translateX(0)" }
+        ],
+        300,
+        280
+      );
+      tween(
+        ".hunt-note-inner",
+        [
+          { opacity: 0, transform: "translateY(14px) scale(0.96)" },
+          { opacity: 1, transform: "translateY(0) scale(1)" }
+        ],
+        420,
+        380,
+        260
+      );
+      tween(".chaos-caption", rise, 1380, 320);
+    } else if (step === 1) {
       tween(
         ".csv-icon",
         [
@@ -175,12 +199,12 @@ function setupWorkflowDemo() {
         460
       );
       tween(".flow-group", rise, 1040, 440);
-    } else if (step === 1) {
+    } else if (step === 2) {
       tween(".site-permission > strong", rise, 80);
       tween(".field-progress", fillField, 240, 650, 350);
       tween(".field-mapping b", rise, 650, 280, 350);
       tween(".permission-approved", rise, 1250, 400);
-    } else if (step === 2) {
+    } else if (step === 3) {
       tween(".account:not([hidden])", rise, 100, 400, 100);
       tween(".account.selected .selection", pop, 750, 280);
       tween(
@@ -246,7 +270,7 @@ function setupWorkflowDemo() {
     }
     if (manual) {
       const title = panel.querySelector("h2").innerText.replace(/\s+/g, " ");
-      announcement.textContent = `Step ${index + 1}: ${title}`;
+      announcement.textContent = `${panel.querySelector(".flow-step-label").textContent}: ${title}`;
       if (focusWasInside) {
         const heading = panel.querySelector("h2");
         heading.tabIndex = -1;
@@ -312,7 +336,7 @@ function setupWorkflowDemo() {
     syncPlayback();
   }
   const openPicker = () => {
-    showStep(2, true);
+    showStep(3, true);
     document.querySelector("#account-search")?.focus({ preventScroll: true });
   };
   document.querySelector("#try-demo-link")?.addEventListener("click", openPicker);

@@ -95,8 +95,72 @@
             </div>
             <div class="flow-panels">
               <section
-                class="flow-panel"
+                class="flow-panel flow-chaos"
                 data-flow-panel="0"
+                aria-labelledby="flow-problem-title"
+                hidden
+              >
+                <div class="flow-panel-heading">
+                  <span class="flow-step-label">BEFORE LOGIN PAL</span>
+                  <h2 id="flow-problem-title">The test is ready.<br />The login isn’t.</h2>
+                  <p>You need an Admin account. Now, where did you put it?</p>
+                </div>
+                <div class="dev-chaos-stage">
+                  <div
+                    class="dev-login-page"
+                    role="group"
+                    aria-label="Illustrative development login page"
+                  >
+                    <div class="dev-browser-bar">
+                      <span>qa.example.com/login</span><b>DEV MODE</b>
+                    </div>
+                    <div class="dev-login-body">
+                      <div class="dev-login-heading">
+                        <strong>Sign in to test</strong><span>QA workspace · Admin scenario</span>
+                      </div>
+                      <div class="dev-empty-field">
+                        <span>Username</span>
+                        <div>Which test account?</div>
+                      </div>
+                      <div class="dev-empty-field">
+                        <span>Password</span>
+                        <div>Still looking…</div>
+                      </div>
+                      <div class="dev-login-waiting">
+                        <span>Sign in</span><small>Waiting for an account</small>
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    class="account-hunt"
+                    role="group"
+                    aria-label="Scattered places to look for a test account"
+                  >
+                    <div class="hunt-note">
+                      <div class="hunt-note-inner">
+                        <span>test-accounts-old.csv</span><strong>Is this the latest list?</strong>
+                      </div>
+                    </div>
+                    <div class="hunt-note">
+                      <div class="hunt-note-inner">
+                        <span>SETUP NOTES</span><strong>Which user has Admin?</strong>
+                      </div>
+                    </div>
+                    <div class="hunt-note">
+                      <div class="hunt-note-inner">
+                        <span>TEAM CHAT</span><strong>“Anyone have a test account?”</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <p class="flow-panel-note chaos-caption">
+                  <strong>More searching. Less testing.</strong> Keep your test accounts in one
+                  searchable catalog with Login Pal.
+                </p>
+              </section>
+              <section
+                class="flow-panel"
+                data-flow-panel="1"
                 aria-labelledby="flow-import-title"
                 hidden
               >
@@ -127,7 +191,7 @@
               </section>
               <section
                 class="flow-panel"
-                data-flow-panel="1"
+                data-flow-panel="2"
                 aria-labelledby="flow-authorize-title"
                 hidden
               >
@@ -158,7 +222,7 @@
               </section>
               <section
                 class="flow-panel flow-picker"
-                data-flow-panel="2"
+                data-flow-panel="3"
                 aria-labelledby="flow-choose-title"
               >
                 <div class="flow-panel-heading">
@@ -226,7 +290,7 @@
               </section>
               <section
                 class="flow-panel"
-                data-flow-panel="3"
+                data-flow-panel="4"
                 aria-labelledby="flow-fill-title"
                 hidden
               >
@@ -235,53 +299,61 @@
                   <h2 id="flow-fill-title">Fill the fields.<br />You take it from here.</h2>
                   <p>Choose Autofill on the approved login page.</p>
                 </div>
-                <div class="fill-preview flow-item">
-                  <div class="fill-identity">
-                    <span class="flow-check" aria-hidden="true">✓</span>
-                    <div>
-                      <span>Selected test account</span
-                      ><strong id="flow-selected-name">Alex Morgan</strong>
+                <div class="fill-preview dev-login-page flow-item">
+                  <div class="dev-browser-bar">
+                    <span>qa.example.com/login</span><b>DEV MODE</b>
+                  </div>
+                  <div class="dev-login-body">
+                    <div class="fill-identity">
+                      <span class="flow-check" aria-hidden="true">✓</span>
+                      <div>
+                        <span>Selected test account</span
+                        ><strong id="flow-selected-name">Alex Morgan</strong>
+                      </div>
                     </div>
-                  </div>
-                  <div class="filled-row flow-item">
-                    <span>Username</span><b>Filled <span aria-hidden="true">✓</span></b>
-                    <i class="field-progress" aria-hidden="true"></i>
-                  </div>
-                  <div class="filled-row flow-item">
-                    <span>Password</span><b>Filled <span aria-hidden="true">✓</span></b>
-                    <i class="field-progress" aria-hidden="true"></i>
-                  </div>
-                  <div class="manual-submit">
-                    <span>Login</span><small>← You click this on the website</small>
+                    <div class="filled-row flow-item">
+                      <span>Username</span><b>Filled <span aria-hidden="true">✓</span></b>
+                      <i class="field-progress" aria-hidden="true"></i>
+                    </div>
+                    <div class="filled-row flow-item">
+                      <span>Password</span><b>Filled <span aria-hidden="true">✓</span></b>
+                      <i class="field-progress" aria-hidden="true"></i>
+                    </div>
+                    <div class="manual-submit">
+                      <span>Sign in</span><small>← You click this on the website</small>
+                    </div>
                   </div>
                 </div>
                 <p class="flow-panel-note">
                   <strong>Login Pal never submits the form.</strong> This is an illustration; no
                   credentials are used.
                 </p>
-                <button class="flow-back" type="button" data-flow-target="2" hidden>
+                <button class="flow-back" type="button" data-flow-target="3" hidden>
                   Try another account <span aria-hidden="true">↗</span>
                 </button>
               </section>
             </div>
             <div class="flow-steps" role="group" aria-label="Walkthrough steps" hidden>
               <button type="button" data-flow-target="0" aria-pressed="false">
-                <span>01</span> Import<i aria-hidden="true"></i>
+                <span>00</span> Before<i aria-hidden="true"></i>
               </button>
               <button type="button" data-flow-target="1" aria-pressed="false">
-                <span>02</span> Authorize<i aria-hidden="true"></i>
+                <span>01</span> Import<i aria-hidden="true"></i>
               </button>
-              <button type="button" data-flow-target="2" aria-pressed="true">
+              <button type="button" data-flow-target="2" aria-pressed="false">
+                <span>02</span> Approve<i aria-hidden="true"></i>
+              </button>
+              <button type="button" data-flow-target="3" aria-pressed="true">
                 <span>03</span> Choose<i aria-hidden="true"></i>
               </button>
-              <button type="button" data-flow-target="3" aria-pressed="false">
+              <button type="button" data-flow-target="4" aria-pressed="false">
                 <span>04</span> Fill<i aria-hidden="true"></i>
               </button>
             </div>
           </div>
           <div class="flow-footnote">
             <span>Local to your browser. Always on your terms.</span
-            ><span id="flow-position" hidden>1 of 4</span>
+            ><span id="flow-position" hidden>1 of 5</span>
           </div>
           <span class="sr-only" id="flow-announcement" role="status"></span>
         </div>

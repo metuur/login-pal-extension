@@ -8,6 +8,9 @@
   --color-accent-soft: oklch(96% 0.02 272);
   --color-positive: oklch(41% 0.07 156);
   --color-positive-soft: oklch(96% 0.018 156);
+  --color-caution: oklch(45% 0.09 65);
+  --color-note: oklch(98% 0.022 90);
+  --color-note-rule: oklch(87% 0.045 85);
   --font-body: Geist, sans-serif;
   --font-display: Geist, sans-serif;
   --space-sm: 16px;
