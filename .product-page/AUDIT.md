@@ -25,3 +25,9 @@ Product copy retains existing compatibility details. Current synthetic-data and 
 ## Evidence
 
 See VERIFICATION.md for observed browser checks. Screenshots contain fictional demo metadata only. No extension runtime code changed.
+
+## Hero motion review — 2026-10-07
+
+The previous hero demonstrated account selection but skipped import and site authorization. The new four-stage walkthrough makes that setup visible before showing how selection leads to an explicit fill action. The final illustration states that the user submits the form.
+
+The motion stays inside the hero and stops after one pass. Direct step navigation, playback controls, interaction-triggered pause, and reduced-motion behavior let visitors set their own pace. Browser review caught varying panel heights; inactive stages now reserve their space, so advancing the walkthrough does not move the surrounding page. The rest of the page remains immediately visible.

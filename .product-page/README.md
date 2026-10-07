@@ -17,6 +17,14 @@ rtk proxy node_modules/.bin/esbuild .product-page/main.ts --outfile=.product-pag
 
 Geist fonts are packaged under the license in `FONT-LICENSE.txt`. Demo names and example.com addresses are fictional. No passwords are included or used by this demo.
 
+## Hero walkthrough
+
+The hero explains Import → Authorize → Choose → Fill in four six-second stages. Browser-native animations reveal the sample CSV, site configuration, account picker, and illustrative fill result. Playback runs once, with Pause, Play, Replay, and direct step controls. The picker preserves search and account selection; “Try autofill” carries the selected fictional name into the last stage. The website's Login action remains the user's responsibility.
+
+Interacting with a panel stops automatic progression. Playback also pauses when the walkthrough leaves the viewport, the browser tab is hidden, or the mobile menu opens. Reduced-motion preferences disable autoplay and movement; manual step changes use a 120ms fade. Inactive stages reserve layout space but are hidden from assistive technology and keyboard focus. Without JavaScript, the original sample picker remains readable.
+
+For deterministic visual review, open `index.html?t=3`, `?t=9`, `?t=15`, or `?t=21` to freeze each stage. `?reduce=1` forces reduced-motion navigation. The walkthrough uses the existing page files and requires no animation library, video, iframe, or remote asset.
+
 ## Hallmark audit improvements — 2026-10-07
 
 The homepage now defines Login Pal in its opening paragraph and leads with installation and a synthetic demo. It follows with account organization, the first-login workflow, installation, offline behavior, local data, permissions, and questions. Headings describe the task rather than repeating promotional slogans. Synthetic-only usage and manual submission are stated at the start.

@@ -4,6 +4,10 @@
   --color-muted: oklch(45% 0.027 270);
   --color-accent: oklch(49% 0.2 272);
   --color-rule: oklch(89% 0.013 265);
+  --color-panel: oklch(100% 0 0);
+  --color-accent-soft: oklch(96% 0.02 272);
+  --color-positive: oklch(41% 0.07 156);
+  --color-positive-soft: oklch(96% 0.018 156);
   --font-body: Geist, sans-serif;
   --font-display: Geist, sans-serif;
   --space-sm: 16px;

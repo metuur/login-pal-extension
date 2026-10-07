@@ -41,3 +41,14 @@
 - Reduced-motion rendering and offline demo search passed. No browser runtime errors were observed.
 - The first Escape assertion read aria-expanded before the native close event ran; waiting for the close event's observable state confirmed the behavior without changing the implementation.
 - Shared documentation layout was checked; detailed documentation content and extension behavior were not redesigned. Full extension tests were not needed for this standalone page-only change.
+
+## Native hero walkthrough — 2026-10-07
+
+- Strict TypeScript check passed; checked-in JavaScript regenerated from `main.ts`.
+- Chromium rendered all four frozen stages at 320, 375, 414, 768, 1024, and 1440 pixels. No horizontal document overflow; the walkthrough window retained the same height across all four stages at each width. Desktop and mobile screenshots inspected.
+- Observed a real six-second automatic step change, pause/resume without clock advancement while paused, remaining stage transitions, finite completion, and replay.
+- Verified direct step selection, demo entry, role search, selected-name transfer to the fill illustration, zero results, disabled empty selection, recovery, and slash-to-search. Only the active panel is available to keyboard focus; moving from the picker to the result focuses the result heading.
+- The demo link and direct account-search URL focus the search input. Step announcements preserve spaces across heading line breaks. Manual navigation and search also work when the browser animation API is unavailable.
+- Verified offscreen pause/resume, live reduced-motion preference changes, no autoplay under reduced motion, and a completed manual fade without movement. Mobile-menu opening pauses playback; Escape closes the menu.
+- Offline search, readable JavaScript-disabled fallback, and the shared documentation page passed. No JavaScript errors or remote requests observed.
+- Checks cover the standalone product page in Chromium. Extension runtime and real website autofill were not changed or exercised.
