@@ -162,11 +162,11 @@ function setupWorkflowDemo(): void {
       });
     };
     const rise = [
-      { opacity: 0, transform: 'translateY(10px)' },
+      { opacity: 0, transform: 'translateY(5px)' },
       { opacity: 1, transform: 'translateY(0)' },
     ];
     const pop = [
-      { opacity: 0, transform: 'scale(0.65)' },
+      { opacity: 0, transform: 'scale(0.9)' },
       { opacity: 1, transform: 'scale(1)' },
     ];
     const fillField = [
@@ -180,8 +180,8 @@ function setupWorkflowDemo(): void {
         '.dev-login-waiting',
         [
           { transform: 'translateX(0)' },
-          { transform: 'translateX(-3px)' },
-          { transform: 'translateX(3px)' },
+          { transform: 'translateX(-1.5px)' },
+          { transform: 'translateX(1.5px)' },
           { transform: 'translateX(0)' },
         ],
         300,
@@ -190,7 +190,7 @@ function setupWorkflowDemo(): void {
       tween(
         '.hunt-note-inner',
         [
-          { opacity: 0, transform: 'translateY(14px) scale(0.96)' },
+          { opacity: 0, transform: 'translateY(6px) scale(0.98)' },
           { opacity: 1, transform: 'translateY(0) scale(1)' },
         ],
         420,
@@ -202,7 +202,7 @@ function setupWorkflowDemo(): void {
       tween(
         '.csv-icon',
         [
-          { opacity: 0, transform: 'translateY(-12px) rotate(-8deg)' },
+          { opacity: 0, transform: 'translateY(-5px) rotate(-3deg)' },
           { opacity: 1, transform: 'translateY(0) rotate(0)' },
         ],
         40,
@@ -211,7 +211,7 @@ function setupWorkflowDemo(): void {
       tween(
         '.csv-row',
         [
-          { opacity: 0, transform: 'translateX(18px)' },
+          { opacity: 0, transform: 'translateX(7px)' },
           { opacity: 1, transform: 'translateX(0)' },
         ],
         120,
@@ -222,8 +222,8 @@ function setupWorkflowDemo(): void {
       tween(
         '.flow-transfer > span:first-child',
         [
-          { opacity: 0, transform: 'translateY(-12px)' },
-          { opacity: 1, transform: 'translateY(5px)', offset: 0.7 },
+          { opacity: 0, transform: 'translateY(-5px)' },
+          { opacity: 1, transform: 'translateY(2px)', offset: 0.7 },
           { opacity: 1, transform: 'translateY(0)' },
         ],
         900,
@@ -240,7 +240,7 @@ function setupWorkflowDemo(): void {
       tween('.account.selected .selection', pop, 750, 280);
       tween(
         '.account.selected .avatar',
-        [{ transform: 'scale(1)' }, { transform: 'scale(1.12)' }, { transform: 'scale(1)' }],
+        [{ transform: 'scale(1)' }, { transform: 'scale(1.04)' }, { transform: 'scale(1)' }],
         750,
         420,
       );
@@ -248,7 +248,7 @@ function setupWorkflowDemo(): void {
         '#demo-fill > span',
         [
           { transform: 'translateX(0)' },
-          { transform: 'translateX(4px)' },
+          { transform: 'translateX(2px)' },
           { transform: 'translateX(0)' },
         ],
         1200,

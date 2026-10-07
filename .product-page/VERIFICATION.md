@@ -73,3 +73,9 @@
 - The loop now contains five 2.5-second scenes (12.5 seconds total). Updated direct scene buttons, fill/back actions, slash-to-search, demo-link entry, and frozen timestamps for the new opening scene.
 - Strict TypeScript and formatting checks passed; CSS parsed successfully. Local JSDOM simulation executed the generated script with animation/visibility APIs stubbed and checked the five-scene loop, pause, animation targets, search, account selection, fill-name transfer, keyboard focus, reduced motion, unique IDs, and frozen positions.
 - Browser rendering was not repeated in this pass: the preview tool blocks local file navigation. Layout and actual animation timing need visual confirmation after a manual preview reload; simulated DOM checks do not establish visual correctness.
+
+## Compact walkthrough
+
+- Capped the walkthrough width at 460px, reduced scene headings to 24–28px, lowered minimum panel height, and tightened card, row, and frame spacing. Compacted the development form and repositioned its notes. Navigation controls retain a 44px minimum height and account rows retain 46px.
+- Reduced travel distances, rotation, and scale effects while retaining the same five-scene loop and timing.
+- Strict TypeScript, JavaScript generation, CSS syntax parsing, formatting, and whitespace checks passed. Browser visual verification remains unavailable under the local-file navigation restriction; the updated layout needs a manual preview review.

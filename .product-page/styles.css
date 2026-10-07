@@ -2643,17 +2643,22 @@ button:disabled {
 /* Native hero walkthrough: one in-page panel, controlled loop, no remote assets. */
 .hero {
   align-items: center;
-  padding-block: 64px 72px;
+  padding-block: 48px 56px;
 }
 .hero .brand-headline {
   font-size: clamp(40px, 4.9vw, 68px);
+}
+.hero-scene.workflow-demo {
+  width: 100%;
+  max-width: 460px;
+  justify-self: center;
 }
 .flow-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
   min-height: 44px;
 }
 .flow-toolbar p {
@@ -2685,7 +2690,7 @@ button:disabled {
 }
 .flow-window {
   border: 1px solid var(--color-rule);
-  border-radius: 22px;
+  border-radius: 18px;
   background: var(--color-panel);
   box-shadow: 0 16px 48px color-mix(in oklch, var(--color-ink) 6%, transparent);
 }
@@ -2693,7 +2698,7 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 20px 24px;
+  padding: 12px 18px;
   border-bottom: 1px solid var(--color-rule);
   font-size: 15px;
 }
@@ -2713,18 +2718,18 @@ button:disabled {
 }
 .flow-panel {
   grid-area: 1 / 1;
-  padding: 26px 28px 22px;
+  padding: 18px 20px 16px;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  min-height: 494px;
+  min-height: 400px;
 }
 .flow-panel.is-inactive {
   visibility: hidden;
   pointer-events: none;
 }
 .flow-panel-heading {
-  margin-bottom: 24px;
+  margin-bottom: 14px;
 }
 .flow-step-label {
   color: var(--color-accent);
@@ -2733,10 +2738,10 @@ button:disabled {
   letter-spacing: 0.07em;
 }
 .flow-panel h2 {
-  font-size: clamp(27px, 2.7vw, 36px);
+  font-size: clamp(24px, 2.1vw, 28px);
   line-height: 1.1;
   letter-spacing: -0.045em;
-  margin: 10px 0 12px;
+  margin: 8px 0;
 }
 .flow-panel-heading p {
   color: var(--color-muted);
@@ -2745,7 +2750,7 @@ button:disabled {
 }
 .dev-chaos-stage {
   position: relative;
-  padding-bottom: 64px;
+  padding-bottom: 48px;
 }
 .dev-login-page {
   border: 1px solid var(--color-rule);
@@ -2758,7 +2763,7 @@ button:disabled {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 8px 10px;
   border-bottom: 1px solid var(--color-rule);
   background: var(--color-paper);
   font-size: 10px;
@@ -2776,10 +2781,10 @@ button:disabled {
   letter-spacing: 0.04em;
 }
 .dev-login-body {
-  padding: 16px;
+  padding: 12px;
 }
 .dev-login-heading {
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 .dev-login-heading strong {
   display: block;
@@ -2793,16 +2798,20 @@ button:disabled {
   color: var(--color-muted);
 }
 .dev-empty-field {
-  margin-bottom: 10px;
+  display: grid;
+  grid-template-columns: 60px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 .dev-empty-field > span {
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 0;
   font-size: 10px;
   color: var(--color-muted);
 }
 .dev-empty-field > div {
-  padding: 8px 10px;
+  padding: 6px 8px;
   border: 1px solid var(--color-rule);
   border-radius: 6px;
   color: var(--color-muted);
@@ -2817,7 +2826,7 @@ button:disabled {
   background: var(--color-paper);
   border: 1px solid var(--color-rule);
   border-radius: 6px;
-  padding: 8px 18px;
+  padding: 6px 14px;
   color: var(--color-muted);
   font-size: 12px;
   white-space: nowrap;
@@ -2837,14 +2846,14 @@ button:disabled {
   max-width: 70%;
 }
 .hunt-note:nth-child(1) {
-  top: 145px;
+  top: 94px;
   left: 8px;
-  transform: rotate(-5deg);
+  transform: rotate(-3deg);
 }
 .hunt-note:nth-child(2) {
-  top: 210px;
+  top: 150px;
   right: 8px;
-  transform: rotate(4deg);
+  transform: rotate(2deg);
 }
 .hunt-note:nth-child(3) {
   bottom: 6px;
@@ -2854,7 +2863,7 @@ button:disabled {
   transform: rotate(-2deg);
 }
 .hunt-note-inner {
-  padding: 12px 14px;
+  padding: 9px 12px;
   border: 1px solid var(--color-note-rule);
   border-radius: 8px;
   background: var(--color-note);
@@ -2883,9 +2892,9 @@ button:disabled {
 }
 .csv-title {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
-  padding: 16px;
+  padding: 12px;
   background: var(--color-paper);
 }
 .csv-title strong {
@@ -2901,8 +2910,8 @@ button:disabled {
 .csv-icon {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 48px;
+  width: 32px;
+  height: 38px;
   border: 1px solid var(--color-rule);
   border-radius: 6px;
   background: var(--color-panel);
@@ -2927,7 +2936,7 @@ button:disabled {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 16px;
+  padding: 8px 12px;
   border-top: 1px solid var(--color-rule);
   font-size: 13px;
 }
@@ -2940,16 +2949,16 @@ button:disabled {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  margin-top: 16px;
+  margin-top: 12px;
   color: var(--color-accent);
 }
 .flow-transfer > span:first-child {
-  font-size: 22px;
+  font-size: 18px;
 }
 .flow-group {
   background: var(--color-accent-soft);
   border-radius: 8px;
-  padding: 10px 14px;
+  padding: 8px 12px;
   font-size: 12px;
   font-weight: 600;
 }
@@ -2961,7 +2970,7 @@ button:disabled {
 }
 .flow-panel-note {
   margin-top: auto;
-  padding-top: 20px;
+  padding-top: 14px;
   font-size: 12px;
   line-height: 1.7;
   color: var(--color-muted);
@@ -2970,7 +2979,7 @@ button:disabled {
   color: var(--color-ink);
 }
 .site-permission {
-  padding: 20px;
+  padding: 14px;
   background: var(--color-paper);
 }
 .field-caption {
@@ -2980,9 +2989,9 @@ button:disabled {
 }
 .site-permission > strong {
   display: block;
-  font-size: clamp(17px, 2vw, 22px);
+  font-size: 18px;
   letter-spacing: -0.025em;
-  margin: 6px 0 20px;
+  margin: 6px 0 14px;
   overflow-wrap: anywhere;
 }
 .field-mapping,
@@ -2991,7 +3000,7 @@ button:disabled {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 0;
+  padding: 10px 0;
   border-top: 1px solid var(--color-rule);
   font-size: 13px;
 }
@@ -3026,12 +3035,12 @@ button:disabled {
   margin-right: 5px;
 }
 .flow-picker .flow-panel-heading {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 .flow-picker .account {
-  min-height: 54px;
+  min-height: 46px;
   margin-bottom: 2px;
-  padding-block: 8px;
+  padding-block: 6px;
 }
 .flow-picker .list-heading {
   margin-top: 12px;
@@ -3063,7 +3072,7 @@ button:disabled {
   display: flex;
   gap: 12px;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 .fill-identity div > span {
   display: block;
@@ -3078,7 +3087,7 @@ button:disabled {
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 20px;
+  margin-top: 14px;
 }
 .manual-submit > span {
   border-radius: 6px;
@@ -3109,7 +3118,7 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 4px;
-  padding: 0 20px 18px;
+  padding: 0 14px 12px;
 }
 .flow-steps button {
   position: relative;
@@ -3119,8 +3128,8 @@ button:disabled {
   overflow: clip;
   background: var(--color-paper);
   color: var(--color-muted);
-  min-height: 48px;
-  padding: 10px 4px 12px;
+  min-height: 44px;
+  padding: 7px 4px 9px;
   font-size: 11px;
   white-space: nowrap;
 }
@@ -3189,14 +3198,13 @@ button:disabled {
     font-size: clamp(40px, 10vw, 64px);
   }
   .flow-panel {
-    padding: 24px 20px 20px;
-    min-height: 510px;
+    padding: 16px;
   }
   .flow-panel h2 {
-    font-size: 30px;
+    font-size: 25px;
   }
   .flow-brand {
-    padding: 16px 20px;
+    padding: 12px 16px;
   }
   .flow-steps {
     padding-inline: 16px;
@@ -3218,10 +3226,10 @@ button:disabled {
   }
   .flow-panel {
     padding-inline: 16px;
-    min-height: 528px;
+    min-height: 400px;
   }
   .flow-panel h2 {
-    font-size: 28px;
+    font-size: 24px;
   }
   .site-permission,
   .fill-preview {
