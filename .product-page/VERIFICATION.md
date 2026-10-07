@@ -80,3 +80,9 @@
 - Reduced travel distances, rotation, and scale effects while retaining the same five-scene loop and timing.
 - Strict TypeScript, JavaScript generation, CSS syntax parsing, formatting, and whitespace checks passed. Browser visual verification remains unavailable under the local-file navigation restriction; the updated layout needs a manual preview review.
 - Follow-up sizing adjustment: reduced maximum width to 420px, scene headings to 23–26px, and panel/header spacing again. CSS syntax, formatting, and whitespace checks passed; control sizes and animation behavior remain unchanged.
+
+## Smaller panel and slower Before scene
+
+- Reduced maximum width to 400px, scene headings to 22–24px, and panel padding/minimum height. Control target sizes remain unchanged.
+- Before now lasts four seconds with more gradual detail motion. Other scenes remain at 2.5 seconds, for a 14-second loop. Frozen timestamps account for the differing scene durations.
+- Strict TypeScript, generated JavaScript, CSS syntax, formatting, and whitespace checks passed. Local DOM simulation verified scene durations, loop wrap, and seek boundaries. Browser layout/timing verification remains subject to the local-file preview restriction noted above.

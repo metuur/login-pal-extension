@@ -87,7 +87,7 @@ function setupWorkflowDemo() {
   const query = new URLSearchParams(location.search);
   const reduced = () => motionPreference.matches || query.get("reduce") === "1";
   const canAnimate = typeof Element.prototype.animate === "function";
-  const duration = 2500;
+  const durations = panels.map((_, index) => index === 0 ? 4e3 : 2500);
   let active = 0;
   let visible = !("IntersectionObserver" in window);
   let wanted = !reduced() && canAnimate;
@@ -122,8 +122,8 @@ function setupWorkflowDemo() {
       panel.querySelectorAll(selector).forEach((element, i) => {
         animations.push(
           element.animate(frames, {
-            delay: delay + i * stagger,
-            duration: length,
+            delay: (delay + i * stagger) * (step === 0 ? 1.35 : 1),
+            duration: length * (step === 0 ? 1.35 : 1),
             easing: "cubic-bezier(0.16, 1, 0.3, 1)",
             fill: "backwards"
           })
@@ -260,7 +260,7 @@ function setupWorkflowDemo() {
       entrances = animateScene(panel, index);
       clock = progressBars[index].animate(
         [{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }],
-        { duration, easing: "linear", fill: "forwards" }
+        { duration: durations[index], easing: "linear", fill: "forwards" }
       );
       clock.pause();
       clock.onfinish = () => {
@@ -321,17 +321,22 @@ function setupWorkflowDemo() {
   showStep(0);
   const time = query.get("t");
   if (time !== null && time.trim() !== "" && Number.isFinite(Number(time))) {
-    const cycleTime = Math.max(0, Number(time)) * 1e3 % (panels.length * duration);
+    const cycleDuration = durations.reduce((total, duration) => total + duration, 0);
+    let localTime = Math.max(0, Number(time)) * 1e3 % cycleDuration;
+    let scene = 0;
+    while (scene < panels.length - 1 && localTime >= durations[scene]) {
+      localTime -= durations[scene];
+      scene++;
+    }
     wanted = false;
-    showStep(Math.floor(cycleTime / duration));
-    const localTime = cycleTime % duration;
+    showStep(scene);
     if (clock) {
       clock.pause();
       clock.currentTime = localTime;
     }
     entrances.forEach((animation) => {
       animation.pause();
-      animation.currentTime = reduced() ? duration : localTime;
+      animation.currentTime = reduced() ? durations[scene] : localTime;
     });
     syncPlayback();
   }
