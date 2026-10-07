@@ -76,6 +76,16 @@ describe('validated credential delivery', () => {
     expect(inspectFields(config, dom.window.document).ok).toBe(true);
     dom.window.close();
   });
+  it('fills login fields a component places in an open shadow root', () => {
+    const dom = fixture('<div id="host"></div>');
+    const doc = dom.window.document;
+    const root = doc.querySelector('#host')!.attachShadow({ mode: 'open' });
+    root.innerHTML = '<input id="user"><input id="pass" type="password">';
+    expect(inspectFields(profile, doc).ok).toBe(true);
+    expect(fillFields(profile, 'synthetic-user', 'synthetic-password', doc).ok).toBe(true);
+    expect(root.querySelector<HTMLInputElement>('#user')!.value).toBe('synthetic-user');
+    dom.window.close();
+  });
   it('rejects inputs disabled by their containing fieldset', () => {
     const dom = fixture(
       '<form><fieldset disabled><input id="user"><input id="pass" type="password"></fieldset></form>',

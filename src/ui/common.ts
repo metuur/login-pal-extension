@@ -128,9 +128,11 @@ export async function request<T = void>(command: Command): Promise<T> {
   return reply.data;
 }
 
-export function message(target: HTMLElement, text: string, error = false) {
+/** `true` stays shorthand for an error so existing call sites keep working. */
+export type Tone = 'info' | 'success' | 'warning' | 'error';
+export function message(target: HTMLElement, text: string, tone: Tone | boolean = 'info') {
   target.textContent = text;
-  target.className = `notice ${error ? 'error' : 'info'}`;
+  target.className = `notice ${tone === true ? 'error' : tone === false ? 'info' : tone}`;
   target.hidden = !text;
 }
 export function liveRegion() {
@@ -376,6 +378,8 @@ export function confirmDialog(
   body: string,
   confirmLabel: string,
   onConfirm: () => Promise<void>,
+  /** Not every confirmation is destructive; an explanation is not a warning. */
+  confirmClass = 'danger',
 ) {
   const d = el('dialog', 'confirm-dialog');
   const form = el('div', 'stack');
@@ -397,7 +401,7 @@ export function confirmDialog(
         cancel.disabled = false;
       }
     },
-    'danger',
+    confirmClass,
   );
   actions.append(cancel, yes);
   form.append(actions);

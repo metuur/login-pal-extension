@@ -794,6 +794,11 @@ input::placeholder {
   border-color: #fde68a;
   color: #854d0e;
 }
+.success {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #065f46;
+}
 .encryption {
   display: flex;
   gap: 8px;

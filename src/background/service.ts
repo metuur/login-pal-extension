@@ -6,6 +6,7 @@ import type {
   ContentContext,
   ContentRequest,
   DetectedInput,
+  DetectResult,
   DetectTab,
   Envelope,
   FillResult,
@@ -83,7 +84,31 @@ const ACCOUNT_NOT_IN_GROUP = 'That account is not in the selected CSV group.';
 const DETECT_OFF_DOMAIN = 'Open the imported catalog domain in that tab, then detect again.';
 const DETECT_NO_TAB = 'No open tab is on the approved login domain.';
 const RULE_UNCHANGED = "That is already this group's authorized domain.";
+// Autofill refuses for several distinct reasons the user can act on. Each is a
+// state Settings already shows, so naming it leaks nothing a trusted extension
+// page cannot already read, and a bare failure leaves the user guessing.
+const FILL_NO_PROFILE = 'Save a login profile in Settings before autofill.';
+const FILL_STALE_PROFILE =
+  "The group's domains changed. Open Login page setup and save the profile again.";
+const FILL_NO_PERMISSION =
+  'Website permission is missing. Open Login page setup and save the profile again to grant it.';
+const FILL_TAB_INACTIVE = 'Open the popup on the tab you want to fill.';
+const FILL_OFF_CATALOG = 'That tab is not on a domain this CSV group authorizes.';
+const FILL_OFF_PROFILE =
+  'That tab is not on a login domain saved in this profile. Open Login page setup, add the domain and save.';
+const FILL_NO_FIELDS =
+  'The login fields were not found on that page. Check the match values, or detect them again.';
+const FILL_ALREADY_SUCCESS =
+  'That page already shows the success condition, so no credentials were sent.';
 const SAFE_ERRORS = new Set<string>([
+  FILL_NO_PROFILE,
+  FILL_STALE_PROFILE,
+  FILL_NO_PERMISSION,
+  FILL_TAB_INACTIVE,
+  FILL_OFF_CATALOG,
+  FILL_OFF_PROFILE,
+  FILL_NO_FIELDS,
+  FILL_ALREADY_SUCCESS,
   ACCOUNT_NOT_IN_GROUP,
   DETECT_OFF_DOMAIN,
   DETECT_NO_TAB,
@@ -648,7 +673,7 @@ export class AssistantService {
    * user can configure matching without DevTools. Scoped to the imported
    * catalog domain; never reads or returns input values.
    */
-  private async detect(tabId?: number): Promise<DetectedInput[]> {
+  private async detect(tabId?: number): Promise<DetectResult> {
     const rules = this.payload!.catalogRules;
     if (!rules.length) throw new Error(DETECT_OFF_DOMAIN);
     // Settings runs in its own tab, so the active tab is Settings itself. Look
@@ -664,8 +689,17 @@ export class AssistantService {
     if (!matchesAnyRule(rules, current.url)) throw new Error(DETECT_OFF_DOMAIN);
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id!, documentIds: [current.documentId] },
-      func: () =>
-        [...document.querySelectorAll('input')]
+      func: () => {
+        // Component-based login pages put their inputs in open shadow roots,
+        // which a plain document query cannot see.
+        const collect = (root: DocumentFragment | Document, found: HTMLInputElement[]) => {
+          for (const node of root.querySelectorAll('*')) {
+            if (node instanceof HTMLInputElement) found.push(node);
+            if (node.shadowRoot) collect(node.shadowRoot, found);
+          }
+          return found;
+        };
+        const inputs = collect(document, [])
           .filter(
             (input) =>
               ['text', 'email', 'password'].includes(input.type) &&
@@ -687,10 +721,28 @@ export class AssistantService {
               .trim()
               .replace(/\s+/gu, ' ')
               .slice(0, 100),
-          })),
+          }));
+        // Named so the user learns why an apparently normal page reads empty.
+        const frames = [
+          ...new Set(
+            [...document.querySelectorAll('iframe')]
+              .filter((frame) => frame.getClientRects().length > 0)
+              .map((frame) => {
+                try {
+                  return new URL(frame.src || 'about:blank', location.href).hostname;
+                } catch {
+                  return '';
+                }
+              })
+              .filter(Boolean),
+          ),
+        ].slice(0, 5);
+        return { inputs, frames };
+      },
     });
     const top = results.find((r) => r.frameId === 0);
-    return Array.isArray(top?.result) ? (top.result as DetectedInput[]) : [];
+    const result = top?.result as DetectResult | undefined;
+    return { inputs: result?.inputs ?? [], frames: result?.frames ?? [] };
   }
   // @spec R-6.1..R-6.8: explicit account delivery is bound to a current top-frame document.
   private async fill(accountId: string, tabId?: number) {
@@ -699,19 +751,17 @@ export class AssistantService {
     const profile = this.profile;
     const rules = this.payload!.catalogRules;
     const account = this.payload!.accounts.find((a) => a.accountId === accountId);
-    if (
-      !account ||
-      !profile ||
-      !rules.length ||
-      profile.approvedCatalogRuleRevision !== this.payload!.catalogRuleRevision ||
-      !(await chrome.permissions.contains({ origins: this.hosts(profile) }))
-    )
-      throw new Error();
+    if (!account) throw new Error(ACCOUNT_NOT_IN_GROUP);
+    if (!profile || !rules.length) throw new Error(FILL_NO_PROFILE);
+    if (profile.approvedCatalogRuleRevision !== this.payload!.catalogRuleRevision)
+      throw new Error(FILL_STALE_PROFILE);
+    if (!(await chrome.permissions.contains({ origins: this.hosts(profile) })))
+      throw new Error(FILL_NO_PERMISSION);
     const tab = await this.targetTab(tabId);
-    if (!tab.active) throw new Error();
+    if (!tab.active) throw new Error(FILL_TAB_INACTIVE);
     const current = await this.probe(tab.id!);
-    if (!matchesAnyRule(rules, current.url) || !matchesAnyOrigin(profile.logins, current.url))
-      throw new Error();
+    if (!matchesAnyRule(rules, current.url)) throw new Error(FILL_OFF_CATALOG);
+    if (!matchesAnyOrigin(profile.logins, current.url)) throw new Error(FILL_OFF_PROFILE);
     await chrome.scripting.executeScript({
       target: { tabId: tab.id!, documentIds: [current.documentId] },
       files: ['content.js'],
@@ -722,7 +772,10 @@ export class AssistantService {
       { type: 'INSPECT', profile },
       options,
     )) as FillResult;
-    if (!inspection?.ok || inspection.baseline) throw new Error();
+    // The reason is restated here rather than echoed from the content script,
+    // which runs in a page the user does not control.
+    if (!inspection?.ok) throw new Error(FILL_NO_FIELDS);
+    if (inspection.baseline) throw new Error(FILL_ALREADY_SUCCESS);
     this.assert(generation);
     const attempt: Attempt = {
       token: crypto.randomUUID(),

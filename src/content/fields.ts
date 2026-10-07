@@ -39,9 +39,22 @@ export function successVisible(profile: LoginProfile, doc: Document): boolean {
     return false;
   }
 }
+/**
+ * Component-based login pages put their inputs in open shadow roots, so the
+ * same walk detection uses must back filling; otherwise a detected field could
+ * never be filled.
+ */
+function inputs(root: DocumentFragment | Document, found: HTMLInputElement[] = []) {
+  const Input = (root.ownerDocument ?? (root as Document)).defaultView?.HTMLInputElement;
+  for (const node of root.querySelectorAll('*')) {
+    if (Input && node instanceof Input) found.push(node as HTMLInputElement);
+    if (node.shadowRoot) inputs(node.shadowRoot, found);
+  }
+  return found;
+}
 function candidates(doc: Document, mode: FieldMatch, value: string, password: boolean): Element[] {
   const normalize = (text: string) => text.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
-  return [...doc.querySelectorAll('input')].filter((input) => {
+  return inputs(doc).filter((input) => {
     if (
       !(password ? input.type === 'password' : ['text', 'email'].includes(input.type)) ||
       input.matches(':disabled') ||

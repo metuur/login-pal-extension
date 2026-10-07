@@ -177,6 +177,15 @@ export interface DetectedInput {
   ariaLabel: string;
   label: string;
 }
+/**
+ * Candidates plus the frames that could not be read. A login form inside an
+ * embedded frame is invisible to both detection and filling, so the UI needs
+ * to name that cause instead of reporting an empty page.
+ */
+export interface DetectResult {
+  inputs: DetectedInput[];
+  frames: string[];
+}
 export interface FillResult {
   ok: boolean;
   error?: string;

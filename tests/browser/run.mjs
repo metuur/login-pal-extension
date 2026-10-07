@@ -43,7 +43,11 @@ try {
       res.end(
         req.url?.startsWith('/dashboard')
           ? '<!doctype html><title>Dashboard</title><h1 id="logged-in-user">Authenticated fixture</h1>'
-          : fixture,
+          : req.url?.startsWith('/framed')
+            ? '<!doctype html><title>Framed login</title><iframe src="/login" style="width:300px;height:200px"></iframe>'
+            : req.url?.startsWith('/shadow')
+              ? '<!doctype html><title>Shadow login</title><div id="host"></div><script>document.querySelector("#host").attachShadow({mode:"open"}).innerHTML=\'<input id="username" autocomplete="username"><input id="password" type="password">\';</script>'
+              : fixture,
       );
     },
   );
@@ -718,6 +722,67 @@ try {
     'Each offered tab names its path so same-titled pages stay distinguishable',
   );
   await otherTab.close();
+  // A component-built form is only reachable through its open shadow root.
+  const shadowTab = await context.newPage();
+  shadowTab.on('pageerror', (e) => errors.push(e.message));
+  await shadowTab.goto(origin + '/shadow');
+  await detectPage.bringToFront();
+  await detectPage
+    .getByRole('button', { name: 'Detect fields from the login page', exact: true })
+    .click();
+  await detectPage.locator('.tab-choices button').filter({ hasText: 'Shadow login' }).click();
+  await detectPage.getByRole('button', { name: 'id: username', exact: true }).waitFor();
+  check(
+    (await detectPage.getByRole('button', { name: 'id: password', exact: true }).count()) === 1,
+    'Detection finds login fields a component places in an open shadow root',
+  );
+  check(
+    (await detectPage.locator('#profile .notice.success').innerText()).startsWith(
+      'Found 2 candidate fields',
+    ),
+    'Finding candidates reports success and counts them',
+  );
+  await shadowTab.close();
+  // A framed login form is unreadable and unfillable, so say which frame.
+  const framedTab = await context.newPage();
+  framedTab.on('pageerror', (e) => errors.push(e.message));
+  await framedTab.goto(origin + '/framed');
+  await detectPage.bringToFront();
+  await detectPage
+    .getByRole('button', { name: 'Detect fields from the login page', exact: true })
+    .click();
+  await detectPage.locator('.tab-choices button').filter({ hasText: 'Framed login' }).click();
+  const emptyNotice = detectPage.locator('#profile .notice.warning');
+  await emptyNotice.waitFor();
+  check(
+    (await emptyNotice.innerText()).startsWith('No login fields found on that page'),
+    'Finding no fields warns instead of reporting success or failing silently',
+  );
+  check(
+    (await detectPage.locator('.detected').innerText()).includes('embedded frame (localhost)'),
+    'An empty page names the embedded frame that hides its login form',
+  );
+  check(
+    await detectPage.evaluate(() => {
+      const chips = document.querySelector('.tab-choices');
+      const notice = document.querySelector('#profile .notice.warning');
+      const details = document.querySelector('.detected');
+      const following = Node.DOCUMENT_POSITION_FOLLOWING;
+      return (
+        !!chips &&
+        !!notice &&
+        !!details &&
+        chips.compareDocumentPosition(notice) === following &&
+        notice.compareDocumentPosition(details) === following
+      );
+    }),
+    'Detection feedback sits under the tab chips, not at the bottom of the panel',
+  );
+  await framedTab.close();
+  await detectPage.bringToFront();
+  await detectPage
+    .getByRole('button', { name: 'Detect fields from the login page', exact: true })
+    .click();
   await tabChoice.filter({ hasText: 'Local synthetic login' }).first().click();
   await detectPage.getByRole('button', { name: 'id: username', exact: true }).waitFor();
   check(
@@ -742,7 +807,106 @@ try {
     (await detectPage.evaluate(() => location.search)) === '',
     'Field detection works from a settings tab that was not opened from the login page',
   );
+  // A domain added to the group after the profile was saved is not named in
+  // this form, yet its tabs must still be listed, which needs its host grant.
+  await send({ type: 'SET_CATALOG_RULE', rule: `${origin}, ${second}` });
+  await detectPage.evaluate(() => {
+    window.requestedOrigins = [];
+    const granted = chrome.permissions.request;
+    chrome.permissions.request = (options) => {
+      window.requestedOrigins.push(...options.origins);
+      return granted(options);
+    };
+  });
+  await detectPage
+    .getByRole('button', { name: 'Detect fields from the login page', exact: true })
+    .click();
+  await detectPage.locator('.tab-choices button').first().waitFor();
+  const requested = await detectPage.evaluate(() => window.requestedOrigins);
+  check(
+    (await detectPage.getByLabel('Authorized login domain', { exact: true }).inputValue()) ===
+      origin && requested.includes('https://127.0.0.1/*'),
+    'Detection requests host access for every group domain, not only the ones in this form',
+  );
+  await send({ type: 'SET_CATALOG_RULE', rule: origin });
+  // Chrome owns its prompt's wording, so the extension must explain the ask
+  // itself. Report no grants to take the path a first-time domain takes.
+  await detectPage.evaluate(() => {
+    const real = chrome.permissions.getAll;
+    window.grantsRead = 0;
+    chrome.permissions.getAll = async () => {
+      window.grantsRead++;
+      return { origins: [], permissions: [] };
+    };
+    window.restoreGrants = () => {
+      chrome.permissions.getAll = real;
+    };
+  });
+  // Any vault change refreshes settings, which is when the page re-reads grants.
+  await send({ type: 'RENAME_GROUP', name: 'Imported accounts' });
+  await detectPage.waitForFunction(() => window.grantsRead > 0);
+  await detectPage
+    .getByRole('button', { name: 'Detect fields from the login page', exact: true })
+    .click();
+  const explainer = detectPage.locator('dialog.confirm-dialog');
+  await explainer.waitFor();
+  check(
+    (await explainer.innerText()).includes('Chrome will ask for access to these sites') &&
+      (await explainer.innerText()).includes('It never reads what you type'),
+    'A missing grant is explained in the extension before Chrome shows its own prompt',
+  );
+  check(
+    (await explainer.locator('button.primary').innerText()) === 'Continue',
+    'The permission explanation offers a plain Continue, not a destructive action',
+  );
+  await explainer.getByRole('button', { name: 'Continue', exact: true }).click();
+  await explainer.waitFor({ state: 'detached' });
+  await detectPage.locator('.tab-choices button').first().waitFor();
+  check(
+    (await detectPage.locator('dialog.confirm-dialog').count()) === 0 &&
+      (await detectPage.locator('.tab-choices button').count()) > 0,
+    'Continuing from the explanation closes it and still lists the readable tabs',
+  );
+  await detectPage.evaluate(() => window.restoreGrants());
   await detectPage.close();
+  // A refused autofill must name its cause; a generic failure leaves the user
+  // with no way to tell a stale profile from a wrong tab.
+  const fillError = async (command) => {
+    const response = await popup.evaluate((c) => chrome.runtime.sendMessage(c), command);
+    return response?.ok === false ? response.error : '';
+  };
+  await send({ type: 'SET_CATALOG_RULE', rule: `${origin}, ${second}` });
+  check(
+    (await fillError({ type: 'FILL', accountId: 'ACC-1234', tabId })).startsWith(
+      "The group's domains changed",
+    ),
+    'Autofill names a profile left unapproved by a group domain change',
+  );
+  await send({
+    type: 'SAVE_PROFILE',
+    profile: { ...profile, successKind: 'none', successUrl: '' },
+  });
+  const otherEnv = await context.newPage();
+  otherEnv.on('pageerror', (e) => errors.push(e.message));
+  await otherEnv.goto(second + '/login');
+  await otherEnv.bringToFront();
+  const otherEnvId = await options.evaluate(async () => {
+    const open = await chrome.tabs.query({});
+    return open.find((t) => t.url?.startsWith('https://127.0.0.1'))?.id;
+  });
+  check(
+    (await fillError({ type: 'FILL', accountId: 'ACC-1234', tabId: otherEnvId })).startsWith(
+      'That tab is not on a login domain saved in this profile',
+    ),
+    'Autofill names a tab the group allows but this profile does not list',
+  );
+  await otherEnv.close();
+  await site.bringToFront();
+  await send({ type: 'SET_CATALOG_RULE', rule: origin });
+  await send({
+    type: 'SAVE_PROFILE',
+    profile: { ...profile, successKind: 'none', successUrl: '' },
+  });
   await site.locator('#username').fill('edited@example.test');
   await site.locator('#login').click();
   await settingsTab('Import CSV').click();

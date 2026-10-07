@@ -5,7 +5,7 @@ import type {
   ProfileInput,
   Route,
   FieldMatch,
-  DetectedInput,
+  DetectResult,
   DetectTab,
 } from '../shared/types';
 import {
@@ -33,6 +33,7 @@ import {
   resetButton,
   searchBox,
   sectionLabel,
+  type Tone,
   slashSearch,
   migrationForm,
   versionFooter,
@@ -74,7 +75,8 @@ let state: AppState | undefined,
   file: File | undefined,
   mode: ImportMode = 'merge',
   undoTimer: ReturnType<typeof setTimeout> | undefined,
-  deletedId = '';
+  deletedId = '',
+  grantedOrigins: string[] = [];
 const importPanel = el('section', 'import-panel panel stack');
 importPanel.id = 'import';
 const groupName = field('CSV group name');
@@ -408,6 +410,9 @@ const kindLabel = el('label', 'field');
 kindLabel.append(el('span', 'field-label', 'Successful login detection'), kind);
 
 const profileStatus = liveRegion(),
+  // Detection feedback belongs beside the tab chips it answers, not at the
+  // bottom of the panel next to Save.
+  detectStatus = liveRegion(),
   save = button('Save & authorize website', () => {}, 'primary');
 save.type = 'submit';
 const profileIdentity = el('div', 'settings-grid');
@@ -466,7 +471,7 @@ selectorDefaults.append(
       passwordMatch.update();
       usernameSelector.input.value = defaultUsernameSelector;
       passwordSelector.input.value = defaultPasswordSelector;
-      message(profileStatus, 'Common selectors restored. Save to apply them to this website.');
+      message(detectStatus, 'Common selectors restored. Save to apply them to this website.');
     },
     'text-button',
   ),
@@ -479,12 +484,27 @@ function applySuggestion(password: boolean, suggestion: { match: FieldMatch; val
   control.update();
   target.input.value = suggestion.value;
   message(
-    profileStatus,
+    detectStatus,
     `${password ? 'Password' : 'Username'} field set to ${suggestion.match} "${suggestion.value}". Save to apply it.`,
   );
 }
-function renderDetected(inputs: DetectedInput[]) {
+/** Returns how many candidates it offered, so the caller can state the outcome. */
+function renderDetected({ inputs, frames }: DetectResult) {
   detected.replaceChildren();
+  // A page with no fields at all needs one cause, not two empty headings.
+  if (!inputs.length) {
+    detected.append(
+      el(
+        'p',
+        'subtle',
+        frames.length
+          ? `That page keeps content inside an embedded frame (${frames.join(', ')}). This extension reads and fills only the page's own form, never a frame, so a login form placed there cannot be detected or filled.`
+          : 'Open the step that shows the sign-in form in that tab, then detect again. A form built with closed web components also stays unreadable.',
+      ),
+    );
+    return 0;
+  }
+  let offered = 0;
   for (const [heading, password] of [
     ['Username field candidates', false],
     ['Password field candidates', true],
@@ -515,8 +535,10 @@ function renderDetected(inputs: DetectedInput[]) {
           'preset',
         ),
       );
+    offered += suggestions.length;
     detected.append(row);
   }
+  return offered;
 }
 /**
  * A CSV group is bound to the domain used at import, so a profile cannot point
@@ -537,15 +559,15 @@ function catalogMismatch(): string | null {
 }
 const tabChoices = el('div', 'tab-choices stack');
 tabChoices.hidden = true;
-function detectFailed(error: unknown) {
+function detectFailed(error: unknown, tone: Tone = 'error') {
   const catalogRule = state?.rules.join(', ');
   const reason = error instanceof Error ? error.message : 'The login page could not be read.';
   message(
-    profileStatus,
+    detectStatus,
     catalogRule
       ? `${reason} Open ${catalogRule} in another tab, leave it on the sign-in form, then detect again.`
       : reason,
-    true,
+    tone,
   );
 }
 /** Marks the clicked action itself as working, not only the status banner. */
@@ -572,10 +594,18 @@ function readTab(tabId: number, source: HTMLButtonElement) {
   void withSpinner(source, () =>
     mutate(async () => {
       try {
-        renderDetected(await request<DetectedInput[]>({ type: 'DETECT_FIELDS', tabId }));
+        const offered = renderDetected(
+          await request<DetectResult>({ type: 'DETECT_FIELDS', tabId }),
+        );
         // The panel carries the outcome, so drop the global pending banner.
         message(status, '');
-        message(profileStatus, 'Pick a candidate to set the matching method and value.');
+        message(
+          detectStatus,
+          offered
+            ? `Found ${offered} candidate ${offered === 1 ? 'field' : 'fields'}. Pick one to set the matching method and value.`
+            : 'No login fields found on that page. The details below explain why.',
+          offered ? 'success' : 'warning',
+        );
       } catch (error) {
         detected.replaceChildren();
         detectFailed(error);
@@ -626,51 +656,83 @@ const detectButton = button(
   () => {
     let origins: string[];
     try {
-      origins = parseDomainRules(login.input.value).map((r) => {
-        const url = new URL(r.origin);
-        return `${url.protocol}//${url.hostname}/*`;
-      });
+      // Tabs are listed by the group's authorized domains, so the grant must
+      // cover those too. A domain added to the group after this profile was
+      // saved is otherwise never granted, and its tab stays invisible here.
+      const wanted = [
+        ...parseDomainRules(login.input.value).map((r) => r.origin),
+        ...(state?.rules ?? []),
+      ];
+      origins = [
+        ...new Set(
+          wanted.map((origin) => {
+            const url = new URL(origin);
+            return `${url.protocol}//${url.hostname}/*`;
+          }),
+        ),
+      ];
     } catch {
-      message(profileStatus, 'Enter the authorized login domain first, then detect.', true);
+      message(detectStatus, 'Enter the authorized login domain first, then detect.', true);
       return;
     }
     const mismatch = catalogMismatch();
     if (mismatch) {
-      message(profileStatus, mismatch, true);
+      message(detectStatus, mismatch, true);
       return;
     }
-    // Keep the permission request inside the user gesture, before any await.
-    const permission = chrome.permissions.request({ origins });
-    void withSpinner(detectButton, () =>
-      mutate(async () => {
-        if (!(await permission)) {
-          message(profileStatus, 'Website permission was denied, so the page was not read.', true);
-          return;
-        }
-        try {
-          // Offer the three most recently used tabs already on the approved
-          // domain; the user chooses which one detection reads.
-          const tabs = await request<DetectTab[]>({ type: 'DETECT_TABS' });
-          if (!tabs.length) {
-            tabChoices.replaceChildren();
-            tabChoices.hidden = true;
-            detectFailed(new Error('No open tab is on the approved login domain.'));
-            return;
-          }
-          renderTabChoices(tabs);
-          message(status, '');
-          message(profileStatus, 'Choose the tab to read the login fields from.');
-        } catch (error) {
-          tabChoices.replaceChildren();
-          tabChoices.hidden = true;
-          detected.replaceChildren();
-          detectFailed(error);
-        }
-      }, 'Looking for open tabs…'),
+    // Chrome owns the wording of its permission prompt, so explain the ask in
+    // our own dialog first, and only when a grant is actually missing.
+    const missing = origins.filter((origin) => !grantedOrigins.includes(origin));
+    if (!missing.length) {
+      requestAndDetect(origins);
+      return;
+    }
+    confirmDialog(
+      'Chrome will ask for access to these sites',
+      `${missing.map((origin) => origin.replace(/^https?:\/\//u, '').replace(/\/\*$/u, '')).join(', ')}: this extension needs that access to list your open tabs on those sites and read the names of their login fields. It never reads what you type, and it fills a form only when you pick an account yourself.`,
+      'Continue',
+      () => {
+        // Still inside a click, so Chrome keeps the prompt tied to the gesture.
+        requestAndDetect(origins);
+        return Promise.resolve();
+      },
+      'primary',
     );
   },
   'preset accent',
 );
+/** Chrome ties its prompt to a user gesture, so request before any await. */
+function requestAndDetect(origins: string[]) {
+  const permission = chrome.permissions.request({ origins });
+  void withSpinner(detectButton, () =>
+    mutate(async () => {
+      if (!(await permission)) {
+        message(detectStatus, 'Website permission was denied, so the page was not read.', true);
+        return;
+      }
+      try {
+        // Offer the three most recently used tabs already on the approved
+        // domain; the user chooses which one detection reads.
+        const tabs = await request<DetectTab[]>({ type: 'DETECT_TABS' });
+        if (!tabs.length) {
+          tabChoices.replaceChildren();
+          tabChoices.hidden = true;
+          message(status, '');
+          detectFailed(new Error('No open tab is on the approved login domain.'), 'warning');
+          return;
+        }
+        renderTabChoices(tabs);
+        message(status, '');
+        message(detectStatus, 'Choose the tab to read the login fields from.');
+      } catch (error) {
+        tabChoices.replaceChildren();
+        tabChoices.hidden = true;
+        detected.replaceChildren();
+        detectFailed(error);
+      }
+    }, 'Looking for open tabs…'),
+  );
+}
 selectorDefaults.append(detectButton);
 profileForm.append(
   el(
@@ -682,6 +744,7 @@ profileForm.append(
   fieldMatching,
   selectorDefaults,
   tabChoices,
+  detectStatus,
   detected,
   el(
     'p',
@@ -1232,6 +1295,11 @@ function render() {
 }
 async function refresh() {
   const current = ++sequence;
+  try {
+    grantedOrigins = (await chrome.permissions.getAll()).origins ?? [];
+  } catch {
+    grantedOrigins = [];
+  }
   try {
     const next = await request<AppState>({ type: 'STATE', query, page, tabId: sourceTab });
     if (current !== sequence) return;
