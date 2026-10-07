@@ -45,6 +45,21 @@ menuButton.addEventListener('click', () => {
 document.querySelector('.menu-close')!.addEventListener('click', () => menu.close());
 menu.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => menu.close()));
 menu.addEventListener('close', () => menuButton.setAttribute('aria-expanded', 'false'));
+// Native details stay usable without JavaScript; topic links also open their target.
+function openDocumentationTopic(): void {
+  const topic = document.getElementById(location.hash.slice(1));
+  if (topic instanceof HTMLDetailsElement && topic.classList.contains('doc-article')) {
+    topic.open = true;
+  }
+}
+window.addEventListener('hashchange', openDocumentationTopic);
+document.querySelectorAll<HTMLAnchorElement>('a[href^="#docs-"]').forEach((link) => {
+  link.addEventListener('click', () => {
+    const topic = document.getElementById(link.hash.slice(1));
+    if (topic instanceof HTMLDetailsElement) topic.open = true;
+  });
+});
+openDocumentationTopic();
 document.addEventListener('keydown', (event: KeyboardEvent) => {
   const target = event.target;
   const editing =

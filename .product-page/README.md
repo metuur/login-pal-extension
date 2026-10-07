@@ -4,6 +4,8 @@ Open `index.html` directly in a browser. All fonts, styles, and scripts are loca
 
 The soft structural editorial design introduces the extension, offers a synthetic account-picker demo, and walks through developer installation, CSV import, profile authorization, and manual login. Product wording follows the current HLD/LLD/EARS amendments and repository README. No extension package is bundled or falsely offered for download.
 
+The offline section distinguishes local account management from the target website’s connectivity. The access section explains site permissions and local storage, scripting, active-tab, and clipboard permissions. Six expandable documentation topics cover settings, accepted HTTP/HTTPS domains, field detection, matching rules, optional success tracking, and local data/troubleshooting. Documentation links open the relevant topic directly. Current implementation is the source for features that supersede older contract wording.
+
 After editing strict TypeScript source, regenerate its checked-in browser script from the repository root:
 
 ```sh
