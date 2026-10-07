@@ -57,3 +57,12 @@
 
 - Shortened each stage from six to three seconds, for a 12-second tour. Strict TypeScript check passed and browser JavaScript was regenerated.
 - Chromium observed all automatic transitions and completion at the new cadence. All four updated frozen-stage URLs resolve correctly; no browser errors observed.
+
+## Looping playback and motion within each step
+
+- Changed default playback to a repeating 10-second tour: four 2.5-second stages. Observed a full automatic cycle, the return to Import, and the following Authorize step in Chromium.
+- Added staggered CSV rows, a transfer arrow and group entrance, field-configuration sweeps, site-approval confirmation, account-selection emphasis, and sequential fill indicators. Pause/resume freezes the stage progress and detail animations together.
+- Verified that interacting with search pauses the loop, selection reaches the fill illustration, and the manual fill scene animates while its heading receives focus. It stays on that step until the visitor resumes playback or chooses another step.
+- All stages retain equal panel heights with no horizontal overflow at 320, 375, 768, and 1440 pixels. Desktop and mobile screenshots, intermediate frames, the loop seam, and the reduced-motion version were visually reviewed.
+- Reduced motion retains manual navigation with a short fade and no automatic progression or inner movement. Frozen timestamps now wrap across loop boundaries.
+- Strict TypeScript and formatting checks passed. No browser errors or remote requests observed. Generated browser JavaScript updated; extension runtime unchanged.

@@ -109,11 +109,10 @@ function setupWorkflowDemo(): void {
   const query = new URLSearchParams(location.search);
   const reduced = (): boolean => motionPreference.matches || query.get('reduce') === '1';
   const canAnimate = typeof Element.prototype.animate === 'function';
-  const duration = 3000;
+  const duration = 2500;
   let active = 0;
   let visible = !('IntersectionObserver' in window);
   let wanted = !reduced() && canAnimate;
-  let completed = false;
   let manualTransition = false;
   let clock: Animation | undefined;
   let entrances: Animation[] = [];
@@ -131,15 +130,119 @@ function setupWorkflowDemo(): void {
       else animation.pause();
     });
     play.hidden = reduced() || !canAnimate;
-    play.textContent = completed ? 'Replay tour' : playing ? 'Pause tour' : 'Play tour';
+    play.textContent = playing ? 'Pause tour' : 'Play tour';
     root.dataset.playing = String(playing);
+  };
+
+  const animateScene = (panel: HTMLElement, step: number): Animation[] => {
+    const animations = [
+      panel.animate([{ opacity: 0 }, { opacity: 1 }], {
+        duration: reduced() ? 120 : 160,
+        fill: 'backwards',
+      }),
+    ];
+    if (reduced()) return animations;
+    // Every detail shares the stage clock's pause, seek, and cleanup lifecycle.
+    const tween = (
+      selector: string,
+      frames: Keyframe[],
+      delay: number,
+      length = 360,
+      stagger = 0,
+    ): void => {
+      panel.querySelectorAll<HTMLElement>(selector).forEach((element, i) => {
+        animations.push(
+          element.animate(frames, {
+            delay: delay + i * stagger,
+            duration: length,
+            easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+            fill: 'backwards',
+          }),
+        );
+      });
+    };
+    const rise = [
+      { opacity: 0, transform: 'translateY(10px)' },
+      { opacity: 1, transform: 'translateY(0)' },
+    ];
+    const pop = [
+      { opacity: 0, transform: 'scale(0.65)' },
+      { opacity: 1, transform: 'scale(1)' },
+    ];
+    const fillField = [
+      { opacity: 0.8, transform: 'scaleX(0)', offset: 0 },
+      { opacity: 0.8, transform: 'scaleX(1)', offset: 0.75 },
+      { opacity: 0, transform: 'scaleX(1)', offset: 1 },
+    ];
+    if (step === 0) {
+      tween(
+        '.csv-icon',
+        [
+          { opacity: 0, transform: 'translateY(-12px) rotate(-8deg)' },
+          { opacity: 1, transform: 'translateY(0) rotate(0)' },
+        ],
+        40,
+        440,
+      );
+      tween(
+        '.csv-row',
+        [
+          { opacity: 0, transform: 'translateX(18px)' },
+          { opacity: 1, transform: 'translateX(0)' },
+        ],
+        120,
+        400,
+        160,
+      );
+      tween('.csv-title .flow-check', pop, 800, 280);
+      tween(
+        '.flow-transfer > span:first-child',
+        [
+          { opacity: 0, transform: 'translateY(-12px)' },
+          { opacity: 1, transform: 'translateY(5px)', offset: 0.7 },
+          { opacity: 1, transform: 'translateY(0)' },
+        ],
+        900,
+        460,
+      );
+      tween('.flow-group', rise, 1040, 440);
+    } else if (step === 1) {
+      tween('.site-permission > strong', rise, 80);
+      tween('.field-progress', fillField, 240, 650, 350);
+      tween('.field-mapping b', rise, 650, 280, 350);
+      tween('.permission-approved', rise, 1250, 400);
+    } else if (step === 2) {
+      tween('.account:not([hidden])', rise, 100, 400, 100);
+      tween('.account.selected .selection', pop, 750, 280);
+      tween(
+        '.account.selected .avatar',
+        [{ transform: 'scale(1)' }, { transform: 'scale(1.12)' }, { transform: 'scale(1)' }],
+        750,
+        420,
+      );
+      tween(
+        '#demo-fill > span',
+        [
+          { transform: 'translateX(0)' },
+          { transform: 'translateX(4px)' },
+          { transform: 'translateX(0)' },
+        ],
+        1200,
+        480,
+      );
+    } else {
+      tween('.fill-identity', rise, 100);
+      tween('.field-progress', fillField, 240, 650, 400);
+      tween('.filled-row b', rise, 650, 280, 400);
+      tween('.manual-submit small', rise, 1350, 350);
+    }
+    return animations;
   };
 
   const showStep = (index: number, manual = false): void => {
     if (!Number.isInteger(index) || index < 0 || index >= panels.length) return;
     const focusWasInside = panels[active]!.contains(document.activeElement);
     if (manual) wanted = false;
-    completed = false;
     manualTransition = manual;
     if (clock) {
       clock.onfinish = null;
@@ -164,26 +267,7 @@ function setupWorkflowDemo(): void {
     position.textContent = `${index + 1} of ${panels.length}`;
     const panel = panels[index]!;
     if (canAnimate) {
-      // User-triggered reduced-motion transitions retain a short orientation fade.
-      const items = reduced()
-        ? [panel]
-        : [panel, ...panel.querySelectorAll<HTMLElement>('.flow-item')];
-      entrances = items.map((item, i) =>
-        item.animate(
-          reduced()
-            ? [{ opacity: 0 }, { opacity: 1 }]
-            : [
-                { opacity: 0, transform: 'translateY(10px)' },
-                { opacity: 1, transform: 'translateY(0)' },
-              ],
-          {
-            duration: reduced() ? 120 : 400,
-            delay: reduced() ? 0 : i * 70,
-            easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
-            fill: 'backwards',
-          },
-        ),
-      );
+      entrances = animateScene(panel, index);
       clock = progressBars[index]!.animate(
         [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }],
         { duration, easing: 'linear', fill: 'forwards' },
@@ -191,12 +275,7 @@ function setupWorkflowDemo(): void {
       clock.pause();
       clock.onfinish = () => {
         if (active !== index) return;
-        if (index < panels.length - 1) showStep(index + 1);
-        else {
-          wanted = false;
-          completed = true;
-          syncPlayback();
-        }
+        showStep((index + 1) % panels.length);
       };
     }
     if (manual) {
@@ -221,17 +300,14 @@ function setupWorkflowDemo(): void {
   position.hidden = false;
   play.addEventListener('click', () => {
     manualTransition = false;
-    if (completed) {
-      wanted = true;
-      showStep(0);
-    } else {
-      wanted = !wanted;
-      syncPlayback();
-    }
+    wanted = !wanted;
+    syncPlayback();
   });
   // Interaction takes ownership of the demo; never advance away from an active input.
   const takeControl = (event: Event): void => {
     if (!(event.target instanceof Element) || !event.target.closest('.flow-panel')) return;
+    // Step navigation moves focus to its heading without interrupting the scene.
+    if (event.type === 'focusin' && event.target.matches('.flow-panel h2')) return;
     wanted = false;
     manualTransition = false;
     entrances.forEach((animation) => animation.finish());
@@ -259,14 +335,11 @@ function setupWorkflowDemo(): void {
   // Deterministic capture: ?t=seconds freezes a moment; ?reduce=1 tests static navigation.
   const time = query.get('t');
   if (time !== null && time.trim() !== '' && Number.isFinite(Number(time))) {
-    const stageSeconds = duration / 1000;
-    const totalSeconds = panels.length * stageSeconds;
-    const bounded = Math.max(0, Math.min(totalSeconds, Number(time)));
+    const cycleTime = (Math.max(0, Number(time)) * 1000) % (panels.length * duration);
     wanted = false;
-    showStep(Math.min(panels.length - 1, Math.floor(bounded / stageSeconds)));
-    const localTime = bounded >= totalSeconds ? duration : (bounded % stageSeconds) * 1000;
+    showStep(Math.floor(cycleTime / duration));
+    const localTime = cycleTime % duration;
     if (clock) {
-      clock.onfinish = null;
       clock.pause();
       clock.currentTime = localTime;
     }

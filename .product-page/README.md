@@ -19,11 +19,11 @@ Geist fonts are packaged under the license in `FONT-LICENSE.txt`. Demo names and
 
 ## Hero walkthrough
 
-The hero explains Import → Authorize → Choose → Fill in four three-second stages (12 seconds total). Browser-native animations reveal the sample CSV, site configuration, account picker, and illustrative fill result. Playback runs once, with Pause, Play, Replay, and direct step controls. The picker preserves search and account selection; “Try autofill” carries the selected fictional name into the last stage. The website's Login action remains the user's responsibility.
+The hero explains Import → Authorize → Choose → Fill in four 2.5-second stages, looping automatically every 10 seconds. Browser-native motion brings CSV rows into the catalog, confirms field configuration and site approval, highlights the selected account, and illustrates each field filling. Pause, Play, and direct step controls share the same playback state as the detail animations. The picker preserves search and account selection; “Try autofill” carries the selected fictional name into the last stage. The website's Login action remains the user's responsibility.
 
 Interacting with a panel stops automatic progression. Playback also pauses when the walkthrough leaves the viewport, the browser tab is hidden, or the mobile menu opens. Reduced-motion preferences disable autoplay and movement; manual step changes use a 120ms fade. Inactive stages reserve layout space but are hidden from assistive technology and keyboard focus. Without JavaScript, the original sample picker remains readable.
 
-For deterministic visual review, open `index.html?t=1.5`, `?t=4.5`, `?t=7.5`, or `?t=10.5` to freeze each stage. `?reduce=1` forces reduced-motion navigation. The walkthrough uses the existing page files and requires no animation library, video, iframe, or remote asset.
+For deterministic visual review, open `index.html?t=1.8`, `?t=4.3`, `?t=6.8`, or `?t=9.3` to freeze each stage. Times wrap with the loop: `?t=10.3` shows the next cycle's import entrance. `?reduce=1` forces reduced-motion navigation. The walkthrough uses the existing page files and requires no animation library, video, iframe, or remote asset.
 
 ## Hallmark audit improvements — 2026-10-07
 
