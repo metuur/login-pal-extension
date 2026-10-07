@@ -86,7 +86,7 @@ export function icon(
     cross: 'm6 6 12 12M18 6 6 18',
     key: 'M8 14a4 4 0 1 1 3.5-6H21v4h-3v3h-3v-3h-3.5A4 4 0 0 1 8 14Z',
     settings:
-      'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm-2-5h4l1 3 3-1 2 3-2 3 2 3-2 3-3-1-1 3h-4l-1-3-3 1-2-3 2-3-2-3 2-3 3 1Z',
+      'M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0',
     external: 'M14 3h7v7M21 3 10 14M10 3H4v17h16v-6',
     back: 'm14 5-7 7 7 7M7 12h13',
     trash: 'M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7M14 10v7',
@@ -99,7 +99,8 @@ export function icon(
   svg.setAttribute('aria-hidden', 'true');
   svg.setAttribute('fill', 'none');
   svg.setAttribute('stroke', 'currentColor');
-  svg.setAttribute('stroke-width', '1.8');
+  // The Lucide gear's lobes merge into a blob at 17px with the default weight.
+  svg.setAttribute('stroke-width', name === 'settings' ? '1.25' : '1.8');
   svg.setAttribute('stroke-linecap', 'round');
   svg.setAttribute('stroke-linejoin', 'round');
   const p = document.createElementNS(svg.namespaceURI, 'path');
@@ -294,15 +295,17 @@ export function accountRow(
   sub.title = `${account.accountId} · ${account.username}`;
   content.append(heading, sub);
   if (management && origin) content.append(el('p', 'scope mono truncate', origin));
-  content.append(metadata(account));
+  // The details sit on their own grid row spanning the full card, so values are
+  // not squeezed into the narrow column left beside the action buttons.
+  const details = metadata(account);
   const act = management
     ? iconButton('trash', `Delete ${account.accountId}`, action)
     : button('Fill it…', action, 'select-button');
   if (onDetails) {
     const actions = el('div', 'row-actions');
     actions.append(act, iconButton('details', `Open ${account.accountId} details`, onDetails));
-    row.append(avatar, content, actions);
-  } else row.append(avatar, content, act);
+    row.append(avatar, content, actions, details);
+  } else row.append(avatar, content, act, details);
   return row;
 }
 export function sectionLabel(text: string, count?: number) {

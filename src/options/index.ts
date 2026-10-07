@@ -216,6 +216,8 @@ const changeDomain = button(
       async () => {
         await request({ type: 'SET_CATALOG_RULE', rule: value });
         await refresh();
+        // Keep the profile's login domain matched to the new authorized domain.
+        login.input.value = rule;
         message(
           importError,
           `Group domain changed to ${rule}. Open Login page setup and save the profile again.`,
@@ -764,9 +766,18 @@ function routeUrl(route: Route) {
 function populateProfile() {
   const p = state?.profile;
   profileName.input.value = p?.name ?? '';
-  login.input.value = p
-    ? p.logins.map((l) => l.origin).join(', ')
-    : (state?.rules.join(', ') ?? '');
+  // A profile may only cover the group's authorized domains, so one saved
+  // before a domain change starts from the current rules, not the stale value.
+  const saved = p?.logins.map((l) => l.origin) ?? [];
+  const rules = state?.rules ?? [];
+  let matched = false;
+  try {
+    const catalog = rules.map((r) => parseRule(r));
+    matched = !!saved.length && saved.every((origin) => matchesAnyRule(catalog, origin));
+  } catch {
+    matched = false;
+  }
+  login.input.value = matched ? saved.join(', ') : rules.join(', ');
   usernameMatch.select.value = p?.usernameMatch ?? 'css';
   passwordMatch.select.value = p?.passwordMatch ?? 'css';
   usernameMatch.update();

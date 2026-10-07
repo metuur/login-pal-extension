@@ -551,8 +551,9 @@ input::placeholder {
   padding: 7px 9px 7px 31px;
 }
 .account-row {
-  display: flex;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
   gap: 7px;
   padding: 8px;
   background: #fff;
@@ -614,7 +615,10 @@ input::placeholder {
 .metadata {
   font-size: 10px;
   color: #64748b;
-  margin-top: 4px;
+}
+.account-row > .metadata {
+  grid-column: 1 / -1;
+  margin-top: -3px;
 }
 .metadata summary {
   cursor: pointer;
@@ -643,7 +647,14 @@ input::placeholder {
 }
 .copy-value {
   min-width: 0;
-  overflow-wrap: anywhere;
+  /* break-word, not anywhere: "anywhere" also shrinks the intrinsic size, which
+     wrapped short values like an email mid-word while space was still free. */
+  overflow-wrap: break-word;
+}
+/* Line the copy buttons up in their own column instead of letting each one sit
+   wherever its value happens to end. */
+.metadata dd .copy-icon {
+  margin-left: auto;
 }
 .confirm-heading {
   display: flex;

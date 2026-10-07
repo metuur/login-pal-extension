@@ -45,10 +45,7 @@ async function openOptions(section = 'accounts') {
   url.hash = section;
   await chrome.tabs.create({ url: url.href });
 }
-actions.append(
-  iconButton('external', 'Manage accounts', () => openOptions()),
-  iconButton('settings', 'Settings', () => openOptions('profile')),
-);
+actions.append(iconButton('settings', 'Settings', () => openOptions('profile')));
 top.append(brand, actions);
 header.append(top);
 const strip = el('div', 'profile-strip');
@@ -77,6 +74,42 @@ function markFill(accountId: string, section: FillSection, ok: boolean) {
     fillFeedback = undefined;
     render();
   }, FILL_FEEDBACK_MS);
+}
+/**
+ * Re-rendering rebuilds every row, which would collapse an expanded card while
+ * the user is still copying values out of it. Remember which cards are open and
+ * restore them after each render, the same way fill feedback is re-applied.
+ * Session storage carries the set across popup closes, so pasting a copied
+ * value into the page and reopening the popup lands back on the same card.
+ */
+const OPEN_DETAILS_KEY = 'popup-open-details';
+const openDetails = new Set<string>();
+async function restoreOpenDetails() {
+  try {
+    const stored = (await chrome.storage.session.get(OPEN_DETAILS_KEY))[OPEN_DETAILS_KEY];
+    if (Array.isArray(stored))
+      for (const key of stored) if (typeof key === 'string') openDetails.add(key);
+  } catch {
+    /* A fresh browser session simply starts with every card collapsed. */
+  }
+}
+function persistOpenDetails() {
+  void chrome.storage.session.set({ [OPEN_DETAILS_KEY]: [...openDetails] }).catch(() => {});
+}
+function applyOpenDetails() {
+  body.querySelectorAll<HTMLElement>('.account-row').forEach((row) => {
+    const details = row.querySelector('details.metadata');
+    if (!row.dataset.account || !(details instanceof HTMLDetailsElement)) return;
+    // The same account appears under both Recent and All accounts; expand only
+    // the copy the user opened.
+    const key = `${row.dataset.section ?? ''}:${row.dataset.account}`;
+    details.open = openDetails.has(key);
+    details.addEventListener('toggle', () => {
+      if (details.open) openDetails.add(key);
+      else openDetails.delete(key);
+      persistOpenDetails();
+    });
+  });
 }
 function applyFillFeedback() {
   if (!fillFeedback) return;
@@ -146,7 +179,7 @@ function render(resultsOnly = false) {
     el(
       'span',
       s.authorized ? 'pill authorized' : 'pill',
-      s.migrationRequired ? 'Migration needed' : s.authorized ? '● Authorized' : 'Not authorized',
+      s.migrationRequired ? 'Migration needed' : s.authorized ? '● Authorized' : 'Not configured',
     ),
   );
   groupBar.replaceChildren(
@@ -225,6 +258,7 @@ function render(resultsOnly = false) {
     );
   if (resultsOnly && oldResults) {
     oldResults.replaceWith(results);
+    applyOpenDetails();
     applyFillFeedback();
     return;
   }
@@ -247,6 +281,7 @@ function render(resultsOnly = false) {
   label.append(el('span', '', 'Press / to focus'));
   body.append(label, search.wrap, results);
   search.input.value = query;
+  applyOpenDetails();
   applyFillFeedback();
 }
 async function refresh(resultsOnly = false) {
@@ -275,5 +310,6 @@ void (async () => {
   } catch {
     /* An unavailable tab keeps autofill disabled. */
   }
+  await restoreOpenDetails();
   await refresh();
 })();
