@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f6f7f9" />
+    <meta
+      name="description"
+      content="Detailed setup documentation for Account Login Assistant: CSV groups, accepted domains, login input detection, field matching, and local data."
+    />
+    <title>Documentation — Account Login Assistant</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%233d56e8'/%3E%3Cpath d='M12 12h16v13H18l-6 5z' fill='white'/%3E%3C/svg%3E"
+    />
+    <link rel="preload" href="geist-regular.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="main.js" defer></script>
+  </head>
+  <body class="docs-page">
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="nav">
+      <a href="index.html" class="brand" aria-label="Account Login Assistant home"
+        ><span class="brand-icon" aria-hidden="true">◧</span>Login Assistant<span class="dev"
+          >DEV</span
+        ></a
+      >
+      <nav aria-label="Main navigation">
+        <a href="index.html#overview">Why this extension</a
+        ><a href="index.html#how-it-works">How it works</a><a href="docs.html">Docs</a>
+      </nav>
+      <a class="nav-cta" href="index.html#setup">Get started <span aria-hidden="true">↗</span></a>
+      <button
+        class="menu-button"
+        aria-label="Open menu"
+        aria-controls="mobile-menu"
+        aria-expanded="false"
+      >
+        <span></span><span></span>
+      </button>
+    </header>
+    <dialog id="mobile-menu" aria-label="Navigation">
+      <button class="menu-close" aria-label="Close menu">×</button>
+      <nav>
+        <a href="index.html#overview">Why this extension</a
+        ><a href="index.html#how-it-works">How it works</a
+        ><a href="index.html#offline">Offline capabilities</a
+        ><a href="index.html#access">Website access</a><a href="docs.html">Docs</a
+        ><a href="index.html#setup">Get started ↗</a>
+      </nav>
+    </dialog>
+    <main id="main">
+      <section id="docs" class="documentation section">
+        <div class="wrap">
+          <div class="section-heading reveal">
+            <div>
+              <span class="eyebrow">THE PRACTICAL GUIDE</span>
+              <h1>A little setup.<br />Every detail, covered.</h1>
+            </div>
+            <p>
+              From your first CSV to an unfamiliar login form. Open a topic for exact settings,
+              examples, and troubleshooting.
+            </p>
+          </div>
+          <div class="docs-layout">
+            <nav class="docs-nav reveal" aria-label="Documentation topics">
+              <span>IN THIS GUIDE</span
+              ><a href="#docs-settings">01 <span>Settings &amp; CSV groups</span></a
+              ><a href="#docs-domains">02 <span>Accepted domains</span></a
+              ><a href="#docs-detection">03 <span>Login input detection</span></a
+              ><a href="#docs-matching">04 <span>Manual field matching</span></a
+              ><a href="#docs-success">05 <span>Successful login tracking</span></a
+              ><a href="#docs-storage">06 <span>Local data &amp; troubleshooting</span></a>
+            </nav>
+            <div class="docs-articles">
+              <details class="doc-article" id="docs-settings" open>
+                <summary>
+                  <span class="doc-number">01</span>
+                  <h2>Settings &amp; CSV groups</h2>
+                  <span class="doc-toggle" aria-hidden="true">+</span>
+                </summary>
+                <div class="doc-body">
+                  <p>
+                    Choose a group at the top of Settings. Each group keeps its own accounts,
+                    authorized domains, login profile, and history. The popup’s group picker chooses
+                    which catalog you search and fill from.
+                  </p>
+                  <h3>Import CSV</h3>
+                  <ol>
+                    <li>Name your group or choose <strong>Create new group</strong>.</li>
+                    <li>
+                      Select a UTF-8 CSV with <code>account_id</code>, <code>username</code>, and
+                      <code>password</code> headers. Extra columns become searchable metadata. Use
+                      the built-in three-row sample as a starting point.
+                    </li>
+                    <li>
+                      Enter your authorized domains. Choose <strong>Merge &amp; Update</strong> to
+                      preserve omitted accounts, or <strong>Wipe &amp; Replace</strong> to replace
+                      the selected group.
+                    </li>
+                    <li>
+                      Verify the file, review valid/invalid counts, then confirm. Invalid rows are
+                      excluded; Replace may therefore remove existing accounts corresponding to
+                      those rows.
+                    </li>
+                  </ol>
+                  <h3>Indexed accounts</h3>
+                  <p>
+                    Search the imported catalog, copy individual account details, delete an account,
+                    or export the entire selected group. Export includes synthetic passwords even
+                    when the account list is filtered. Individual deletion offers a 30-second Undo;
+                    group purge requires confirmation and cannot be undone.
+                  </p>
+                  <h3>Login page setup</h3>
+                  <p>
+                    Name the profile, configure its login domains, select how to match the two
+                    inputs, and decide whether to track successful login. Finish with
+                    <strong>Save &amp; authorize website</strong>. Unsaved detection choices and
+                    common selectors are only a draft.
+                  </p>
+                  <p class="doc-note">
+                    Import limits: 2 MiB per file, 10,000 rows, and 100 columns. IDs are
+                    case-sensitive and must be unique within a group. Duplicate IDs in the same CSV
+                    are rejected.
+                  </p>
+                </div>
+              </details>
+              <details class="doc-article" id="docs-domains">
+                <summary>
+                  <span class="doc-number">02</span>
+                  <h2>Accepted domains</h2>
+                  <span class="doc-toggle" aria-hidden="true">+</span>
+                </summary>
+                <div class="doc-body">
+                  <p>
+                    Use a full <code>https://</code> or <code>http://</code> URL. Both schemes are
+                    accepted on regular hosts and local development hosts. Prefer HTTPS: HTTP does
+                    not encrypt traffic to the target site. Use synthetic accounts only.
+                  </p>
+                  <div class="domain-examples">
+                    <div>
+                      <span class="example-status">ACCEPTED</span><code>https://qa.example.com</code
+                      ><small>A named HTTPS environment</small>
+                    </div>
+                    <div>
+                      <span class="example-status">ACCEPTED</span><code>http://localhost:3000</code
+                      ><small>A local server on a specific port</small>
+                    </div>
+                    <div>
+                      <span class="example-status">ACCEPTED</span
+                      ><code>http://qa.example.com:8080</code
+                      ><small>An HTTP test environment</small>
+                    </div>
+                    <div>
+                      <span class="example-status rejected">NOT ACCEPTED</span
+                      ><code>https://*.example.com</code
+                      ><small>Wildcard hosts; also no file:// or chrome:// URLs</small>
+                    </div>
+                  </div>
+                  <h3>What exactly matches?</h3>
+                  <p>
+                    The <strong>scheme, hostname, and port</strong> must match. HTTP and HTTPS are
+                    separate. Subdomains are separate. <code>localhost:3000</code> and
+                    <code>localhost:4000</code> are separate. Paths, query parameters, and fragments
+                    do not restrict autofill authorization: adding <code>/login</code> does not
+                    limit access to only that page.
+                  </p>
+                  <h3>One group, several environments</h3>
+                  <p>
+                    Enter up to 20 distinct domains separated by commas or whitespace. A login
+                    profile may cover domains already authorized for that group, using the same
+                    field rules. Use separate groups when different sites need different rules. URLs
+                    containing embedded usernames or passwords are not accepted.
+                  </p>
+                  <p class="doc-note">
+                    After changing a group’s domains, save and authorize its login profile again.
+                    Existing accounts can stay in the group; you do not need to reimport the CSV
+                    just to update the domains.
+                  </p>
+                </div>
+              </details>
+              <details class="doc-article" id="docs-detection">
+                <summary>
+                  <span class="doc-number">03</span>
+                  <h2>Login input detection</h2>
+                  <span class="doc-toggle" aria-hidden="true">+</span>
+                </summary>
+                <div class="doc-body">
+                  <ol>
+                    <li>
+                      Open the actual sign-in form in another browser tab. Leave the username and
+                      password inputs visible.
+                    </li>
+                    <li>
+                      In <strong>Settings → Login page setup</strong>, check that the login domain
+                      belongs to your selected group.
+                    </li>
+                    <li>
+                      Choose <strong>Detect fields from the login page</strong>. Review the
+                      site-access explanation and approve Chrome’s request if permission is missing.
+                    </li>
+                    <li>
+                      Choose a tab from the list of up to three recently used tabs on the group’s
+                      authorized domains. Check the URL and path to distinguish similar tabs.
+                    </li>
+                    <li>
+                      Select the detected username and password candidates. The extension suggests a
+                      matching method from attributes such as ID, name, or autocomplete.
+                    </li>
+                    <li>
+                      Review the choices and click <strong>Save &amp; authorize website</strong>.
+                      Detection does not save the profile or fill an account by itself.
+                    </li>
+                  </ol>
+                  <h3>What can detection see?</h3>
+                  <p>
+                    It inspects visible, writable text, email, and password inputs in the top-level
+                    page, including open shadow roots used by web components. It returns identifying
+                    attributes and labels, never input values. Embedded frames and closed shadow
+                    roots cannot be inspected.
+                  </p>
+                  <h3>If no fields appear</h3>
+                  <p>
+                    Confirm you picked the right tab and the form is already on screen. Open the
+                    login step before detecting again. A page may keep its form in an embedded
+                    frame; the extension can name visible frame hosts to explain that limitation,
+                    but it cannot fill inside those frames.
+                  </p>
+                </div>
+              </details>
+              <details class="doc-article" id="docs-matching">
+                <summary>
+                  <span class="doc-number">04</span>
+                  <h2>Manual field matching</h2>
+                  <span class="doc-toggle" aria-hidden="true">+</span>
+                </summary>
+                <div class="doc-body">
+                  <p>
+                    Choose a method independently for username and password. Each must resolve to
+                    exactly one visible, writable input of the appropriate type. Ambiguous matches
+                    stop the fill instead of guessing.
+                  </p>
+                  <dl class="matching-list">
+                    <div>
+                      <dt>Input ID or name</dt>
+                      <dd>
+                        Enter the exact attribute value, such as <code>email</code>. With ID
+                        matching, omit the CSS <code>#</code> prefix. These matches are
+                        case-sensitive.
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Autocomplete</dt>
+                      <dd>
+                        Use a token such as <code>username</code> or <code>current-password</code>.
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Label, placeholder, or aria-label</dt>
+                      <dd>
+                        Enter the field’s text. Matching ignores case and extra whitespace. Label
+                        matching also considers visible text referenced by aria-labelledby.
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>CSS selector</dt>
+                      <dd>
+                        Use a selector such as <code>input[name="email"]</code> or
+                        <code>input[type="password"]</code>. Comma-separated alternatives are
+                        allowed, but their combined result must identify exactly one input.
+                      </dd>
+                    </div>
+                  </dl>
+                  <p>
+                    <strong>Use common selectors</strong> restores broad starting rules. Review them
+                    on your site before saving; multiple matching fields require a more specific
+                    rule. Re-detect fields if a website redesign changes its form.
+                  </p>
+                </div>
+              </details>
+              <details class="doc-article" id="docs-success">
+                <summary>
+                  <span class="doc-number">05</span>
+                  <h2>Successful login tracking</h2>
+                  <span class="doc-toggle" aria-hidden="true">+</span>
+                </summary>
+                <div class="doc-body">
+                  <p>
+                    Filling fields and signing in are different events.
+                    <strong>Recent</strong> records a successful fill.
+                    <strong>Last successful</strong> changes only when your configured success
+                    condition is observed within two minutes.
+                  </p>
+                  <dl class="matching-list">
+                    <div>
+                      <dt>Do not track successful logins</dt>
+                      <dd>Use autofill without a success condition. No success URL is required.</dd>
+                    </div>
+                    <div>
+                      <dt>URL changes to success page</dt>
+                      <dd>
+                        Set the exact post-login URL. Its route must differ from the login URL.
+                        Matching checks origin, path, and fragment; query parameters are ignored.
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>A success element becomes visible</dt>
+                      <dd>
+                        Set the observation URL and a CSS selector for an element that appears after
+                        login, such as a signed-in account menu.
+                      </dd>
+                    </div>
+                  </dl>
+                  <p>
+                    Configure a success URL on the same origin as the first login domain in your
+                    profile. When one profile covers multiple environments, verify tracking on the
+                    configured success origin rather than assuming it applies to every environment.
+                  </p>
+                  <p class="doc-note">
+                    You still submit the website’s form manually. Failed login leaves the previous
+                    successful account unchanged. Editing the filled fields cancels attribution, and
+                    an already-satisfied success condition is not counted as a new success.
+                  </p>
+                </div>
+              </details>
+              <details class="doc-article" id="docs-storage">
+                <summary>
+                  <span class="doc-number">06</span>
+                  <h2>Local data &amp; troubleshooting</h2>
+                  <span class="doc-toggle" aria-hidden="true">+</span>
+                </summary>
+                <div class="doc-body">
+                  <h3>What stays on this computer?</h3>
+                  <p>
+                    Imported accounts, settings, and history use extension-local storage. There is
+                    no application server, cloud sync, or telemetry. The extension’s own features
+                    and assets do not need an internet connection. A remote login page and its
+                    authentication service still need to be reachable.
+                  </p>
+                  <h3>Is this password-protected storage?</h3>
+                  <p>
+                    No. The local snapshot uses encryption, but its key is stored alongside it so
+                    the catalog can open automatically. There is no master password or lock prompt.
+                    Use synthetic accounts only. Original and exported CSV files remain ordinary
+                    files on your disk.
+                  </p>
+                  <h3>“No open tab” or no permission</h3>
+                  <p>
+                    Open the authorized origin in another tab, including the correct scheme and
+                    port. Check Chrome’s Site access settings, then run detection or save and
+                    authorize the profile again.
+                  </p>
+                  <h3>Autofill is blocked</h3>
+                  <p>
+                    Choose the correct group, check the page against the profile’s domains, and
+                    re-save the profile after a domain change. Make the username and password rules
+                    unique. Embedded-frame logins, closed shadow roots, SSO handoffs, and multi-step
+                    flows are outside this version’s scope.
+                  </p>
+                  <h3>Backup and reset</h3>
+                  <p>
+                    Export the selected group before a destructive operation if you need to retain
+                    its accounts. Exported CSV files include synthetic passwords. Purge removes a
+                    group’s accounts while preserving its setup; Reset also removes its profile and
+                    session state. Neither is a substitute for a backup.
+                  </p>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer class="wrap">
+      <a href="index.html" class="brand"
+        ><span class="brand-icon" aria-hidden="true">◧</span>Login Assistant<span class="dev"
+          >DEV</span
+        ></a
+      >
+      <p>Account Login Assistant <span>·</span> Crafted by metuur</p>
+      <a href="#main">Back to top ↑</a>
+    </footer>
+  </body>
+</html>

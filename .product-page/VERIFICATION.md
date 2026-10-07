@@ -17,3 +17,10 @@
 - Expanded permissions and documentation checked at 320, 390, 768, 1024, and 1440 pixels with no horizontal overflow. Desktop and mobile screenshots inspected.
 - Mobile Docs navigation closes its menu correctly. Already-loaded product-page search and documentation work with browser networking disabled. This checks the product page, not offline authentication to an external service.
 - Strict TypeScript check passed. No JavaScript errors during browser verification. Extension runtime unchanged.
+
+## Separate documentation page
+
+- Moved all six detailed topics to `docs.html`; confirmed no documentation section remains on the homepage.
+- Verified identical header and footer markup across both pages, cross-page navigation, direct topic URLs, and mobile-menu navigation back to the homepage.
+- Confirmed homepage demo still works and shared JavaScript runs without errors on the documentation page without demo elements.
+- Expanded topics checked at 320, 390, 768, and 1440 pixels with no horizontal overflow. Desktop/mobile documentation screenshots reviewed. Strict TypeScript check passed.

@@ -1532,6 +1532,16 @@ dialog nav a:nth-child(4) {
 .documentation {
   background: #eceff5;
 }
+.docs-page .documentation {
+  background: transparent;
+}
+.docs-page .section-heading h1 {
+  font-size: clamp(35px, 4vw, 53px);
+  line-height: 1.12;
+  font-weight: 600;
+  letter-spacing: -0.055em;
+  margin-top: 24px;
+}
 .docs-layout {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
@@ -1585,11 +1595,12 @@ dialog nav a:nth-child(4) {
   padding: 22px;
   border-radius: 15px;
 }
-.doc-article h3 {
+.doc-article summary h2 {
   font-size: 16px;
   letter-spacing: -0.35px;
   font-weight: 600;
   line-height: 1.4;
+  margin: 0;
 }
 .doc-number {
   font-size: 10px;
@@ -1617,7 +1628,7 @@ dialog nav a:nth-child(4) {
 .doc-body p + p {
   margin-top: 16px;
 }
-.doc-body h4 {
+.doc-body h3 {
   font-size: 14px;
   margin: 25px 0 9px;
   letter-spacing: -0.15px;
@@ -1740,7 +1751,7 @@ dialog nav a:nth-child(4) {
     padding: 20px 15px;
     gap: 10px;
   }
-  .doc-article h3 {
+  .doc-article summary h2 {
     font-size: 15px;
   }
   .doc-body {
