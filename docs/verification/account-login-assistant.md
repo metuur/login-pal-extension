@@ -1,4 +1,4 @@
-# Account Login Assistant verification
+# Login Pal verification
 
 ## CSV export revision (2026-10-05)
 

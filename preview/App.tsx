@@ -37,7 +37,7 @@ export default function App() {
             <div className="logo">
               <Icon name="key" />
             </div>
-            <strong>Account Login Assistant</strong>
+            <strong>Login Pal</strong>
           </div>
           <div className="header-actions">
             {settings ? (

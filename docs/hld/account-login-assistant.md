@@ -1,7 +1,7 @@
 > Current domain-matching amendment (2026-10-05): CSV import and login authorization match the exact HTTPS origin (hostname and port), ignoring paths, queries and fragments. Existing saved path rules use the same domain behavior. The login field is labeled “Authorized HTTPS login domain” and defaults to the imported domain. Subdomains require separate authorization. Success detection remains exact-route/element based; unique visible fields and explicit user action are still required. This supersedes older exact-login-path requirements below.
 > Loopback http amendment (2026-10-05): authorization additionally accepts plain http on loopback hosts (`localhost`, `*.localhost`, `127.0.0.1`) so a local development server can be authorized, matching the exact origin including port. Every other scheme, and http on any non-loopback host, stays rejected. The manifest adds the matching optional host permissions, and host grants, content-script registration and worker sender validation follow the authorized origin's own scheme. The import field is labeled “Authorized domain” and the profile field “Authorized login domain”.
 
-# Account Login Assistant — High-Level Design
+# Login Pal — High-Level Design
 
 ## Selected-group CSV export (2026-10-05)
 
@@ -29,7 +29,7 @@ Status: Planning baseline accepted through the user’s request to continue plan
 
 Build a Google Chrome extension in TypeScript that turns a locally imported CSV into a searchable account catalog for one explicitly authorized application. Users find an account, confirm its identity, fill the authorized login form, and submit manually. A configured success signal determines which account becomes the last successful account. This is an internal QA/support workflow for working with many known accounts.
 
-Source: the supplied “Account Login Assistant — Chrome Extension” brief and the user's subsequent popup/settings references. The user confirmed internal QA/support users, one configurable HTTPS login profile, an encrypted local vault with a master password, and configuring website details later. The requested settings features expand the original replacement-only scope to include merge/update, individual deletion with Undo, bulk deletion, and an import URL-pattern field.
+Source: the supplied “Login Pal — Chrome Extension” brief and the user's subsequent popup/settings references. The user confirmed internal QA/support users, one configurable HTTPS login profile, an encrypted local vault with a master password, and configuring website details later. The requested settings features expand the original replacement-only scope to include merge/update, individual deletion with Undo, bulk deletion, and an import URL-pattern field.
 
 ## Stakeholders & Impact
 
@@ -61,7 +61,7 @@ The extension does not change authentication, bypass MFA, guarantee that a confi
 
 The user supplied `DESIGN.md`, `code.html`, and `screen.png` in `/Users/javierbenavides/Downloads/stitch_account_login_assistant_extension/` as the popup style reference. Follow the light slate surfaces, white cards, indigo primary action, compact typography, rounded controls, and dense account rows shown in the screenshot and HTML. Those two concrete references take precedence over the conflicting dark/sky-blue palette in DESIGN.md. The supplied material is a visual reference, not additional authority to change product behavior or security requirements.
 
-Use the reference's “Account Login Assistant” header, profile/domain authorization strip, prominent last-successful account card, search field, metadata chips, account list, and bottom count/Lock toolbar. Replace sample account names, counts, times, domain, and statuses with actual state. Label the featured section “Last successful account” to preserve the distinction from recent fills. Fit the extension popup itself; the screenshot's surrounding canvas and vertical margins are presentation framing.
+Use the reference's “Login Pal” header, profile/domain authorization strip, prominent last-successful account card, search field, metadata chips, account list, and bottom count/Lock toolbar. Replace sample account names, counts, times, domain, and statuses with actual state. Label the featured section “Last successful account” to preserve the distinction from recent fills. Fit the extension popup itself; the screenshot's surrounding canvas and vertical margins are presentation framing.
 
 Locked, empty, unauthorized, loading, error, and account-confirmation views use the same visual language. The reference's simulated fill/lock animations and decorative shortcut hints do not establish implemented functionality.
 

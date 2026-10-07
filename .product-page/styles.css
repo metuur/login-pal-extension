@@ -2254,6 +2254,16 @@ dialog nav a:nth-child(4) {
     padding-block: 8px;
   }
 }
+.hero .brand-headline {
+  font-size: clamp(32px, 4.6vw, 66px);
+  line-height: 1.12;
+  letter-spacing: -0.06em;
+}
+@media (max-width: 767px) {
+  .hero .brand-headline {
+    font-size: clamp(32px, 10.5vw, 56px);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

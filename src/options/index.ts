@@ -46,7 +46,7 @@ const logo = el('div', 'logo');
 logo.append(icon('key'));
 const brand = el('div', 'brand');
 const title = el('div');
-title.append(el('strong', '', 'Account Login Assistant'), el('p', 'subtle', 'Account settings'));
+title.append(el('strong', '', 'Login Pal'), el('p', 'subtle', 'Account settings'));
 brand.append(logo, title);
 const badge = el('span', 'pill authorized');
 const version = el('span', 'version mono', `v${chrome.runtime.getManifest().version}`);

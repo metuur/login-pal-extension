@@ -521,7 +521,7 @@ try {
     'Account detail labels fit on one line instead of breaking mid-word',
   );
   check(
-    (await popup.locator('body').innerText()).includes('Account Login Assistant'),
+    (await popup.locator('body').innerText()).includes('Login Pal'),
     'Popup renders the branded interface',
   );
   check(

@@ -16,8 +16,9 @@ const icons = Object.fromEntries([16, 32, 48, 128].map((size) => [size, `icon-${
 const manifest = {
   manifest_version: 3,
   icons,
-  name: 'Account Login Assistant',
-  description: 'A local encrypted account catalog for authorized QA login pages.',
+  name: 'Login Pal',
+  description:
+    'Switch accounts. Keep moving. A local account catalog for authorized QA login pages.',
   // 121 is the first version with tabs.lastAccessed, used to offer the most
   // recently used tabs as field-detection sources.
   minimum_chrome_version: '121',
@@ -29,7 +30,7 @@ const manifest = {
     service_worker: 'background.js',
   },
   action: {
-    default_title: 'Account Login Assistant',
+    default_title: 'Login Pal',
     default_icon: icons,
     default_popup: 'popup.html',
   },
