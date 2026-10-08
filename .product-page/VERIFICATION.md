@@ -1,3 +1,11 @@
+## Mouse spotlight and desktop navigation refinement — 2026-10-07
+
+- Chromium observed the green spotlight following both mouse axes, fading on pointer exit, and allowing the Member demo filter to remain clickable. Reduced-motion CSS immediately hides the layer.
+- Isolated generated-script checks passed coordinate conversion, one-frame batching, preference-change cleanup, pending-frame cancellation, touch/coarse-pointer exclusion, and the forced reduced-motion guard. The initial browser assertion for preference cleanup read before its asynchronous media-query event; the cleanup handler was verified separately rather than claiming that timing assertion passed.
+- In-app browser confirmed inline desktop links and hidden hamburger at 960, 1280, 1440 and 1920px; smaller navigation at 320, 375, 414 and 768px. No horizontal overflow at those observed sizes. At 375px, the menu opened and Escape dismissed it.
+- Documentation uses the same visible desktop navigation; the Docs link navigated successfully. Desktop screenshot reviewed with the spotlight active.
+- Strict TypeScript and formatting/whitespace checks passed. This refinement changes only the standalone product page.
+
 # Product-page redesign verification — 2026-10-07
 
 ## Observed results

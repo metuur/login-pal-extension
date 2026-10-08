@@ -443,3 +443,42 @@ function setupInstallationGuide() {
   });
 }
 setupInstallationGuide();
+function setupHeroSpotlight() {
+  const hero = document.querySelector(".home-page .hero");
+  if (!hero) return;
+  const pointer = window.matchMedia("(hover: hover) and (pointer: fine)");
+  const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const forcedReduced = new URLSearchParams(location.search).get("reduce") === "1";
+  let frame = 0;
+  let clientX = 0;
+  let clientY = 0;
+  const reset = () => {
+    cancelAnimationFrame(frame);
+    frame = 0;
+    delete hero.dataset.spotlight;
+  };
+  hero.addEventListener("pointermove", (event) => {
+    if (event.pointerType !== "mouse" || !pointer.matches || motion.matches || forcedReduced)
+      return;
+    clientX = event.clientX;
+    clientY = event.clientY;
+    if (frame) return;
+    frame = requestAnimationFrame(() => {
+      frame = 0;
+      const bounds = hero.getBoundingClientRect();
+      hero.style.setProperty("--spotlight-x", `${clientX - bounds.left}px`);
+      hero.style.setProperty("--spotlight-y", `${clientY - bounds.top}px`);
+      hero.dataset.spotlight = "active";
+    });
+  });
+  hero.addEventListener("pointerleave", reset);
+  hero.addEventListener("pointercancel", reset);
+  pointer.addEventListener("change", reset);
+  motion.addEventListener("change", reset);
+  window.addEventListener("blur", reset);
+  window.addEventListener("resize", reset);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) reset();
+  });
+}
+setupHeroSpotlight();

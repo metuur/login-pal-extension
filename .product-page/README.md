@@ -6,7 +6,7 @@ Open `index.html` directly or serve this directory with a static server. All fon
 
 ## Design
 
-The 2026-10-07 redesign combines the warm paper, upright serif and green of Hallmark’s Hollowback Apiary example with Tally’s readable product presentation. Hyperlane informs responsive interaction feedback, adapted to useful demo controls rather than a countdown or cursor spotlight. The original stylesheet is preserved; `guide.css` applies the product guide’s visual system. Hallmark records are scoped to `.hallmark/` here, not the extension UI.
+The 2026-10-07 redesign combines the warm paper, upright serif and green of Hallmark’s Hollowback Apiary example with Tally’s readable product presentation. Hyperlane supplies the mouse-following hero spotlight, adapted to the green palette. The decorative glow follows a mouse, fades on exit, and stays disabled for touch and reduced motion. Desktop navigation shows the page links directly at 960px and above; smaller screens use the existing menu dialog. The original stylesheet is preserved; `guide.css` applies the product guide’s visual system. Hallmark records are scoped to `.hallmark/` here, not the extension UI.
 
 Geist remains the body face. Young Serif is packaged locally for headings under `YOUNG-SERIF-LICENSE.txt`; Geist’s license is in `FONT-LICENSE.txt`. Branding assets retain the existing Login Pal mark. Run `rtk npm run generate:assets` from the repository root only when changing the source branding asset.
 

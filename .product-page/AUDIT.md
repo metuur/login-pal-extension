@@ -19,9 +19,13 @@ Initial ranked count: 0 critical · 4 major · 2 minor. These findings are remed
 
 - [Hollowback Apiary](https://www.usehallmark.com/examples/garden-01/): warm paper, green ink, upright Young Serif and generous editorial spacing.
 - [Tally](https://www.usehallmark.com/examples/tally/): clear product explanation, readable demo and straightforward actions.
-- [Hyperlane](https://www.usehallmark.com/examples/hyperlane/): responsive controls and clear state feedback, applied to the account demo and installation tasks. No unrelated event countdown or RSVP flow was copied.
+- [Hyperlane](https://www.usehallmark.com/examples/hyperlane/): the requested mouse-following hero spotlight, plus responsive controls and clear state feedback. The spotlight uses the green palette and respects reduced motion. No unrelated event countdown or RSVP flow was copied.
 
 The page keeps its original routes and topic anchors. The extension itself is unchanged. `guide.css` is an additive visual layer; `styles.css` is preserved. The documentation content remains in its existing information architecture.
+
+## Requested interaction and navigation refinement
+
+Added the Hyperlane-style spotlight on mouse input. It sits behind hero content and cannot intercept controls. At 960px and above, both pages show the navigation links directly; the hamburger remains available below that breakpoint.
 
 ## Hallmark gate review
 

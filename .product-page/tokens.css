@@ -17,6 +17,7 @@
   --color-shadow: oklch(27% 0.045 155 / 0.08);
   --color-overlay: oklch(27% 0.045 155 / 0.35);
   --color-clear: oklch(97% 0.018 92 / 0);
+  --color-spotlight: oklch(76% 0.12 140 / 0.3);
   --font-body: Geist, sans-serif;
   --font-display: 'Young Serif', Georgia, serif;
   --font-mono: ui-monospace, monospace;

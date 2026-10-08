@@ -1,6 +1,6 @@
 /* Hallmark · macrostructure: Workbench · tone: warm editorial · anchor hue: leaf green
- * theme: Garden adaptation · genre: editorial · nav: N9 edge-aligned · footer: Ft1 mast-headed
- * enrichment: existing interactive walkthrough, no simulated browser chrome
+ * theme: Garden adaptation · genre: editorial · nav: inline desktop links / mobile dialog · footer: Ft1 mast-headed
+ * enrichment: interactive walkthrough + user-requested Hyperlane mouse spotlight
  * audience: developers and QA · use: try the demo, install locally
  * Pre-emit critique: P4 H4 E4 S5 R4 V4 */
 @font-face {
@@ -1496,4 +1496,61 @@ button:disabled {
 }
 .example-page-label i {
   display: none;
+}
+
+/* Hyperlane spotlight: one decorative layer behind the hero, mouse input only.
+ * Hallmark component critique: P4 H4 E5 S5 R4 V4. Existing page structure retained. */
+.home-page .hero {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+}
+.home-page .hero::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  width: clamp(32rem, 65vw, 56rem);
+  aspect-ratio: 1;
+  top: 0;
+  left: 0;
+  background: radial-gradient(circle, var(--color-spotlight), var(--color-clear) 68%);
+  transform: translate3d(var(--spotlight-x, 0px), var(--spotlight-y, 0px), 0) translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity var(--dur-short) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .home-page .hero[data-spotlight='active']::before {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-page .hero::before {
+    display: none;
+  }
+}
+
+/* Desktop navigation stays visible; compact screens use the existing dialog. */
+@media (min-width: 60rem) {
+  .nav nav {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    color: var(--color-muted);
+    font-size: var(--text-small);
+  }
+  .nav nav a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    white-space: nowrap;
+  }
+  .nav nav a:hover {
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+  .nav .menu-button {
+    display: none;
+  }
 }
