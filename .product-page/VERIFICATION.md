@@ -1,3 +1,11 @@
+## Bubble typography and Hyperlane header — 2026-10-07
+
+- Browser confirmed local Plus Jakarta Sans loaded for the homepage and documentation, with 700-weight headings. JetBrains Mono is packaged for numbered labels and code, with both font licenses included.
+- Homepage checked at 320, 375, 414, 768, 960 and 1440px; documentation at 320, 375, 414 and 768px. No horizontal document overflow. Desktop and mobile screenshots visually inspected.
+- Desktop navigation stays inline from 960px. The floating header enters its narrower 1000px state on scroll and stays 16px below the viewport top. Mobile menu opens and Escape dismisses it. Docs and home navigation work.
+- Strict standalone TypeScript, generated JavaScript, formatting and whitespace checks passed. No browser console errors observed. Reduced-motion CSS disables header transitions; the previously verified mouse spotlight is unchanged.
+- The original preview tab remained unresponsive, so verification used a fresh in-app browser tab. Temporary viewport sizing was reset and the new preview was retained.
+
 ## Mouse spotlight and desktop navigation refinement — 2026-10-07
 
 - Chromium observed the green spotlight following both mouse axes, fading on pointer exit, and allowing the Member demo filter to remain clickable. Reduced-motion CSS immediately hides the layer.

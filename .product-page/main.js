@@ -482,3 +482,14 @@ function setupHeroSpotlight() {
   });
 }
 setupHeroSpotlight();
+function setupFloatingHeader() {
+  const header = document.querySelector("header.nav");
+  if (!header) return;
+  const update = () => {
+    const state = window.scrollY > 48 ? "scrolled" : "top";
+    if (header.dataset.state !== state) header.dataset.state = state;
+  };
+  window.addEventListener("scroll", update, { passive: true });
+  update();
+}
+setupFloatingHeader();

@@ -1,3 +1,7 @@
+## Bubble type and Hyperlane navigation — 2026-10-07
+
+Applied the requested Plus Jakarta Sans heading/body family and JetBrains Mono numbered labels from Bubble. Replaced the straight desktop header with Hyperlane’s floating pill, centered links, rounded primary action, and compact scrolled state. Kept the cream/green palette, mouse spotlight, existing routes, and mobile menu. Fonts and licenses are local; reduced motion removes the header transition.
+
 # Hallmark review and redesign — 2026-10-07
 
 Pre-emit critique: Philosophy 4 · Hierarchy 4 · Execution 4 · Specificity 5 · Restraint 4 · Variety 4.

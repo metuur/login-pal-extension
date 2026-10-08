@@ -18,9 +18,9 @@
   --color-overlay: oklch(27% 0.045 155 / 0.35);
   --color-clear: oklch(97% 0.018 92 / 0);
   --color-spotlight: oklch(76% 0.12 140 / 0.3);
-  --font-body: Geist, sans-serif;
-  --font-display: 'Young Serif', Georgia, serif;
-  --font-mono: ui-monospace, monospace;
+  --font-body: 'Plus Jakarta Sans', sans-serif;
+  --font-display: 'Plus Jakarta Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   --space-2xs: 4px;
   --space-xs: 8px;
   --space-base: 12px;
@@ -45,6 +45,8 @@
   --dur-micro: 120ms;
   --dur-short: 220ms;
   --rule-hair: 1px;
+  --radius-pill: 999px;
+  --color-nav: oklch(97% 0.018 92 / 0.92);
   --radius-panel: 12px;
   --radius-control: 8px;
 }

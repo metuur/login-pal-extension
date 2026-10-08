@@ -1,12 +1,19 @@
 /* Hallmark · macrostructure: Workbench · tone: warm editorial · anchor hue: leaf green
- * theme: Garden adaptation · genre: editorial · nav: inline desktop links / mobile dialog · footer: Ft1 mast-headed
+ * theme: Garden palette + Bubble typography · genre: editorial · nav: Hyperlane floating pill · footer: Ft1 mast-headed
  * enrichment: interactive walkthrough + user-requested Hyperlane mouse spotlight
  * audience: developers and QA · use: try the demo, install locally
  * Pre-emit critique: P4 H4 E4 S5 R4 V4 */
 @font-face {
-  font-family: 'Young Serif';
-  src: url('./young-serif-regular.ttf') format('truetype');
-  font-weight: 400;
+  font-family: 'Plus Jakarta Sans';
+  src: url('./plus-jakarta-sans.ttf') format('truetype');
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('./jetbrains-mono.ttf') format('truetype');
+  font-weight: 100 800;
   font-style: normal;
   font-display: swap;
 }
@@ -43,7 +50,7 @@ h3 {
 h1,
 h2 {
   font-family: var(--font-display);
-  font-weight: 400;
+  font-weight: 700;
   letter-spacing: -0.035em;
 }
 h3 {
@@ -92,7 +99,7 @@ button:disabled {
 .brand {
   font-family: var(--font-display);
   font-size: 26px;
-  font-weight: 400;
+  font-weight: 700;
   letter-spacing: -0.06em;
   gap: var(--space-base);
 }
@@ -180,7 +187,7 @@ button:disabled {
 .hero .brand-headline {
   font-family: var(--font-display);
   font-size: var(--text-display);
-  font-weight: 400;
+  font-weight: 700;
   line-height: 1.07;
   letter-spacing: -0.048em;
   margin: 0 0 var(--space-md);
@@ -651,7 +658,7 @@ button:disabled {
 .privacy-section h2,
 .closing h2 {
   font-family: var(--font-display);
-  font-weight: 400;
+  font-weight: 700;
   font-size: var(--text-heading);
   line-height: 1.15;
   letter-spacing: -0.035em;
@@ -1043,7 +1050,7 @@ button:disabled {
 }
 .docs-hero h1 {
   font-family: var(--font-display);
-  font-weight: 400;
+  font-weight: 700;
 }
 .docs-hero p,
 .docs-index a,
@@ -1357,7 +1364,7 @@ button:disabled {
 }
 .docs-page .section-heading h1 {
   font-family: var(--font-display);
-  font-weight: 400;
+  font-weight: 700;
   letter-spacing: -0.035em;
 }
 .docs-nav > span,
@@ -1552,5 +1559,115 @@ button:disabled {
   }
   .nav .menu-button {
     display: none;
+  }
+}
+
+/* Requested Bubble typography and Hyperlane header · critique: P4 H5 E4 S5 R4 V4 */
+h1,
+h2,
+.hero .brand-headline,
+.brand {
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+.hero .brand-headline {
+  line-height: 1.1;
+}
+.brand {
+  font-size: 23px;
+}
+.dev,
+.step-number,
+.doc-number,
+.docs-nav > span,
+code,
+kbd,
+.flow-step-label,
+.docs-kicker {
+  font-family: var(--font-mono);
+}
+html {
+  scroll-padding-top: 112px;
+}
+.nav {
+  position: sticky;
+  top: var(--space-sm);
+  z-index: 40;
+  width: calc(100% - 48px);
+  max-width: 1200px;
+  min-height: 66px;
+  margin: var(--space-md) auto 0;
+  padding: var(--space-xs) var(--space-xs) var(--space-xs) var(--space-md);
+  border: var(--rule-hair) solid var(--color-rule);
+  border-radius: var(--radius-pill);
+  background: var(--color-nav);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: 0 8px 24px var(--color-shadow);
+  transition:
+    max-width var(--dur-short) var(--ease-out),
+    box-shadow var(--dur-short) var(--ease-out);
+}
+.nav[data-state='scrolled'] {
+  max-width: 1000px;
+  box-shadow: 0 12px 32px var(--color-shadow);
+}
+.nav .dev {
+  display: none;
+}
+.nav .nav-cta {
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+  border-color: var(--color-accent);
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+  padding-inline: var(--space-md);
+}
+.nav .nav-cta:hover {
+  background: var(--color-ink);
+  border-color: var(--color-ink);
+}
+.nav .nav-cta:active {
+  transform: translateY(1px);
+}
+.nav .menu-button {
+  border-radius: var(--radius-pill);
+}
+.nav .menu-button:hover {
+  background: var(--color-accent-soft);
+}
+@media (min-width: 60rem) {
+  .nav {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+  }
+  .nav .brand {
+    justify-self: start;
+    margin: 0;
+  }
+  .nav nav {
+    justify-content: center;
+    gap: var(--space-sm);
+    font-weight: 500;
+  }
+  .nav nav a {
+    padding-inline: var(--space-xs);
+  }
+  .nav .nav-cta {
+    justify-self: end;
+  }
+}
+@media (max-width: 599px) {
+  .nav {
+    width: calc(100% - 24px);
+    margin-top: var(--space-base);
+    top: var(--space-xs);
+    padding-left: var(--space-sm);
+    min-height: 62px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav {
+    transition: none;
   }
 }

@@ -6,9 +6,11 @@ Open `index.html` directly or serve this directory with a static server. All fon
 
 ## Design
 
-The 2026-10-07 redesign combines the warm paper, upright serif and green of Hallmark’s Hollowback Apiary example with Tally’s readable product presentation. Hyperlane supplies the mouse-following hero spotlight, adapted to the green palette. The decorative glow follows a mouse, fades on exit, and stays disabled for touch and reduced motion. Desktop navigation shows the page links directly at 960px and above; smaller screens use the existing menu dialog. The original stylesheet is preserved; `guide.css` applies the product guide’s visual system. Hallmark records are scoped to `.hallmark/` here, not the extension UI.
+The page combines Hollowback Apiary’s cream/green palette with Tally’s readable product presentation, [Bubble’s typography](https://www.usehallmark.com/examples/hum-07/), and [Hyperlane’s floating header](https://www.usehallmark.com/examples/hyperlane/). Plus Jakarta Sans carries headings and body copy; JetBrains Mono supplies small numbered labels and code. Both variable fonts and their OFL licenses are packaged locally (`PLUS-JAKARTA-SANS-LICENSE.txt`, `JETBRAINS-MONO-LICENSE.txt`). The homepage and docs preload the same local sans font.
 
-Geist remains the body face. Young Serif is packaged locally for headings under `YOUNG-SERIF-LICENSE.txt`; Geist’s license is in `FONT-LICENSE.txt`. Branding assets retain the existing Login Pal mark. Run `rtk npm run generate:assets` from the repository root only when changing the source branding asset.
+The pill-shaped header stays visible while scrolling, narrows after 48px, and centers navigation links on desktop. Below 960px it retains the menu dialog. Scroll transitions honor reduced motion. The hero spotlight follows mouse input, fades on exit, and stays disabled for touch and reduced motion.
+
+The original stylesheet is preserved; `guide.css` applies the guide’s visual system. Hallmark records are scoped to `.hallmark/` here. Branding retains the existing Login Pal mark. Previous locally packaged fonts remain available as historical assets.
 
 ## Interactive demo
 

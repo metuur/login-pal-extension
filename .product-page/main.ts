@@ -530,3 +530,15 @@ function setupHeroSpotlight(): void {
   });
 }
 setupHeroSpotlight();
+
+function setupFloatingHeader(): void {
+  const header = document.querySelector<HTMLElement>('header.nav');
+  if (!header) return;
+  const update = (): void => {
+    const state = window.scrollY > 48 ? 'scrolled' : 'top';
+    if (header.dataset.state !== state) header.dataset.state = state;
+  };
+  window.addEventListener('scroll', update, { passive: true });
+  update();
+}
+setupFloatingHeader();
