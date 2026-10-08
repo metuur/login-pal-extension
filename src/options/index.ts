@@ -43,7 +43,7 @@ const app = document.querySelector<HTMLElement>('#app')!;
 const header = el('header', 'app-header');
 const headerLine = el('div', 'header-line');
 const logo = el('div', 'logo');
-logo.append(icon('key'));
+logo.setAttribute('aria-hidden', 'true');
 const brand = el('div', 'brand');
 const title = el('div');
 title.append(el('strong', '', 'Login Pal'), el('p', 'subtle', 'Account settings'));

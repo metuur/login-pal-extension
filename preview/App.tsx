@@ -34,9 +34,7 @@ export default function App() {
       <header className="app-header">
         <div className="header-line">
           <div className="brand">
-            <div className="logo">
-              <Icon name="key" />
-            </div>
+            <div className="logo" aria-hidden="true" />
             <strong>Login Pal</strong>
           </div>
           <div className="header-actions">

@@ -29,7 +29,7 @@ const header = el('header', 'app-header');
 const top = el('div', 'header-line');
 const brand = el('div', 'brand');
 const logo = el('div', 'logo');
-logo.append(icon('key'));
+logo.setAttribute('aria-hidden', 'true');
 brand.append(logo, el('strong', '', 'Login Pal'));
 const actions = el('div', 'header-actions');
 let tabId: number | undefined,

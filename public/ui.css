@@ -114,15 +114,8 @@ body.options {
 .logo {
   width: 28px;
   height: 28px;
-  display: grid;
-  place-items: center;
-  border-radius: 8px;
-  background: #4f46e5;
-  color: #fff;
+  background: url('./favicon.svg') center / contain no-repeat;
   flex-shrink: 0;
-}
-.options .logo {
-  border-radius: 50%;
 }
 svg {
   width: 17px;
