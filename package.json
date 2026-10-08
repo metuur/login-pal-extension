@@ -14,7 +14,8 @@
     "lint": "prettier --check src scripts tests public package.json tsconfig.json preview vite.config.ts",
     "format": "prettier --write src scripts tests public package.json tsconfig.json preview vite.config.ts",
     "build:web": "vite build",
-    "start": "vite preview"
+    "start": "vite preview",
+    "generate:assets": "node scripts/generate-brand-assets.mjs"
   },
   "dependencies": {
     "@fontsource/geist": "5.3.0",
