@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#f6f7f9" />
+    <meta name="theme-color" content="#f7f5e8" />
     <meta
       name="description"
       content="Login Pal brings your synthetic QA accounts into one local Chrome extension. Import, find, and intentionally fill your next test login."
@@ -14,22 +14,25 @@
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <link rel="preload" href="geist-regular.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="guide.css" />
     <script src="main.js" defer></script>
   </head>
-  <body>
+  <body class="home-page">
     <a class="skip" href="#main">Skip to content</a>
     <header class="nav">
       <a href="index.html" class="brand" aria-label="Login Pal home"
         ><img class="brand-icon" src="favicon.svg" alt="" width="29" height="29" />Login Pal<span
           class="dev"
-          >DEV</span
+          >FOR TEST ACCOUNTS</span
         ></a
       >
       <nav aria-label="Main navigation">
-        <a href="index.html#overview">Why this extension</a
+        <a href="index.html#overview">Why Login Pal</a
         ><a href="index.html#how-it-works">How it works</a><a href="docs.html">Docs</a>
       </nav>
-      <a class="nav-cta" href="index.html#setup">Get started <span aria-hidden="true">↗</span></a>
+      <a class="nav-cta" href="index.html#setup"
+        >Install locally <span aria-hidden="true">↗</span></a
+      >
       <button
         class="menu-button"
         aria-label="Open menu"
@@ -42,7 +45,7 @@
     <dialog id="mobile-menu" aria-label="Navigation">
       <button class="menu-close" aria-label="Close menu">×</button>
       <nav>
-        <a href="index.html#overview">Why this extension</a
+        <a href="index.html#overview">Why Login Pal</a
         ><a href="index.html#how-it-works">How it works</a
         ><a href="index.html#offline">Offline capabilities</a
         ><a href="index.html#access">Website access</a><a href="docs.html">Docs</a
@@ -52,18 +55,19 @@
     <main id="main">
       <section class="hero wrap">
         <div class="hero-copy reveal">
-          <p class="product-kicker">Login Pal · Chrome extension for QA &amp; support</p>
+          <p class="product-kicker">A little help for your next test login.</p>
           <h1 class="brand-headline">
-            Your test accounts.<br /><span class="flow">One click closer.</span>
+            Less account hunting.<br /><span class="flow">More testing.</span>
           </h1>
           <p class="lead">
-            Login Pal turns a CSV of test accounts into a searchable Chrome extension. Choose an
-            account, fill your approved login page, and submit the form yourself.
+            A Chrome extension that keeps your test accounts in one place. Import a CSV, find the
+            right persona, and fill your approved login page. You press Sign in.
           </p>
           <div class="hero-actions">
-            <a href="index.html#setup" class="button primary">Install Login Pal <span>↗</span></a
-            ><a href="#account-search" class="text-link" id="try-demo-link"
-              >Try the demo <span>↓</span></a
+            <a href="#account-search" class="button primary" id="try-demo-link"
+              >Try it yourself <span aria-hidden="true">↗</span></a
+            ><a href="index.html#setup" class="text-link"
+              >Install locally <span aria-hidden="true">↓</span></a
             >
           </div>
           <div class="compatibility">
@@ -71,12 +75,9 @@
               <circle cx="12" cy="12" r="9" />
               <circle cx="12" cy="12" r="3.7" />
               <path d="M12 8.3h8M8.8 13.8l-4-7M13.8 15.2l-4 7" /></svg
-            >Synthetic accounts only <b>·</b> No cloud sync
+            >Synthetic accounts only <b>·</b> Stored locally
           </div>
-          <a class="offline-link" href="index.html#offline"
-            ><span aria-hidden="true">◎</span> Explore offline use
-            <span aria-hidden="true">↗</span></a
-          >
+          <p class="hero-aside">Built for the admin, the member, and the edge case.</p>
         </div>
         <div
           class="hero-scene workflow-demo"
@@ -85,14 +86,14 @@
           aria-label="Login Pal product walkthrough"
         >
           <div class="flow-toolbar">
-            <p><span class="flow-live" aria-hidden="true"></span> A login, from start to finish</p>
+            <p><span class="flow-live" aria-hidden="true"></span> Take Login Pal for a spin</p>
             <button type="button" id="flow-play" hidden>Play tour</button>
           </div>
           <div class="flow-window">
             <div class="flow-brand">
               <img class="app-symbol" src="favicon.svg" alt="" width="29" height="29" /><strong
                 >Login Pal</strong
-              ><span class="flow-example">Illustrative demo</span>
+              ><span class="flow-example">Interactive demo</span>
             </div>
             <div class="flow-panels">
               <section
@@ -112,7 +113,7 @@
                     role="group"
                     aria-label="Illustrative development login page"
                   >
-                    <div class="dev-browser-bar">
+                    <div class="example-site-label">
                       <span>qa.example.com/login</span><b>DEV MODE</b>
                     </div>
                     <div class="dev-login-body">
@@ -227,23 +228,36 @@
                 aria-labelledby="flow-choose-title"
               >
                 <div class="flow-panel-heading">
-                  <span class="flow-step-label">03 / CHOOSE</span>
-                  <h2 id="flow-choose-title">Find your next<br />test persona.</h2>
-                  <p>Try searching a name or role, then select an account.</p>
+                  <span class="flow-step-label">Choose an account</span>
+                  <h2 id="flow-choose-title">Who are you testing as?</h2>
+                  <p>Search or filter the sample accounts. Pick one to try a fill.</p>
                 </div>
-                <label class="search"
-                  ><svg viewBox="0 0 24 24" aria-hidden="true">
+                <label class="search-label" for="account-search">Search sample accounts</label>
+                <div class="search">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
                     <circle cx="10" cy="10" r="6" />
                     <path d="m15 15 5 5" /></svg
                   ><input
                     id="account-search"
                     type="search"
-                    placeholder="Find an account…"
+                    placeholder="Name, email, or role…"
                     aria-label="Search demo accounts"
-                  /><kbd>/</kbd></label
+                  /><kbd>/</kbd>
+                </div>
+                <div
+                  class="role-filters"
+                  role="group"
+                  aria-label="Filter sample accounts by role"
+                  hidden
                 >
+                  <button type="button" data-role="all" aria-pressed="true">All roles</button>
+                  <button type="button" data-role="admin" aria-pressed="false">Admin</button>
+                  <button type="button" data-role="member" aria-pressed="false">Member</button>
+                  <button type="button" data-role="viewer" aria-pressed="false">Viewer</button>
+                </div>
                 <div class="list-heading">
-                  <span>YOUR TEST ACCOUNTS</span><span id="account-count">3 accounts</span>
+                  <span>Staging · sample group</span
+                  ><span id="account-count" role="status">3 accounts</span>
                 </div>
                 <div id="account-list">
                   <button
@@ -280,14 +294,18 @@
                     ><span class="role">Viewer</span><span class="selection"></span>
                   </button>
                 </div>
-                <p id="no-results" hidden>No matching accounts. Try “admin”.</p>
+                <p id="no-results" hidden>
+                  No matching accounts. Clear your search or choose All roles.
+                </p>
                 <div class="demo-bottom">
                   <span class="domain"><i></i> qa.example.com</span
                   ><button id="demo-fill" class="button primary">
-                    Try autofill <span>↗</span>
+                    Preview fill <span aria-hidden="true">↗</span>
                   </button>
                 </div>
-                <p id="demo-status" role="status">Sample data only. Nothing is sent or filled.</p>
+                <p id="demo-status" role="status">
+                  Fictional accounts. This demo never touches a real login.
+                </p>
               </section>
               <section
                 class="flow-panel"
@@ -301,7 +319,7 @@
                   <p>Choose Autofill on the approved login page.</p>
                 </div>
                 <div class="fill-preview dev-login-page flow-item">
-                  <div class="dev-browser-bar">
+                  <div class="example-site-label">
                     <span>qa.example.com/login</span><b>DEV MODE</b>
                   </div>
                   <div class="dev-login-body">
@@ -336,49 +354,49 @@
             </div>
             <div class="flow-steps" role="group" aria-label="Walkthrough steps" hidden>
               <button type="button" data-flow-target="0" aria-pressed="false">
-                <span>00</span> Before<i aria-hidden="true"></i>
+                Before<i aria-hidden="true"></i>
               </button>
               <button type="button" data-flow-target="1" aria-pressed="false">
-                <span>01</span> Import<i aria-hidden="true"></i>
+                Import<i aria-hidden="true"></i>
               </button>
               <button type="button" data-flow-target="2" aria-pressed="false">
-                <span>02</span> Approve<i aria-hidden="true"></i>
+                Approve<i aria-hidden="true"></i>
               </button>
               <button type="button" data-flow-target="3" aria-pressed="true">
-                <span>03</span> Choose<i aria-hidden="true"></i>
+                Choose<i aria-hidden="true"></i>
               </button>
               <button type="button" data-flow-target="4" aria-pressed="false">
-                <span>04</span> Fill<i aria-hidden="true"></i>
+                Fill<i aria-hidden="true"></i>
               </button>
             </div>
           </div>
           <div class="flow-footnote">
-            <span>Local to your browser. Always on your terms.</span
+            <span>Sample data only. No installation needed.</span
             ><span id="flow-position" hidden>1 of 5</span>
           </div>
           <span class="sr-only" id="flow-announcement" role="status"></span>
         </div>
       </section>
-      <div class="principles wrap reveal">
-        <span>YOUR LOGIN WORKFLOW</span>
-        <p><span>↳</span> CSV to account catalog</p>
-        <p><span>⌕</span> Find any test persona</p>
-        <p><span>◎</span> Local to your browser</p>
-      </div>
+      <nav class="page-map wrap" aria-label="Explore this guide">
+        <span>A small tool. A shorter path to testing.</span>
+        <a href="#how-it-works">Learn the workflow <span aria-hidden="true">↗</span></a>
+        <a href="#setup">Install in Chrome <span aria-hidden="true">↗</span></a>
+        <a href="docs.html">Read the docs <span aria-hidden="true">↗</span></a>
+      </nav>
       <section id="overview" class="section wrap">
         <div class="section-heading reveal">
           <div>
-            <h2>One catalog.<br />Many test scenarios.</h2>
+            <h2>A place for every<br />test persona.</h2>
           </div>
           <p>
-            Testing a new role. Reproducing a bug.<br />Checking one more edge case. Your next
-            account should be the easy part.
+            A CSV in one folder. An account in a chat. A role you can’t remember. Bring the accounts
+            you test with into a searchable, local catalog.
           </p>
         </div>
         <div class="feature-grid">
           <article class="bezel feature-wide reveal">
             <div class="feature-inner">
-              <h3>A home for every<br />test persona.</h3>
+              <h3>Keep each environment together.</h3>
               <p>
                 Import your CSV into named groups. Keep environments, roles, and account metadata
                 together—and search them in seconds.
@@ -398,11 +416,11 @@
           </article>
           <article class="bezel feature-narrow reveal">
             <div class="feature-inner">
-              <div class="target-art" aria-hidden="true">
-                <div><div>↗</div></div>
-                <span class="target-dot"></span>
+              <div class="intent-diagram" aria-label="Choose account, approve site, fill fields">
+                <span>Choose account</span><b aria-hidden="true">→</b><span>Approved site</span
+                ><b aria-hidden="true">→</b><span>Fill fields</span>
               </div>
-              <h3>The right account.<br />The right site.</h3>
+              <h3>A deliberate fill. Every time.</h3>
               <p>
                 Authorize a domain, choose an account, and fill on your command. You always press
                 the site’s Login button yourself.
@@ -431,6 +449,9 @@
               <span class="step-number">01</span>
               <div>
                 <h3>Import your CSV.</h3>
+                <button class="step-demo" data-demo-step="1" type="button" hidden>
+                  Preview import <span aria-hidden="true">↗</span>
+                </button>
                 <p>
                   Open Settings, name a CSV group, and choose your file. Include
                   <code>account_id</code>, <code>username</code>, and <code>password</code>; extra
@@ -444,6 +465,9 @@
               <span class="step-number">02</span>
               <div>
                 <h3>Configure and authorize your site.</h3>
+                <button class="step-demo" data-demo-step="2" type="button" hidden>
+                  Preview approval <span aria-hidden="true">↗</span>
+                </button>
                 <p>
                   Configure the group’s login profile: your authorized login domain, username and
                   password matching rules, and optional successful-login tracking. Choose a success
@@ -457,6 +481,9 @@
               <span class="step-number">03</span>
               <div>
                 <h3>Choose an account and fill.</h3>
+                <button class="step-demo" data-demo-step="3" type="button" hidden>
+                  Try account selection <span aria-hidden="true">↗</span>
+                </button>
                 <p>
                   Visit the authorized login page and open the extension. Choose a group, search by
                   ID, username, or metadata, and select an account. Review it, choose Autofill, then
@@ -475,14 +502,24 @@
             Install the unpacked extension in Chrome 121 or newer. No account to create. No service
             to connect.
           </p>
-          <span class="install-note">DEVELOPER INSTALLATION · NOT A WEB STORE RELEASE</span>
+          <span class="install-note">Local installation · not on the Chrome Web Store</span>
         </div>
         <div class="bezel reveal">
           <div class="install-inner">
-            <h3>Load the extension locally.</h3>
+            <h3>Your installation checklist.</h3>
+            <p class="checklist-help">Tick each step as you go. Progress stays on this page.</p>
+            <p id="setup-progress" class="setup-progress" role="status" hidden>
+              0 of 4 steps complete
+            </p>
             <ol class="install-steps">
               <li>
-                <span>1</span>
+                <span class="install-number">1</span
+                ><input
+                  type="checkbox"
+                  class="setup-check"
+                  aria-label="Mark installation step 1 complete"
+                  hidden
+                />
                 <p>
                   <strong>Get the extension package.</strong> Extract
                   <code>login-pal.zip</code> from your project or team maintainer. If you build from
@@ -490,7 +527,13 @@
                 </p>
               </li>
               <li>
-                <span>2</span>
+                <span class="install-number">2</span
+                ><input
+                  type="checkbox"
+                  class="setup-check"
+                  aria-label="Mark installation step 2 complete"
+                  hidden
+                />
                 <p>
                   <strong>Open Chrome’s extensions page.</strong> Enter
                   <code>chrome://extensions</code> in the address bar and switch on
@@ -498,22 +541,40 @@
                 </p>
               </li>
               <li>
-                <span>3</span>
+                <span class="install-number">3</span
+                ><input
+                  type="checkbox"
+                  class="setup-check"
+                  aria-label="Mark installation step 3 complete"
+                  hidden
+                />
                 <p>
                   <strong>Load your extension.</strong> Select <strong>Load unpacked</strong> and
                   choose the extracted <code>dist</code> folder. Keep this folder in place.
                 </p>
               </li>
               <li>
-                <span>4</span>
+                <span class="install-number">4</span
+                ><input
+                  type="checkbox"
+                  class="setup-check"
+                  aria-label="Mark installation step 4 complete"
+                  hidden
+                />
                 <p>
                   <strong>Pin Login Pal and open Settings.</strong> Pin Login Pal from Chrome’s
                   Extensions menu, then open Settings to import your first group.
                 </p>
               </li>
             </ol>
+            <div class="copy-address" hidden>
+              <button type="button" id="copy-extensions" class="button secondary">
+                Copy extensions address <span aria-hidden="true">↗</span>
+              </button>
+              <p id="copy-status" role="status"></p>
+            </div>
             <a href="index.html#how-it-works" class="button primary"
-              >Set up your first group <span>↑</span></a
+              >Set up a group <span>↑</span></a
             >
           </div>
         </div>
@@ -660,7 +721,7 @@
             href="https://developer.chrome.com/docs/extensions/develop/concepts/declare-permissions"
             target="_blank"
             rel="noopener noreferrer"
-            >Chrome’s permission documentation <span>↗</span></a
+            >Chrome permissions <span>↗</span></a
           >
         </details>
       </section>
@@ -716,9 +777,9 @@
         </div>
       </section>
       <section class="closing wrap reveal">
-        <h2>Ready for your<br />next test account?</h2>
+        <h2>Your next test starts<br />with the right account.</h2>
         <a href="index.html#setup" class="button primary">Install Login Pal <span>↗</span></a>
-        <p>Have it installed? Follow the first-login guide above.</p>
+        <p>Start with a CSV. Keep the rest close at hand.</p>
       </section>
     </main>
     <footer class="wrap product-footer">
@@ -726,14 +787,14 @@
         <a href="index.html" class="brand" aria-label="Login Pal home"
           ><img class="brand-icon" src="favicon.svg" alt="" width="29" height="29" />Login Pal<span
             class="dev"
-            >DEV</span
+            >FOR TEST ACCOUNTS</span
           ></a
         >
         <nav class="footer-nav" aria-label="Footer navigation">
-          <a href="index.html#overview">Why this extension</a>
+          <a href="index.html#overview">Why Login Pal</a>
           <a href="index.html#how-it-works">How it works</a>
           <a href="docs.html">Docs</a>
-          <a href="index.html#setup">Get started <span aria-hidden="true">↗</span></a>
+          <a href="index.html#setup">Install locally <span aria-hidden="true">↗</span></a>
         </nav>
       </div>
       <div class="footer-bottom">

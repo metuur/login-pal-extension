@@ -1,0 +1,25 @@
+{
+  "date": "2026-10-07",
+  "scope": ".product-page",
+  "framework": "standalone HTML, CSS, strict TypeScript",
+  "fonts_before": [
+    "Geist regular",
+    "Geist semibold"
+  ],
+  "palette_before": "cool indigo on near-white",
+  "motion_before": "native Web Animations API, automatic looping tour",
+  "preserved": [
+    "local assets",
+    "five-scene demo",
+    "product and docs routes",
+    "approved synthetic-only product semantics"
+  ],
+  "introduced": [
+    "Young Serif upright display",
+    "warm paper and leaf-green tokens",
+    "role filters",
+    "opt-in once-through tour",
+    "installation checklist",
+    "clipboard fallback"
+  ]
+}

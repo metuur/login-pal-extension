@@ -1,3 +1,39 @@
+# Product-page redesign verification — 2026-10-07
+
+## Observed results
+
+- Standalone `main.ts` strict TypeScript check: passed.
+- Generated `main.js` with the repository’s esbuild: passed.
+- Application tests scoped to `src`: **6 files, 92 tests passed**.
+- Extension build (`npm run build`): passed.
+- Whitespace/error check (`git diff --check`): passed.
+- Local links and cross-page fragment targets: all resolve.
+
+## Browser coverage
+
+Chromium with fresh, isolated contexts and fictional demo accounts only:
+
+- Widths **320, 375, 414, 768, 1280, 1440, 1920px**. No document overflow or visibly clipped page content across all five homepage scenes and the docs page with every disclosure expanded.
+- Visually inspected the desktop hero and mobile demo at 320, 375, 414 and 768px. Corrected inherited extra mobile padding, narrow role filters and step-label clipping. Desktop primary CTA and demo fill action are visible at 1280×800.
+- Role filter → one matching account; search → matching results; empty search result → explanatory text and disabled fill; selected name carries into the final fill illustration.
+- First-use preview controls select the matching scene. `/` opens and focuses account search. Modal menu opens, Escape closes, and expanded state restores.
+- Installation checklist reaches four completed steps and supports unchecking. Clipboard success copies the exact Chrome extensions address; a forced clipboard failure gives a manual-entry fallback.
+- Documentation deep links open the target disclosure.
+- No page JavaScript errors or external runtime requests observed.
+- JavaScript disabled: original sample picker remains readable, numbered installation instructions remain, role filters stay hidden, and native details remain available.
+- Normal motion: no autoplay on load. The 14-second opt-in tour reaches Fill and stops after one pass. Reduced motion: playback is hidden and manual scene changes are immediate. Fixed a paused-fade edge case found during visual review.
+- Computed foreground/effective-background WCAG checks found no text contrast failures across all five scenes or expanded documentation (4.5:1 ordinary text; 3:1 large text). This is a targeted rendered-text check, not a complete assistive-technology certification.
+
+## Repository test-run limitation
+
+The unfiltered `npm run check` command passes project TypeScript, then collects tests from `.agents/skills` and `.claude/skills`. It fails on installed skill suites (including “No test suite found”), so its chained build step does not run. No test configuration was changed for this design task. Running the application tests with `rtk proxy node_modules/.bin/vitest run --root . src` passes all 92 tests; running `rtk npm run build` separately also passes.
+
+## Scope
+
+The existing `styles.css` is unchanged; the new `guide.css` layers the design over it. Its legacy literal colors and spacing are not claimed to be fully migrated to Hallmark tokens. No extension credentials, storage, permissions or behavior were modified. No real-world website autofill was performed by the synthetic product demo.
+
+---
+
 # Verification — 2026-10-07
 
 - Strict TypeScript check passed for main.ts.

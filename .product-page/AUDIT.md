@@ -1,3 +1,38 @@
+# Hallmark review and redesign — 2026-10-07
+
+Pre-emit critique: Philosophy 4 · Hierarchy 4 · Execution 4 · Specificity 5 · Restraint 4 · Variety 4.
+
+## Ranked findings and fixes
+
+| Severity | Finding in the previous page | Location | Applied correction |
+| --- | --- | --- | --- |
+| Major | Compact, automatically looping walkthrough competed with the product definition and hands-on action. | `index.html` hero; `main.ts` playback | Start with the usable account picker. Make the tour optional and stop after one play. |
+| Major | Uniform Geist display/body, cool indigo surfaces and floating navigation did not express the requested reference mix. | `styles.css`, `tokens.css` | Local upright Young Serif + Geist, warm cream/green tokens, edge-aligned header and mast-headed footer. |
+| Major | Multiple decorative containment layers and imitation browser bars made the product harder to read. | Hero scenes and docs illustrations | Flatten scene framing; replace browser-like bars with plain site captions. Preserve the working demonstration. |
+| Major | Installation was a wall of passive instructions. | `index.html#setup` | Optional progress checklist and working address-copy control with failure recovery. |
+| Minor | Workflow explanation was disconnected from the demo. | `index.html#how-it-works` | Add direct scene preview buttons, carrying keyboard focus to the selected scene. |
+| Minor | Some inherited hint, footer and documentation illustration text failed contrast after the palette change. | Shared guide styles | Apply semantic ink/muted tokens and verify rendered contrast. |
+
+Initial ranked count: 0 critical · 4 major · 2 minor. These findings are remediated in this pass.
+
+## Reference interpretation
+
+- [Hollowback Apiary](https://www.usehallmark.com/examples/garden-01/): warm paper, green ink, upright Young Serif and generous editorial spacing.
+- [Tally](https://www.usehallmark.com/examples/tally/): clear product explanation, readable demo and straightforward actions.
+- [Hyperlane](https://www.usehallmark.com/examples/hyperlane/): responsive controls and clear state feedback, applied to the account demo and installation tasks. No unrelated event countdown or RSVP flow was copied.
+
+The page keeps its original routes and topic anchors. The extension itself is unchanged. `guide.css` is an additive visual layer; `styles.css` is preserved. The documentation content remains in its existing information architecture.
+
+## Hallmark gate review
+
+Reviewed the supplied 58-gate checklist against the resulting page. The current guide uses token-based colors, roman display headings, labeled controls, visible focus, reduced-motion support, local assets, no invented social proof, and no new browser chrome. Browser checks cover 320–1920px, all five tour scenes, expanded documentation, and functional interaction states.
+
+This is an in-place redesign, not a claim that the preserved legacy stylesheet has been fully migrated: its historical literal colors, font declarations and spacing remain in source. A blanket “58/58” source-level certification would be inaccurate. The new visual layer centralizes its colors/fonts in `tokens.css`, while a future cleanup could consolidate the legacy cascade. Native checkbox styling remains browser-owned.
+
+See `VERIFICATION.md` for the actual observed results and the unrelated default test-discovery failure.
+
+---
+
 <!-- Hallmark · pre-emit critique: P4 H4 E4 S5 R4 V3 -->
 
 # Login Pal product-page audit

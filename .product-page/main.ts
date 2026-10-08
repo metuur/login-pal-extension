@@ -8,6 +8,10 @@ function setupAccountDemo(): void {
   const demoStatus = document.querySelector<HTMLElement>('#demo-status');
   if (!search || !fill || !demoStatus) return;
   let selected: HTMLButtonElement | undefined = accounts[0];
+  let role = 'all';
+  const filters = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-role]'));
+  const filterGroup = document.querySelector<HTMLElement>('.role-filters');
+  if (filterGroup) filterGroup.hidden = false;
 
   const selectAccount = (account: HTMLButtonElement | undefined): void => {
     selected = account;
@@ -25,19 +29,28 @@ function setupAccountDemo(): void {
   };
 
   accounts.forEach((account) => account.addEventListener('click', () => selectAccount(account)));
-  search.addEventListener('input', () => {
+  const filterAccounts = (): void => {
     const query = search.value.trim().toLowerCase();
     accounts.forEach((account) => {
-      account.hidden = !`${account.dataset.search} ${account.textContent}`
-        .toLowerCase()
-        .includes(query);
+      const text = `${account.dataset.search} ${account.textContent}`.toLowerCase();
+      const matchesRole =
+        role === 'all' || account.querySelector('.role')?.textContent?.toLowerCase() === role;
+      account.hidden = !text.includes(query) || !matchesRole;
     });
     const visible = accounts.filter((account) => !account.hidden);
     document.querySelector<HTMLElement>('#account-count')!.textContent =
       `${visible.length} account${visible.length === 1 ? '' : 's'}`;
     document.querySelector<HTMLElement>('#no-results')!.hidden = visible.length !== 0;
     if (!selected || selected.hidden) selectAccount(visible[0]);
-  });
+  };
+  search.addEventListener('input', filterAccounts);
+  filters.forEach((button) =>
+    button.addEventListener('click', () => {
+      role = button.dataset.role ?? 'all';
+      filters.forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
+      filterAccounts();
+    }),
+  );
   fill.addEventListener('click', () => {
     if (selected) {
       demoStatus.textContent = `Demo: ${selected.dataset.name} is ready. In the extension, review → Autofill → press the site’s Login button yourself.`;
@@ -56,6 +69,17 @@ menuButton.addEventListener('click', () => {
 document.querySelector('.menu-close')!.addEventListener('click', () => menu.close());
 menu.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => menu.close()));
 menu.addEventListener('close', () => menuButton.setAttribute('aria-expanded', 'false'));
+menu.addEventListener('click', (event) => {
+  if (event.target !== menu) return;
+  const bounds = menu.getBoundingClientRect();
+  if (
+    event.clientX < bounds.left ||
+    event.clientX > bounds.right ||
+    event.clientY < bounds.top ||
+    event.clientY > bounds.bottom
+  )
+    menu.close();
+});
 // Native details stay usable without JavaScript; topic links also open their target.
 function openDocumentationTopic(): void {
   const topic = document.getElementById(location.hash.slice(1));
@@ -112,21 +136,22 @@ function setupWorkflowDemo(): void {
   const durations = panels.map((_, index) => (index === 0 ? 4000 : 2500));
   let active = 0;
   let visible = !('IntersectionObserver' in window);
-  let wanted = !reduced() && canAnimate;
+  let wanted = false;
   let manualTransition = false;
+  let hovered = false;
   let clock: Animation | undefined;
   let entrances: Animation[] = [];
 
   const syncPlayback = (): void => {
     const inView = visible && !document.hidden && !menu.open;
-    const playing = wanted && inView && !reduced();
+    const playing = wanted && inView && !hovered && !reduced();
     if (clock && clock.playState !== 'finished') {
       if (playing) clock.play();
       else clock.pause();
     }
     entrances.forEach((animation) => {
       if (animation.playState === 'finished') return;
-      if (inView && (wanted || manualTransition)) animation.play();
+      if (inView && (manualTransition || (wanted && !hovered))) animation.play();
       else animation.pause();
     });
     play.hidden = reduced() || !canAnimate;
@@ -135,6 +160,7 @@ function setupWorkflowDemo(): void {
   };
 
   const animateScene = (panel: HTMLElement, step: number): Animation[] => {
+    if (reduced()) return [];
     const animations = [
       panel.animate([{ opacity: 0 }, { opacity: 1 }], {
         duration: reduced() ? 120 : 160,
@@ -299,7 +325,10 @@ function setupWorkflowDemo(): void {
       clock.pause();
       clock.onfinish = () => {
         if (active !== index) return;
-        showStep((index + 1) % panels.length);
+        if (index === panels.length - 1) {
+          wanted = false;
+          syncPlayback();
+        } else showStep(index + 1);
       };
     }
     if (manual) {
@@ -324,8 +353,13 @@ function setupWorkflowDemo(): void {
   position.hidden = false;
   play.addEventListener('click', () => {
     manualTransition = false;
-    wanted = !wanted;
-    syncPlayback();
+    if (!wanted && (active === panels.length - 1 || active === 3)) {
+      wanted = true;
+      showStep(0);
+    } else {
+      wanted = !wanted;
+      syncPlayback();
+    }
   });
   // Interaction takes ownership of the demo; never advance away from an active input.
   const takeControl = (event: Event): void => {
@@ -337,6 +371,17 @@ function setupWorkflowDemo(): void {
     entrances.forEach((animation) => animation.finish());
     syncPlayback();
   };
+  panels.forEach((panel) => {
+    panel.addEventListener('pointerenter', (event) => {
+      if (event.pointerType !== 'mouse') return;
+      hovered = true;
+      syncPlayback();
+    });
+    panel.addEventListener('pointerleave', () => {
+      hovered = false;
+      syncPlayback();
+    });
+  });
   root.addEventListener('focusin', takeControl);
   root.addEventListener('pointerdown', takeControl);
   motionPreference.addEventListener('change', () => {
@@ -355,7 +400,8 @@ function setupWorkflowDemo(): void {
       { threshold: 0.25 },
     ).observe(root);
   }
-  showStep(0);
+  showStep(3);
+  entrances.forEach((animation) => animation.finish());
   // Deterministic capture: ?t=seconds freezes a moment; ?reduce=1 tests static navigation.
   const time = query.get('t');
   if (time !== null && time.trim() !== '' && Number.isFinite(Number(time))) {
@@ -387,6 +433,59 @@ function setupWorkflowDemo(): void {
     if (location.hash === '#account-search') openPicker();
   });
   if (location.hash === '#account-search') openPicker();
+  document.querySelectorAll<HTMLButtonElement>('[data-demo-step]').forEach((button) => {
+    button.hidden = false;
+    button.addEventListener('click', () => {
+      showStep(Number(button.dataset.demoStep), true);
+      root.scrollIntoView({ behavior: reduced() ? 'instant' : 'smooth', block: 'center' });
+      const heading = panels[active]!.querySelector<HTMLElement>('h2')!;
+      heading.tabIndex = -1;
+      heading.focus({ preventScroll: true });
+    });
+  });
   root.dataset.ready = 'true';
 }
 setupWorkflowDemo();
+
+function setupInstallationGuide(): void {
+  const checks = Array.from(document.querySelectorAll<HTMLInputElement>('.setup-check'));
+  const progress = document.querySelector<HTMLElement>('#setup-progress');
+  if (progress) {
+    progress.hidden = false;
+    checks.forEach((check) => {
+      check.hidden = false;
+      const number = check.previousElementSibling;
+      if (number instanceof HTMLElement) number.hidden = true;
+      check.addEventListener('change', () => {
+        const count = checks.filter((item) => item.checked).length;
+        progress.textContent =
+          count === checks.length
+            ? 'Installation checklist complete. Next: import your first group.'
+            : `${count} of ${checks.length} steps complete`;
+      });
+    });
+  }
+  const copy = document.querySelector<HTMLButtonElement>('#copy-extensions');
+  const status = document.querySelector<HTMLElement>('#copy-status');
+  if (!copy || !status) return;
+  const wrapper = copy.closest<HTMLElement>('.copy-address');
+  if (wrapper) wrapper.hidden = false;
+  copy.addEventListener('click', async () => {
+    copy.disabled = true;
+    copy.dataset.state = 'loading';
+    copy.setAttribute('aria-busy', 'true');
+    status.textContent = 'Copying address…';
+    try {
+      await navigator.clipboard.writeText('chrome://extensions');
+      copy.dataset.state = 'success';
+      status.textContent = 'Copied. Paste into Chrome’s address bar.';
+    } catch {
+      copy.dataset.state = 'error';
+      status.textContent = 'Copy unavailable. Type chrome://extensions in Chrome’s address bar.';
+    } finally {
+      copy.disabled = false;
+      copy.removeAttribute('aria-busy');
+    }
+  });
+}
+setupInstallationGuide();
