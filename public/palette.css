@@ -1,0 +1,29 @@
+/* Login Pal product-page palette, packaged locally for extension pages.
+ * Keep shared colors aligned with .product-page/tokens.css.
+ * UI-only additions retain distinct error surfaces and stronger input boundaries. */
+:root {
+  color-scheme: light;
+  --color-paper: oklch(97% 0.018 92);
+  --color-ink: oklch(27% 0.045 155);
+  --color-muted: oklch(46% 0.025 145);
+  --color-accent: oklch(43% 0.1 150);
+  --color-rule: oklch(83% 0.025 110);
+  --color-panel: oklch(99% 0.009 92);
+  --color-accent-soft: oklch(93% 0.036 130);
+  --color-accent-ink: oklch(99% 0.009 92);
+  --color-positive: var(--color-accent);
+  --color-positive-soft: var(--color-accent-soft);
+  --color-caution: oklch(43% 0.085 60);
+  --color-note: oklch(95% 0.065 86);
+  --color-note-rule: oklch(82% 0.05 85);
+  --color-focus: oklch(52% 0.16 45);
+  --color-error: oklch(43% 0.15 28);
+  --color-shadow: oklch(27% 0.045 155 / 0.08);
+  --color-overlay: oklch(27% 0.045 155 / 0.35);
+  --color-clear: oklch(97% 0.018 92 / 0);
+  --color-spotlight: oklch(76% 0.12 140 / 0.3);
+  --color-nav: oklch(97% 0.018 92 / 0.92);
+  --color-input-rule: oklch(58% 0.055 145);
+  --color-error-soft: oklch(96% 0.018 28);
+  --color-error-rule: oklch(80% 0.065 28);
+}

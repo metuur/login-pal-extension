@@ -206,6 +206,24 @@ The spacing scale is named rather than strictly sequential: `--space-section` is
 
 The portable export is the CSS token block above. This project currently has no generated Tailwind theme, DTCG JSON, or shadcn token mapping. Future exports should derive from these values rather than introduce a second palette.
 
+## Extension palette adoption
+
+The extension popup and Settings now reuse the product page’s color palette through [`public/palette.css`](public/palette.css), imported by [`public/ui.css`](public/ui.css). The stylesheet is packaged with the extension; it does not depend on the product-page directory at runtime. The development preview shell consumes the same variables.
+
+This adoption covers cream backgrounds, near-white surfaces, deep green text and primary actions, soft green selected states, warm warnings, red error/destructive states, focus rings, and dialog backdrops. Extension typography, dimensions, layout, and behavior retain their existing definitions.
+
+Shared color values match `.product-page/tokens.css`. Three extension-specific tokens support functional controls:
+
+| Token                | Value                  | Purpose                               |
+| -------------------- | ---------------------- | ------------------------------------- |
+| `--color-input-rule` | `oklch(58% 0.055 145)` | Stronger input/select boundaries      |
+| `--color-error-soft` | `oklch(96% 0.018 28)`  | Error and destructive-action surfaces |
+| `--color-error-rule` | `oklch(80% 0.065 28)`  | Error boundaries                      |
+
+The fallback select-arrow SVG embeds the muted color because CSS variables cannot cross into an image document. Keep it synchronized when changing that token.
+
+Verification for this adoption: extension build and TypeScript passed; all 92 application tests passed. Local browser preview confirmed popup/Settings colors, tab navigation, and empty-import error feedback. The checked opaque text combinations range from 6.36:1 to 13.60:1; focus-ring and input-boundary combinations exceed 3:1. These token checks are not a full accessibility certification. The preview used an empty local catalog and did not access installed-extension data or exercise real website filling.
+
 ## Layout and responsive behavior
 
 ### Shared geometry
