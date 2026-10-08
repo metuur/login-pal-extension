@@ -2,6 +2,8 @@
 
 Open `index.html` directly in a browser. All fonts, styles, and scripts are local; there are no runtime dependencies or network services. The page is independent of the extension build.
 
+The navigation, footer, walkthrough, and favicons use the Login Pal vector branding. Run `rtk npm run generate:assets` from the repository root after updating `public/login-pal-vector.svg`; it also refreshes this page's local SVG, ICO, and Apple Touch assets.
+
 Detailed documentation lives in `docs.html`, with the same header and footer as the homepage. Both pages share `styles.css` and `main.js`. Homepage documentation links go to that page and preserve topic anchors; the homepage no longer embeds the documentation guide.
 
 The soft structural editorial design introduces the extension, offers a synthetic account-picker demo, and walks through developer installation, CSV import, profile authorization, and manual login. Product wording follows the current HLD/LLD/EARS amendments and repository README. No extension package is bundled or falsely offered for download.

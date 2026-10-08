@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { copyFile, readFile, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
 // Keep the supplied vector as the single source of truth. No external assets.
@@ -88,7 +88,11 @@ try {
     new URL('favicon.ico', publicDir),
     Buffer.concat([header, ...faviconImages.map(({ png }) => png)]),
   );
-  console.log('Generated 19 brand assets from login-pal-vector.svg. PNG dimensions verified.');
+  // The product page is deployable on its own, so keep its assets local.
+  for (const name of ['favicon.svg', 'favicon.ico', 'apple-touch-icon.png']) {
+    await copyFile(new URL(name, publicDir), new URL(`../.product-page/${name}`, import.meta.url));
+  }
+  console.log('Generated 19 brand assets and synced product-page assets. PNG dimensions verified.');
 } finally {
   await browser.close();
 }

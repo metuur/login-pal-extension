@@ -137,14 +137,11 @@ svg {
   letter-spacing: -1px;
 }
 .brand-icon {
-  display: grid;
-  place-items: center;
-  background: var(--blue);
-  color: white;
+  display: block;
+  object-fit: contain;
+  flex-shrink: 0;
   width: 29px;
   height: 29px;
-  border-radius: 9px;
-  font-size: 22px;
 }
 .dev {
   letter-spacing: 0.08em;
@@ -330,12 +327,9 @@ svg {
 .app-symbol {
   width: 34px;
   height: 34px;
-  border-radius: 10px;
-  background: #eef0ff;
-  color: #5261c9;
-  display: grid;
-  place-items: center;
-  font-size: 25px;
+  display: block;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 .demo-header strong {
   display: block;
