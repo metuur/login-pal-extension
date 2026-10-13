@@ -485,11 +485,37 @@ setupHeroSpotlight();
 function setupFloatingHeader() {
   const header = document.querySelector("header.nav");
   if (!header) return;
+  let frame = 0;
+  const sectionLinks = Array.from(header.querySelectorAll("nav a")).filter(
+    (link) => link.hash && document.getElementById(link.hash.slice(1))
+  );
+  const sections = sectionLinks.map((link) => ({
+    link,
+    section: document.querySelector(link.hash)
+  }));
   const update = () => {
+    frame = 0;
     const state = window.scrollY > 48 ? "scrolled" : "top";
     if (header.dataset.state !== state) header.dataset.state = state;
+    let active;
+    sections.forEach(({ link, section }) => {
+      if (!section) return;
+      const bounds = section.getBoundingClientRect();
+      if (bounds.top <= 112 && bounds.bottom > 112) active = link;
+    });
+    sectionLinks.forEach((link) => {
+      if (link === active) link.setAttribute("aria-current", "location");
+      else link.removeAttribute("aria-current");
+    });
   };
-  window.addEventListener("scroll", update, { passive: true });
+  window.addEventListener(
+    "scroll",
+    () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    },
+    { passive: true }
+  );
+  window.addEventListener("resize", update);
   update();
 }
 setupFloatingHeader();

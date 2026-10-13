@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#f7f5e8" />
+    <meta name="theme-color" content="#ffffff" />
     <meta
       name="description"
       content="Login Pal brings your synthetic QA accounts into one local Chrome extension. Import, find, and intentionally fill your next test login."
@@ -12,9 +12,9 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <link rel="alternate icon" href="favicon.ico" />
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
-    <link rel="preload" href="plus-jakarta-sans.ttf" as="font" type="font/ttf" crossorigin />
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="guide.css" />
+    <link rel="stylesheet" href="product.css" />
     <script src="main.js" defer></script>
   </head>
   <body class="home-page">
@@ -27,12 +27,10 @@
         ></a
       >
       <nav aria-label="Main navigation">
-        <a href="index.html#overview">Why Login Pal</a
-        ><a href="index.html#how-it-works">How it works</a><a href="docs.html">Docs</a>
+        <a href="index.html#overview">Overview</a><a href="index.html#how-it-works">How it works</a
+        ><a href="docs.html">Docs</a>
       </nav>
-      <a class="nav-cta" href="index.html#setup"
-        >Install locally <span aria-hidden="true">↗</span></a
-      >
+      <a class="nav-cta" href="index.html#setup">Install locally</a>
       <button
         class="menu-button"
         aria-label="Open menu"
@@ -45,31 +43,29 @@
     <dialog id="mobile-menu" aria-label="Navigation">
       <button class="menu-close" aria-label="Close menu">×</button>
       <nav>
-        <a href="index.html#overview">Why Login Pal</a
-        ><a href="index.html#how-it-works">How it works</a
+        <a href="index.html#overview">Overview</a><a href="index.html#how-it-works">How it works</a
         ><a href="index.html#offline">Offline capabilities</a
         ><a href="index.html#access">Website access</a><a href="docs.html">Docs</a
-        ><a href="index.html#setup">Get started ↗</a>
+        ><a href="index.html#setup">Install locally</a>
       </nav>
     </dialog>
     <main id="main">
       <section class="hero-spotlight">
         <div class="hero wrap">
           <div class="hero-copy reveal">
-            <p class="product-kicker">A little help for your next test login.</p>
             <h1 class="brand-headline">
               Less account hunting.<br /><span class="flow">More testing.</span>
             </h1>
             <p class="lead">
-              A Chrome extension that keeps your test accounts in one place. Import a CSV, find the
-              right persona, and fill your approved login page. You press Sign in.
+              Your test accounts. One place. Ready when you are.<br />
+              Import a CSV, choose a persona, and fill your approved login page.
             </p>
             <div class="hero-actions">
-              <a href="#account-search" class="button primary" id="try-demo-link"
-                >Try it yourself <span aria-hidden="true">↗</span></a
-              ><a href="index.html#setup" class="text-link"
-                >Install locally <span aria-hidden="true">↓</span></a
-              >
+              <a href="index.html#setup" class="button primary">Install locally</a
+              ><a href="#account-search" class="text-link" id="try-demo-link"
+                >Try the demo
+                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5" /></svg
+              ></a>
             </div>
             <div class="compatibility">
               <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -78,7 +74,7 @@
                 <path d="M12 8.3h8M8.8 13.8l-4-7M13.8 15.2l-4 7" /></svg
               >Synthetic accounts only <b>·</b> Stored locally
             </div>
-            <p class="hero-aside">Built for the admin, the member, and the edge case.</p>
+            <p class="hero-aside">You choose the account. You press Sign in.</p>
           </div>
           <div
             class="hero-scene workflow-demo"
@@ -87,7 +83,7 @@
             aria-label="Login Pal product walkthrough"
           >
             <div class="flow-toolbar">
-              <p><span class="flow-live" aria-hidden="true"></span> Take Login Pal for a spin</p>
+              <p><span class="flow-live" aria-hidden="true"></span> See Login Pal in action.</p>
               <button type="button" id="flow-play" hidden>Play tour</button>
             </div>
             <div class="flow-window">
@@ -380,16 +376,10 @@
           </div>
         </div>
       </section>
-      <nav class="page-map wrap" aria-label="Explore this guide">
-        <span>A small tool. A shorter path to testing.</span>
-        <a href="#how-it-works">Learn the workflow <span aria-hidden="true">↗</span></a>
-        <a href="#setup">Install in Chrome <span aria-hidden="true">↗</span></a>
-        <a href="docs.html">Read the docs <span aria-hidden="true">↗</span></a>
-      </nav>
       <section id="overview" class="section wrap">
         <div class="section-heading reveal">
           <div>
-            <h2>A place for every<br />test persona.</h2>
+            <h2>Every persona.<br />One familiar place.</h2>
           </div>
           <p>
             A CSV in one folder. An account in a chat. A role you can’t remember. Bring the accounts
@@ -406,12 +396,14 @@
               </p>
               <div class="group-art" aria-hidden="true">
                 <div class="group-row">
-                  <span class="folder">▱</span><strong>Staging workspace</strong
-                  ><span class="group-tag">12 accounts</span>
+                  <span class="folder" aria-hidden="true"
+                    ><svg viewBox="0 0 24 24"><path d="M3 7V5h6l2 2h10v13H3Z" /></svg></span
+                  ><strong>Staging workspace</strong><span class="group-tag">12 accounts</span>
                 </div>
                 <div class="group-row">
-                  <span class="folder">▱</span><strong>Support scenarios</strong
-                  ><span class="group-tag">8 accounts</span>
+                  <span class="folder" aria-hidden="true"
+                    ><svg viewBox="0 0 24 24"><path d="M3 7V5h6l2 2h10v13H3Z" /></svg></span
+                  ><strong>Support scenarios</strong><span class="group-tag">8 accounts</span>
                 </div>
                 <div class="group-caption">ILLUSTRATIVE GROUPS</div>
               </div>
@@ -455,13 +447,19 @@
                 <button class="step-demo" data-demo-step="1" type="button" hidden>
                   Preview import <span aria-hidden="true">↗</span>
                 </button>
-                <p>
-                  Open Settings, name a CSV group, and choose your file. Include
-                  <code>account_id</code>, <code>username</code>, and <code>password</code>; extra
-                  columns become searchable metadata. Set the authorized domain, verify the file,
-                  then confirm the import.
+                <p class="step-description">
+                  Bring your test accounts into a named group. Keep each environment together.
                 </p>
-                <span class="hint">Start with “Download sample CSV (3 rows)” in Settings.</span>
+                <details class="setup-details">
+                  <summary>Setup details</summary>
+                  <p>
+                    Open Settings, name a CSV group, and choose your file. Include
+                    <code>account_id</code>, <code>username</code>, and <code>password</code>; extra
+                    columns become searchable metadata. Set the authorized domain, verify the file,
+                    then confirm the import.
+                  </p>
+                  <span class="hint">Start with “Download sample CSV (3 rows)” in Settings.</span>
+                </details>
               </div>
             </li>
             <li class="reveal">
@@ -471,13 +469,19 @@
                 <button class="step-demo" data-demo-step="2" type="button" hidden>
                   Preview approval <span aria-hidden="true">↗</span>
                 </button>
-                <p>
-                  Configure the group’s login profile: your authorized login domain, username and
-                  password matching rules, and optional successful-login tracking. Choose a success
-                  URL or visible element if you want tracking, then save and approve the site
-                  permission.
+                <p class="step-description">
+                  Choose your login page and match its username and password fields.
                 </p>
-                <span class="hint">Importing accounts alone doesn’t authorize autofill.</span>
+                <details class="setup-details">
+                  <summary>Setup details</summary>
+                  <p>
+                    Configure the group’s login profile: your authorized login domain, username and
+                    password matching rules, and optional successful-login tracking. Choose a
+                    success URL or visible element if you want tracking, then save and approve the
+                    site permission.
+                  </p>
+                  <span class="hint">Importing accounts alone doesn’t authorize autofill.</span>
+                </details>
               </div>
             </li>
             <li class="reveal">
@@ -487,99 +491,21 @@
                 <button class="step-demo" data-demo-step="3" type="button" hidden>
                   Try account selection <span aria-hidden="true">↗</span>
                 </button>
-                <p>
-                  Visit the authorized login page and open the extension. Choose a group, search by
-                  ID, username, or metadata, and select an account. Review it, choose Autofill, then
-                  submit the website’s form yourself.
+                <p class="step-description">
+                  Find the persona you need. Fill on your command, then press Sign in yourself.
                 </p>
-                <span class="hint">“Recent” means filled. “Last successful” means verified.</span>
+                <details class="setup-details">
+                  <summary>Setup details</summary>
+                  <p>
+                    Visit the authorized login page and open the extension. Choose a group, search
+                    by ID, username, or metadata, and select an account. Review it, choose Autofill,
+                    then submit the website’s form yourself.
+                  </p>
+                  <span class="hint">“Recent” means filled. “Last successful” means verified.</span>
+                </details>
               </div>
             </li>
           </ol>
-        </div>
-      </section>
-      <section id="setup" class="section wrap setup-grid">
-        <div class="reveal">
-          <h2>Install Login Pal<br />in Chrome.</h2>
-          <p class="section-description">
-            Install the unpacked extension in Chrome 121 or newer. No account to create. No service
-            to connect.
-          </p>
-          <span class="install-note">Local installation · not on the Chrome Web Store</span>
-        </div>
-        <div class="bezel reveal">
-          <div class="install-inner">
-            <h3>Your installation checklist.</h3>
-            <p class="checklist-help">Tick each step as you go. Progress stays on this page.</p>
-            <p id="setup-progress" class="setup-progress" role="status" hidden>
-              0 of 4 steps complete
-            </p>
-            <ol class="install-steps">
-              <li>
-                <span class="install-number">1</span
-                ><input
-                  type="checkbox"
-                  class="setup-check"
-                  aria-label="Mark installation step 1 complete"
-                  hidden
-                />
-                <p>
-                  <strong>Get the extension package.</strong> Extract
-                  <code>login-pal.zip</code> from your project or team maintainer. If you build from
-                  source, use the generated <code>dist</code> folder.
-                </p>
-              </li>
-              <li>
-                <span class="install-number">2</span
-                ><input
-                  type="checkbox"
-                  class="setup-check"
-                  aria-label="Mark installation step 2 complete"
-                  hidden
-                />
-                <p>
-                  <strong>Open Chrome’s extensions page.</strong> Enter
-                  <code>chrome://extensions</code> in the address bar and switch on
-                  <strong>Developer mode</strong>.
-                </p>
-              </li>
-              <li>
-                <span class="install-number">3</span
-                ><input
-                  type="checkbox"
-                  class="setup-check"
-                  aria-label="Mark installation step 3 complete"
-                  hidden
-                />
-                <p>
-                  <strong>Load your extension.</strong> Select <strong>Load unpacked</strong> and
-                  choose the extracted <code>dist</code> folder. Keep this folder in place.
-                </p>
-              </li>
-              <li>
-                <span class="install-number">4</span
-                ><input
-                  type="checkbox"
-                  class="setup-check"
-                  aria-label="Mark installation step 4 complete"
-                  hidden
-                />
-                <p>
-                  <strong>Pin Login Pal and open Settings.</strong> Pin Login Pal from Chrome’s
-                  Extensions menu, then open Settings to import your first group.
-                </p>
-              </li>
-            </ol>
-            <div class="copy-address" hidden>
-              <button type="button" id="copy-extensions" class="button secondary">
-                Copy extensions address <span aria-hidden="true">↗</span>
-              </button>
-              <p id="copy-status" role="status"></p>
-            </div>
-            <a href="index.html#how-it-works" class="button primary"
-              >Set up a group <span>↑</span></a
-            >
-          </div>
         </div>
       </section>
       <section id="offline" class="section wrap offline-grid">
@@ -640,17 +566,20 @@
           <article class="bezel reveal">
             <div class="access-panel">
               <h3>You choose the sites.</h3>
-              <p>
-                Website access is requested when you use
-                <strong>Save &amp; authorize website</strong> or
-                <strong>Detect fields from the login page</strong>. Detection can request access to
-                all domains configured for the selected group, including newly added ones.
-              </p>
-              <p>
-                For missing detection permissions, the extension first names the sites and explains
-                the request. Select <strong>Continue</strong> to open Chrome’s permission prompt.
-                Importing a CSV alone does not grant site access.
-              </p>
+              <details class="setup-details">
+                <summary>How site access works</summary>
+                <p>
+                  Website access is requested when you use
+                  <strong>Save &amp; authorize website</strong> or
+                  <strong>Detect fields from the login page</strong>. Detection can request access
+                  to all domains configured for the selected group, including newly added ones.
+                </p>
+                <p>
+                  For missing detection permissions, the extension first names the sites and
+                  explains the request. Select <strong>Continue</strong> to open Chrome’s permission
+                  prompt. Importing a CSV alone does not grant site access.
+                </p>
+              </details>
               <a href="docs.html#docs-domains" class="text-link"
                 >See accepted domains <span>↗</span></a
               >
@@ -659,17 +588,20 @@
           <article class="bezel reveal">
             <div class="access-panel">
               <h3>Read field names. Fill on request.</h3>
-              <p>
-                Chrome may describe site access as permission to
-                <strong>read and change data</strong>. The extension uses it to list matching open
-                tabs, inspect login-field attributes, fill your selected account, and observe a
-                success condition if you enable tracking.
-              </p>
-              <p>
-                Field detection reports labels and identifying attributes, not the values entered
-                into inputs. Autofill delivers only the chosen account to the approved page after
-                your explicit action. It never submits the form.
-              </p>
+              <details class="setup-details">
+                <summary>How the permission is used</summary>
+                <p>
+                  Chrome may describe site access as permission to
+                  <strong>read and change data</strong>. The extension uses it to list matching open
+                  tabs, inspect login-field attributes, fill your selected account, and observe a
+                  success condition if you enable tracking.
+                </p>
+                <p>
+                  Field detection reports labels and identifying attributes, not the values entered
+                  into inputs. Autofill delivers only the chosen account to the approved page after
+                  your explicit action. It never submits the form.
+                </p>
+              </details>
             </div>
           </article>
         </div>
@@ -779,6 +711,94 @@
           </details>
         </div>
       </section>
+      <section id="setup" class="section wrap setup-grid">
+        <div class="reveal">
+          <h2>Install Login Pal<br />in Chrome.</h2>
+          <p class="section-description">
+            Install the unpacked extension in Chrome 121 or newer. No account to create. No service
+            to connect.
+          </p>
+          <span class="install-note">Local installation · not on the Chrome Web Store</span>
+        </div>
+        <div class="bezel reveal">
+          <div class="install-inner">
+            <h3>Your installation checklist.</h3>
+            <p class="checklist-help">Tick each step as you go. Progress stays on this page.</p>
+            <p id="setup-progress" class="setup-progress" role="status" hidden>
+              0 of 4 steps complete
+            </p>
+            <ol class="install-steps">
+              <li>
+                <span class="install-number">1</span
+                ><input
+                  type="checkbox"
+                  class="setup-check"
+                  id="setup-check-1"
+                  aria-label="Mark installation step 1 complete"
+                  hidden
+                />
+                <label class="install-description" for="setup-check-1">
+                  <strong>Get the extension package.</strong> Extract
+                  <code>login-pal.zip</code> from your project or team maintainer. If you build from
+                  source, use the generated <code>dist</code> folder.
+                </label>
+              </li>
+              <li>
+                <span class="install-number">2</span
+                ><input
+                  type="checkbox"
+                  class="setup-check"
+                  id="setup-check-2"
+                  aria-label="Mark installation step 2 complete"
+                  hidden
+                />
+                <label class="install-description" for="setup-check-2">
+                  <strong>Open Chrome’s extensions page.</strong> Enter
+                  <code>chrome://extensions</code> in the address bar and switch on
+                  <strong>Developer mode</strong>.
+                </label>
+              </li>
+              <li>
+                <span class="install-number">3</span
+                ><input
+                  type="checkbox"
+                  class="setup-check"
+                  id="setup-check-3"
+                  aria-label="Mark installation step 3 complete"
+                  hidden
+                />
+                <label class="install-description" for="setup-check-3">
+                  <strong>Load your extension.</strong> Select <strong>Load unpacked</strong> and
+                  choose the extracted <code>dist</code> folder. Keep this folder in place.
+                </label>
+              </li>
+              <li>
+                <span class="install-number">4</span
+                ><input
+                  type="checkbox"
+                  class="setup-check"
+                  id="setup-check-4"
+                  aria-label="Mark installation step 4 complete"
+                  hidden
+                />
+                <label class="install-description" for="setup-check-4">
+                  <strong>Pin Login Pal and open Settings.</strong> Pin Login Pal from Chrome’s
+                  Extensions menu, then open Settings to import your first group.
+                </label>
+              </li>
+            </ol>
+            <div class="copy-address" hidden>
+              <button type="button" id="copy-extensions" class="button secondary">
+                Copy extensions address <span aria-hidden="true">↗</span>
+              </button>
+              <p id="copy-status" role="status"></p>
+            </div>
+            <a href="index.html#how-it-works" class="button primary"
+              >Set up a group <span>↑</span></a
+            >
+          </div>
+        </div>
+      </section>
       <section class="closing wrap reveal">
         <h2>Your next test starts<br />with the right account.</h2>
         <a href="index.html#setup" class="button primary">Install Login Pal <span>↗</span></a>
@@ -794,7 +814,7 @@
           ></a
         >
         <nav class="footer-nav" aria-label="Footer navigation">
-          <a href="index.html#overview">Why Login Pal</a>
+          <a href="index.html#overview">Overview</a>
           <a href="index.html#how-it-works">How it works</a>
           <a href="docs.html">Docs</a>
           <a href="index.html#setup">Install locally <span aria-hidden="true">↗</span></a>

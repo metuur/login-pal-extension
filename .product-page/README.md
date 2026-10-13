@@ -2,15 +2,17 @@
 
 Open `index.html` directly or serve this directory with a static server. All fonts, styles and scripts are packaged locally. The page is independent of the extension build and never reads extension storage.
 
-`index.html` explains the extension and provides a synthetic account demo, first-use instructions, developer installation, local/offline behavior, permissions and questions. `docs.html` retains detailed documentation and direct topic links. Both pages share `styles.css`, `tokens.css`, the additive `guide.css`, and `main.js`.
+`index.html` explains the extension and provides a synthetic account demo, first-use instructions, developer installation, local/offline behavior, permissions and questions. `docs.html` retains detailed documentation and direct topic links. Both pages share `styles.css`, `tokens.css`, the additive `guide.css` and `product.css`, and `main.js`.
 
 ## Design
 
-The page combines Hollowback Apiary’s cream/green palette with Tally’s readable product presentation, [Bubble’s typography](https://www.usehallmark.com/examples/hum-07/), and [Hyperlane’s floating header](https://www.usehallmark.com/examples/hyperlane/). Plus Jakarta Sans carries headings and body copy; JetBrains Mono supplies small numbered labels and code. Both variable fonts and their OFL licenses are packaged locally (`PLUS-JAKARTA-SANS-LICENSE.txt`, `JETBRAINS-MONO-LICENSE.txt`). The homepage and docs preload the same local sans font.
+The Apple-inspired presentation uses a white canvas, silver surfaces, near-black headings, blue actions, and system typography. The centered introduction leads into a larger interactive product demonstration. One primary action points to local installation; trying the demo is secondary. JetBrains Mono remains packaged for code. Previous locally packaged fonts and their licenses remain available as historical assets.
 
-The pill-shaped header stays visible while scrolling, narrows after 48px, and centers navigation links on desktop. Below 960px it retains the menu dialog. Scroll transitions honor reduced motion. The hero spotlight follows mouse input across the full browser width, including both margins around the centered content, fades on exit, and stays disabled for touch and reduced motion.
+The full-width navigation stays at the top while scrolling and indicates the current linked section. Below 960px it retains the menu dialog and local-install action. The softened hero spotlight follows mouse input across the full browser width, including both margins around the centered content, fades on exit, and stays disabled for touch and reduced motion.
 
-The original stylesheet is preserved; `guide.css` applies the guide’s visual system. Hallmark records are scoped to `.hallmark/` here. Branding retains the existing Login Pal mark. Previous locally packaged fonts remain available as historical assets.
+`tokens.css` owns the current palette and typography. `product.css` owns the new presentation over the retained component layouts in `styles.css` and `guide.css`. Branding retains the existing Login Pal mark. Historical Hallmark records are scoped to `.hallmark/`. The selected design and implementation contract is recorded in `../docs/plans/2026-10-12-product-page-apple-design.md`.
+
+The reading order follows the product story before installation. Workflow and website-access details use native disclosures to keep technical instructions available without overwhelming the first read. The documentation page shares the typography, navigation, spacing and color system.
 
 ## Interactive demo
 
@@ -20,7 +22,7 @@ The page opens on **Choose**, without autoplay. Search fictional names, emails o
 
 The `/` shortcut opens and focuses search outside editable fields or the navigation dialog. The dialog supports Escape, a close control and backdrop dismissal.
 
-The installation checklist is session-only: it does not store progress. Its checkboxes and progress text appear only with JavaScript; without JavaScript the numbered instructions remain. **Copy extensions address** copies `chrome://extensions` with an inline success message or a manual-entry fallback when clipboard access is unavailable.
+The installation checklist is session-only: it does not store progress. Its checkboxes and progress text appear only with JavaScript; without JavaScript the numbered instructions remain. Clicking an instruction also toggles its checkbox. **Copy extensions address** copies `chrome://extensions` with an inline success message or a manual-entry fallback when clipboard access is unavailable.
 
 Without JavaScript the sample picker remains readable, numbered setup instructions remain visible, and native documentation/FAQ disclosures still work. Role filters and tour controls are hidden.
 

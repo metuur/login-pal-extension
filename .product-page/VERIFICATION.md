@@ -1,3 +1,13 @@
+## Apple-inspired product UX — 2026-10-12
+
+- Implemented the user's selected white/silver direction, system typography, centered hero, larger interactive showcase, slim full-width sticky navigation, blue primary install action, and shared documentation presentation. Preserved the full-width spotlight and original product mark.
+- Reordered the product story before installation, added native disclosures for workflow and permission details, and associated installation text with checkboxes. All local links and fragments resolve.
+- Chromium checked all five scenes at 320, 375, 414, 768, 1024, 1440 and 1920px: no horizontal document overflow and a stable walkthrough height at every width. Desktop/mobile product and documentation screenshots visually reviewed; landscape navigation checked at 767×375px.
+- Demo entry/focus, role search and filtering, empty results and disabled fill, selected-name transfer, slash shortcut, active-section navigation at directory and index URLs, sticky position, disclosures, mobile menu/Escape, checkbox progress, and clipboard success/failure passed. Observed the opt-in tour advance, pause without progressing, resume, finish, and stop.
+- Full-width pointer tracking/exit, touch exclusion, reduced-motion manual navigation, expanded docs/deep links, readable no-JavaScript fallback, and 200% root-font sizing without horizontal overflow passed. No browser runtime errors or external runtime requests observed.
+- Targeted rendered-text contrast checks across all five reduced-motion scenes and expanded homepage/docs disclosures found no failures at 4.5:1 ordinary text / 3:1 large text. Keyboard testing found the inherited skip-link layer underneath navigation; the new focus layer corrected it, and the repeated focus-clearance check passed. These are targeted Chromium checks, not a complete accessibility certification.
+- Strict standalone TypeScript, JavaScript generation, formatting and whitespace checks passed. Extension runtime and permissions are unchanged; extension tests were not rerun for this standalone site redesign.
+
 ## Full-width hero spotlight — 2026-10-12
 
 - Moved the spotlight and its pointer events to a full-width outer hero section; the centered content remains in the existing `.hero.wrap` grid.
