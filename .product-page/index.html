@@ -53,328 +53,331 @@
       </nav>
     </dialog>
     <main id="main">
-      <section class="hero wrap">
-        <div class="hero-copy reveal">
-          <p class="product-kicker">A little help for your next test login.</p>
-          <h1 class="brand-headline">
-            Less account hunting.<br /><span class="flow">More testing.</span>
-          </h1>
-          <p class="lead">
-            A Chrome extension that keeps your test accounts in one place. Import a CSV, find the
-            right persona, and fill your approved login page. You press Sign in.
-          </p>
-          <div class="hero-actions">
-            <a href="#account-search" class="button primary" id="try-demo-link"
-              >Try it yourself <span aria-hidden="true">↗</span></a
-            ><a href="index.html#setup" class="text-link"
-              >Install locally <span aria-hidden="true">↓</span></a
-            >
-          </div>
-          <div class="compatibility">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="12" r="9" />
-              <circle cx="12" cy="12" r="3.7" />
-              <path d="M12 8.3h8M8.8 13.8l-4-7M13.8 15.2l-4 7" /></svg
-            >Synthetic accounts only <b>·</b> Stored locally
-          </div>
-          <p class="hero-aside">Built for the admin, the member, and the edge case.</p>
-        </div>
-        <div
-          class="hero-scene workflow-demo"
-          id="workflow-demo"
-          role="region"
-          aria-label="Login Pal product walkthrough"
-        >
-          <div class="flow-toolbar">
-            <p><span class="flow-live" aria-hidden="true"></span> Take Login Pal for a spin</p>
-            <button type="button" id="flow-play" hidden>Play tour</button>
-          </div>
-          <div class="flow-window">
-            <div class="flow-brand">
-              <img class="app-symbol" src="favicon.svg" alt="" width="29" height="29" /><strong
-                >Login Pal</strong
-              ><span class="flow-example">Interactive demo</span>
-            </div>
-            <div class="flow-panels">
-              <section
-                class="flow-panel flow-chaos"
-                data-flow-panel="0"
-                aria-labelledby="flow-problem-title"
-                hidden
+      <section class="hero-spotlight">
+        <div class="hero wrap">
+          <div class="hero-copy reveal">
+            <p class="product-kicker">A little help for your next test login.</p>
+            <h1 class="brand-headline">
+              Less account hunting.<br /><span class="flow">More testing.</span>
+            </h1>
+            <p class="lead">
+              A Chrome extension that keeps your test accounts in one place. Import a CSV, find the
+              right persona, and fill your approved login page. You press Sign in.
+            </p>
+            <div class="hero-actions">
+              <a href="#account-search" class="button primary" id="try-demo-link"
+                >Try it yourself <span aria-hidden="true">↗</span></a
+              ><a href="index.html#setup" class="text-link"
+                >Install locally <span aria-hidden="true">↓</span></a
               >
-                <div class="flow-panel-heading">
-                  <span class="flow-step-label">BEFORE LOGIN PAL</span>
-                  <h2 id="flow-problem-title">The test is ready.<br />The login isn’t.</h2>
-                  <p>You need an Admin account. Now, where did you put it?</p>
-                </div>
-                <div class="dev-chaos-stage">
+            </div>
+            <div class="compatibility">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" />
+                <circle cx="12" cy="12" r="3.7" />
+                <path d="M12 8.3h8M8.8 13.8l-4-7M13.8 15.2l-4 7" /></svg
+              >Synthetic accounts only <b>·</b> Stored locally
+            </div>
+            <p class="hero-aside">Built for the admin, the member, and the edge case.</p>
+          </div>
+          <div
+            class="hero-scene workflow-demo"
+            id="workflow-demo"
+            role="region"
+            aria-label="Login Pal product walkthrough"
+          >
+            <div class="flow-toolbar">
+              <p><span class="flow-live" aria-hidden="true"></span> Take Login Pal for a spin</p>
+              <button type="button" id="flow-play" hidden>Play tour</button>
+            </div>
+            <div class="flow-window">
+              <div class="flow-brand">
+                <img class="app-symbol" src="favicon.svg" alt="" width="29" height="29" /><strong
+                  >Login Pal</strong
+                ><span class="flow-example">Interactive demo</span>
+              </div>
+              <div class="flow-panels">
+                <section
+                  class="flow-panel flow-chaos"
+                  data-flow-panel="0"
+                  aria-labelledby="flow-problem-title"
+                  hidden
+                >
+                  <div class="flow-panel-heading">
+                    <span class="flow-step-label">BEFORE LOGIN PAL</span>
+                    <h2 id="flow-problem-title">The test is ready.<br />The login isn’t.</h2>
+                    <p>You need an Admin account. Now, where did you put it?</p>
+                  </div>
+                  <div class="dev-chaos-stage">
+                    <div
+                      class="dev-login-page"
+                      role="group"
+                      aria-label="Illustrative development login page"
+                    >
+                      <div class="example-site-label">
+                        <span>qa.example.com/login</span><b>DEV MODE</b>
+                      </div>
+                      <div class="dev-login-body">
+                        <div class="dev-login-heading">
+                          <strong>Sign in to test</strong><span>QA workspace · Admin scenario</span>
+                        </div>
+                        <div class="dev-empty-field">
+                          <span>Username</span>
+                          <div>Which test account?</div>
+                        </div>
+                        <div class="dev-empty-field">
+                          <span>Password</span>
+                          <div>Still looking…</div>
+                        </div>
+                        <div class="dev-login-waiting">
+                          <span>Sign in</span><small>Waiting for an account</small>
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      class="account-hunt"
+                      role="group"
+                      aria-label="Scattered places to look for a test account"
+                    >
+                      <div class="hunt-note">
+                        <div class="hunt-note-inner">
+                          <span>test-accounts-old.csv</span
+                          ><strong>Is this the latest list?</strong>
+                        </div>
+                      </div>
+                      <div class="hunt-note">
+                        <div class="hunt-note-inner">
+                          <span>SETUP NOTES</span><strong>Which user has Admin?</strong>
+                        </div>
+                      </div>
+                      <div class="hunt-note">
+                        <div class="hunt-note-inner">
+                          <span>TEAM CHAT</span><strong>“Anyone have a test account?”</strong>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <p class="flow-panel-note chaos-caption">
+                    <strong>More searching. Less testing.</strong> Keep your test accounts in one
+                    searchable catalog with Login Pal.
+                  </p>
+                </section>
+                <section
+                  class="flow-panel"
+                  data-flow-panel="1"
+                  aria-labelledby="flow-import-title"
+                  hidden
+                >
+                  <div class="flow-panel-heading">
+                    <span class="flow-step-label">01 / IMPORT</span>
+                    <h2 id="flow-import-title">Your CSV becomes<br />an account catalog.</h2>
+                    <p>Keep test personas together in a named group.</p>
+                  </div>
+                  <div class="csv-preview flow-item">
+                    <div class="csv-title">
+                      <span class="csv-icon" aria-hidden="true">CSV</span>
+                      <div>
+                        <strong>test-accounts.csv</strong><span>Synthetic sample · 3 accounts</span>
+                      </div>
+                      <span class="flow-check" aria-hidden="true">✓</span>
+                    </div>
+                    <div class="csv-row flow-item"><span>Alex Morgan</span><span>Admin</span></div>
+                    <div class="csv-row flow-item"><span>Jamie Chen</span><span>Member</span></div>
+                    <div class="csv-row flow-item"><span>Sam Rivera</span><span>Viewer</span></div>
+                  </div>
+                  <div class="flow-transfer flow-item">
+                    <span aria-hidden="true">↓</span
+                    ><span class="flow-group">QA workspace <span>3 accounts</span></span>
+                  </div>
+                  <p class="flow-panel-note">
+                    Import → review → confirm. Extra CSV columns become searchable metadata.
+                  </p>
+                </section>
+                <section
+                  class="flow-panel"
+                  data-flow-panel="2"
+                  aria-labelledby="flow-authorize-title"
+                  hidden
+                >
+                  <div class="flow-panel-heading">
+                    <span class="flow-step-label">02 / AUTHORIZE</span>
+                    <h2 id="flow-authorize-title">Tell it where<br />to lend a hand.</h2>
+                    <p>Configure the login form and approve site access.</p>
+                  </div>
+                  <div class="site-permission flow-item">
+                    <span class="field-caption">Your chosen login domain</span
+                    ><strong>https://qa.example.com</strong>
+                    <div class="field-mapping">
+                      <span>Username field</span><b>Configured <span aria-hidden="true">✓</span></b>
+                      <i class="field-progress" aria-hidden="true"></i>
+                    </div>
+                    <div class="field-mapping">
+                      <span>Password field</span><b>Configured <span aria-hidden="true">✓</span></b>
+                      <i class="field-progress" aria-hidden="true"></i>
+                    </div>
+                    <div class="permission-approved flow-item">
+                      <span aria-hidden="true">✓</span> You approve access to this site
+                    </div>
+                  </div>
+                  <p class="flow-panel-note">
+                    Importing a CSV doesn’t grant access. You choose which site the extension can
+                    fill.
+                  </p>
+                </section>
+                <section
+                  class="flow-panel flow-picker"
+                  data-flow-panel="3"
+                  aria-labelledby="flow-choose-title"
+                >
+                  <div class="flow-panel-heading">
+                    <span class="flow-step-label">Choose an account</span>
+                    <h2 id="flow-choose-title">Who are you testing as?</h2>
+                    <p>Search or filter the sample accounts. Pick one to try a fill.</p>
+                  </div>
+                  <label class="search-label" for="account-search">Search sample accounts</label>
+                  <div class="search">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <circle cx="10" cy="10" r="6" />
+                      <path d="m15 15 5 5" /></svg
+                    ><input
+                      id="account-search"
+                      type="search"
+                      placeholder="Name, email, or role…"
+                      aria-label="Search demo accounts"
+                    /><kbd>/</kbd>
+                  </div>
                   <div
-                    class="dev-login-page"
+                    class="role-filters"
                     role="group"
-                    aria-label="Illustrative development login page"
+                    aria-label="Filter sample accounts by role"
+                    hidden
                   >
+                    <button type="button" data-role="all" aria-pressed="true">All roles</button>
+                    <button type="button" data-role="admin" aria-pressed="false">Admin</button>
+                    <button type="button" data-role="member" aria-pressed="false">Member</button>
+                    <button type="button" data-role="viewer" aria-pressed="false">Viewer</button>
+                  </div>
+                  <div class="list-heading">
+                    <span>Staging · sample group</span
+                    ><span id="account-count" role="status">3 accounts</span>
+                  </div>
+                  <div id="account-list">
+                    <button
+                      class="account selected"
+                      data-name="Alex Morgan"
+                      data-search="alex morgan qa-001 admin"
+                      aria-pressed="true"
+                    >
+                      <span class="avatar lavender">AM</span
+                      ><span class="account-details"
+                        ><strong>Alex Morgan</strong><small>alex@qa.example.com</small></span
+                      ><span class="role">Admin</span><span class="selection"></span>
+                    </button>
+                    <button
+                      class="account"
+                      data-name="Jamie Chen"
+                      data-search="jamie chen qa-002 member"
+                      aria-pressed="false"
+                    >
+                      <span class="avatar peach">JC</span
+                      ><span class="account-details"
+                        ><strong>Jamie Chen</strong><small>jamie@qa.example.com</small></span
+                      ><span class="role">Member</span><span class="selection"></span>
+                    </button>
+                    <button
+                      class="account"
+                      data-name="Sam Rivera"
+                      data-search="sam rivera qa-003 viewer"
+                      aria-pressed="false"
+                    >
+                      <span class="avatar mint">SR</span
+                      ><span class="account-details"
+                        ><strong>Sam Rivera</strong><small>sam@qa.example.com</small></span
+                      ><span class="role">Viewer</span><span class="selection"></span>
+                    </button>
+                  </div>
+                  <p id="no-results" hidden>
+                    No matching accounts. Clear your search or choose All roles.
+                  </p>
+                  <div class="demo-bottom">
+                    <span class="domain"><i></i> qa.example.com</span
+                    ><button id="demo-fill" class="button primary">
+                      Preview fill <span aria-hidden="true">↗</span>
+                    </button>
+                  </div>
+                  <p id="demo-status" role="status">
+                    Fictional accounts. This demo never touches a real login.
+                  </p>
+                </section>
+                <section
+                  class="flow-panel"
+                  data-flow-panel="4"
+                  aria-labelledby="flow-fill-title"
+                  hidden
+                >
+                  <div class="flow-panel-heading">
+                    <span class="flow-step-label">04 / FILL</span>
+                    <h2 id="flow-fill-title">Fill the fields.<br />You take it from here.</h2>
+                    <p>Choose Autofill on the approved login page.</p>
+                  </div>
+                  <div class="fill-preview dev-login-page flow-item">
                     <div class="example-site-label">
                       <span>qa.example.com/login</span><b>DEV MODE</b>
                     </div>
                     <div class="dev-login-body">
-                      <div class="dev-login-heading">
-                        <strong>Sign in to test</strong><span>QA workspace · Admin scenario</span>
+                      <div class="fill-identity">
+                        <span class="flow-check" aria-hidden="true">✓</span>
+                        <div>
+                          <span>Selected test account</span
+                          ><strong id="flow-selected-name">Alex Morgan</strong>
+                        </div>
                       </div>
-                      <div class="dev-empty-field">
-                        <span>Username</span>
-                        <div>Which test account?</div>
+                      <div class="filled-row flow-item">
+                        <span>Username</span><b>Filled <span aria-hidden="true">✓</span></b>
+                        <i class="field-progress" aria-hidden="true"></i>
                       </div>
-                      <div class="dev-empty-field">
-                        <span>Password</span>
-                        <div>Still looking…</div>
+                      <div class="filled-row flow-item">
+                        <span>Password</span><b>Filled <span aria-hidden="true">✓</span></b>
+                        <i class="field-progress" aria-hidden="true"></i>
                       </div>
-                      <div class="dev-login-waiting">
-                        <span>Sign in</span><small>Waiting for an account</small>
-                      </div>
-                    </div>
-                  </div>
-                  <div
-                    class="account-hunt"
-                    role="group"
-                    aria-label="Scattered places to look for a test account"
-                  >
-                    <div class="hunt-note">
-                      <div class="hunt-note-inner">
-                        <span>test-accounts-old.csv</span><strong>Is this the latest list?</strong>
-                      </div>
-                    </div>
-                    <div class="hunt-note">
-                      <div class="hunt-note-inner">
-                        <span>SETUP NOTES</span><strong>Which user has Admin?</strong>
-                      </div>
-                    </div>
-                    <div class="hunt-note">
-                      <div class="hunt-note-inner">
-                        <span>TEAM CHAT</span><strong>“Anyone have a test account?”</strong>
+                      <div class="manual-submit">
+                        <span>Sign in</span><small>← You click this on the website</small>
                       </div>
                     </div>
                   </div>
-                </div>
-                <p class="flow-panel-note chaos-caption">
-                  <strong>More searching. Less testing.</strong> Keep your test accounts in one
-                  searchable catalog with Login Pal.
-                </p>
-              </section>
-              <section
-                class="flow-panel"
-                data-flow-panel="1"
-                aria-labelledby="flow-import-title"
-                hidden
-              >
-                <div class="flow-panel-heading">
-                  <span class="flow-step-label">01 / IMPORT</span>
-                  <h2 id="flow-import-title">Your CSV becomes<br />an account catalog.</h2>
-                  <p>Keep test personas together in a named group.</p>
-                </div>
-                <div class="csv-preview flow-item">
-                  <div class="csv-title">
-                    <span class="csv-icon" aria-hidden="true">CSV</span>
-                    <div>
-                      <strong>test-accounts.csv</strong><span>Synthetic sample · 3 accounts</span>
-                    </div>
-                    <span class="flow-check" aria-hidden="true">✓</span>
-                  </div>
-                  <div class="csv-row flow-item"><span>Alex Morgan</span><span>Admin</span></div>
-                  <div class="csv-row flow-item"><span>Jamie Chen</span><span>Member</span></div>
-                  <div class="csv-row flow-item"><span>Sam Rivera</span><span>Viewer</span></div>
-                </div>
-                <div class="flow-transfer flow-item">
-                  <span aria-hidden="true">↓</span
-                  ><span class="flow-group">QA workspace <span>3 accounts</span></span>
-                </div>
-                <p class="flow-panel-note">
-                  Import → review → confirm. Extra CSV columns become searchable metadata.
-                </p>
-              </section>
-              <section
-                class="flow-panel"
-                data-flow-panel="2"
-                aria-labelledby="flow-authorize-title"
-                hidden
-              >
-                <div class="flow-panel-heading">
-                  <span class="flow-step-label">02 / AUTHORIZE</span>
-                  <h2 id="flow-authorize-title">Tell it where<br />to lend a hand.</h2>
-                  <p>Configure the login form and approve site access.</p>
-                </div>
-                <div class="site-permission flow-item">
-                  <span class="field-caption">Your chosen login domain</span
-                  ><strong>https://qa.example.com</strong>
-                  <div class="field-mapping">
-                    <span>Username field</span><b>Configured <span aria-hidden="true">✓</span></b>
-                    <i class="field-progress" aria-hidden="true"></i>
-                  </div>
-                  <div class="field-mapping">
-                    <span>Password field</span><b>Configured <span aria-hidden="true">✓</span></b>
-                    <i class="field-progress" aria-hidden="true"></i>
-                  </div>
-                  <div class="permission-approved flow-item">
-                    <span aria-hidden="true">✓</span> You approve access to this site
-                  </div>
-                </div>
-                <p class="flow-panel-note">
-                  Importing a CSV doesn’t grant access. You choose which site the extension can
-                  fill.
-                </p>
-              </section>
-              <section
-                class="flow-panel flow-picker"
-                data-flow-panel="3"
-                aria-labelledby="flow-choose-title"
-              >
-                <div class="flow-panel-heading">
-                  <span class="flow-step-label">Choose an account</span>
-                  <h2 id="flow-choose-title">Who are you testing as?</h2>
-                  <p>Search or filter the sample accounts. Pick one to try a fill.</p>
-                </div>
-                <label class="search-label" for="account-search">Search sample accounts</label>
-                <div class="search">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <circle cx="10" cy="10" r="6" />
-                    <path d="m15 15 5 5" /></svg
-                  ><input
-                    id="account-search"
-                    type="search"
-                    placeholder="Name, email, or role…"
-                    aria-label="Search demo accounts"
-                  /><kbd>/</kbd>
-                </div>
-                <div
-                  class="role-filters"
-                  role="group"
-                  aria-label="Filter sample accounts by role"
-                  hidden
-                >
-                  <button type="button" data-role="all" aria-pressed="true">All roles</button>
-                  <button type="button" data-role="admin" aria-pressed="false">Admin</button>
-                  <button type="button" data-role="member" aria-pressed="false">Member</button>
-                  <button type="button" data-role="viewer" aria-pressed="false">Viewer</button>
-                </div>
-                <div class="list-heading">
-                  <span>Staging · sample group</span
-                  ><span id="account-count" role="status">3 accounts</span>
-                </div>
-                <div id="account-list">
-                  <button
-                    class="account selected"
-                    data-name="Alex Morgan"
-                    data-search="alex morgan qa-001 admin"
-                    aria-pressed="true"
-                  >
-                    <span class="avatar lavender">AM</span
-                    ><span class="account-details"
-                      ><strong>Alex Morgan</strong><small>alex@qa.example.com</small></span
-                    ><span class="role">Admin</span><span class="selection"></span>
+                  <p class="flow-panel-note">
+                    <strong>Login Pal never submits the form.</strong> This is an illustration; no
+                    credentials are used.
+                  </p>
+                  <button class="flow-back" type="button" data-flow-target="3" hidden>
+                    Try another account <span aria-hidden="true">↗</span>
                   </button>
-                  <button
-                    class="account"
-                    data-name="Jamie Chen"
-                    data-search="jamie chen qa-002 member"
-                    aria-pressed="false"
-                  >
-                    <span class="avatar peach">JC</span
-                    ><span class="account-details"
-                      ><strong>Jamie Chen</strong><small>jamie@qa.example.com</small></span
-                    ><span class="role">Member</span><span class="selection"></span>
-                  </button>
-                  <button
-                    class="account"
-                    data-name="Sam Rivera"
-                    data-search="sam rivera qa-003 viewer"
-                    aria-pressed="false"
-                  >
-                    <span class="avatar mint">SR</span
-                    ><span class="account-details"
-                      ><strong>Sam Rivera</strong><small>sam@qa.example.com</small></span
-                    ><span class="role">Viewer</span><span class="selection"></span>
-                  </button>
-                </div>
-                <p id="no-results" hidden>
-                  No matching accounts. Clear your search or choose All roles.
-                </p>
-                <div class="demo-bottom">
-                  <span class="domain"><i></i> qa.example.com</span
-                  ><button id="demo-fill" class="button primary">
-                    Preview fill <span aria-hidden="true">↗</span>
-                  </button>
-                </div>
-                <p id="demo-status" role="status">
-                  Fictional accounts. This demo never touches a real login.
-                </p>
-              </section>
-              <section
-                class="flow-panel"
-                data-flow-panel="4"
-                aria-labelledby="flow-fill-title"
-                hidden
-              >
-                <div class="flow-panel-heading">
-                  <span class="flow-step-label">04 / FILL</span>
-                  <h2 id="flow-fill-title">Fill the fields.<br />You take it from here.</h2>
-                  <p>Choose Autofill on the approved login page.</p>
-                </div>
-                <div class="fill-preview dev-login-page flow-item">
-                  <div class="example-site-label">
-                    <span>qa.example.com/login</span><b>DEV MODE</b>
-                  </div>
-                  <div class="dev-login-body">
-                    <div class="fill-identity">
-                      <span class="flow-check" aria-hidden="true">✓</span>
-                      <div>
-                        <span>Selected test account</span
-                        ><strong id="flow-selected-name">Alex Morgan</strong>
-                      </div>
-                    </div>
-                    <div class="filled-row flow-item">
-                      <span>Username</span><b>Filled <span aria-hidden="true">✓</span></b>
-                      <i class="field-progress" aria-hidden="true"></i>
-                    </div>
-                    <div class="filled-row flow-item">
-                      <span>Password</span><b>Filled <span aria-hidden="true">✓</span></b>
-                      <i class="field-progress" aria-hidden="true"></i>
-                    </div>
-                    <div class="manual-submit">
-                      <span>Sign in</span><small>← You click this on the website</small>
-                    </div>
-                  </div>
-                </div>
-                <p class="flow-panel-note">
-                  <strong>Login Pal never submits the form.</strong> This is an illustration; no
-                  credentials are used.
-                </p>
-                <button class="flow-back" type="button" data-flow-target="3" hidden>
-                  Try another account <span aria-hidden="true">↗</span>
+                </section>
+              </div>
+              <div class="flow-steps" role="group" aria-label="Walkthrough steps" hidden>
+                <button type="button" data-flow-target="0" aria-pressed="false">
+                  Before<i aria-hidden="true"></i>
                 </button>
-              </section>
+                <button type="button" data-flow-target="1" aria-pressed="false">
+                  Import<i aria-hidden="true"></i>
+                </button>
+                <button type="button" data-flow-target="2" aria-pressed="false">
+                  Approve<i aria-hidden="true"></i>
+                </button>
+                <button type="button" data-flow-target="3" aria-pressed="true">
+                  Choose<i aria-hidden="true"></i>
+                </button>
+                <button type="button" data-flow-target="4" aria-pressed="false">
+                  Fill<i aria-hidden="true"></i>
+                </button>
+              </div>
             </div>
-            <div class="flow-steps" role="group" aria-label="Walkthrough steps" hidden>
-              <button type="button" data-flow-target="0" aria-pressed="false">
-                Before<i aria-hidden="true"></i>
-              </button>
-              <button type="button" data-flow-target="1" aria-pressed="false">
-                Import<i aria-hidden="true"></i>
-              </button>
-              <button type="button" data-flow-target="2" aria-pressed="false">
-                Approve<i aria-hidden="true"></i>
-              </button>
-              <button type="button" data-flow-target="3" aria-pressed="true">
-                Choose<i aria-hidden="true"></i>
-              </button>
-              <button type="button" data-flow-target="4" aria-pressed="false">
-                Fill<i aria-hidden="true"></i>
-              </button>
+            <div class="flow-footnote">
+              <span>Sample data only. No installation needed.</span
+              ><span id="flow-position" hidden>1 of 5</span>
             </div>
+            <span class="sr-only" id="flow-announcement" role="status"></span>
           </div>
-          <div class="flow-footnote">
-            <span>Sample data only. No installation needed.</span
-            ><span id="flow-position" hidden>1 of 5</span>
-          </div>
-          <span class="sr-only" id="flow-announcement" role="status"></span>
         </div>
       </section>
       <nav class="page-map wrap" aria-label="Explore this guide">

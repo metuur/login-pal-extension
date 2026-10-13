@@ -444,7 +444,7 @@ function setupInstallationGuide() {
 }
 setupInstallationGuide();
 function setupHeroSpotlight() {
-  const hero = document.querySelector(".home-page .hero");
+  const hero = document.querySelector(".home-page .hero-spotlight");
   if (!hero) return;
   const pointer = window.matchMedia("(hover: hover) and (pointer: fine)");
   const motion = window.matchMedia("(prefers-reduced-motion: reduce)");

@@ -491,7 +491,7 @@ function setupInstallationGuide(): void {
 setupInstallationGuide();
 
 function setupHeroSpotlight(): void {
-  const hero = document.querySelector<HTMLElement>('.home-page .hero');
+  const hero = document.querySelector<HTMLElement>('.home-page .hero-spotlight');
   if (!hero) return;
   const pointer = window.matchMedia('(hover: hover) and (pointer: fine)');
   const motion = window.matchMedia('(prefers-reduced-motion: reduce)');

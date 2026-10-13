@@ -1,3 +1,11 @@
+## Full-width hero spotlight — 2026-10-12
+
+- Moved the spotlight and its pointer events to a full-width outer hero section; the centered content remains in the existing `.hero.wrap` grid.
+- Chromium verified tracking in the left margin, center and right margin, both mouse axes, pointer-exit reset, and no horizontal overflow at 320, 375, 414, 768, 960, 1440 and 1920px. Compared hero, copy and demo bounding boxes against the committed page at every width: positions and dimensions are unchanged.
+- Desktop screenshots with the spotlight at both browser edges and a mobile screenshot were visually reviewed. Live reduced-motion changes clear and hide the spotlight; forced reduction and touch input leave it inactive.
+- Mobile navigation and Escape dismissal, demo role filtering and fill preview, and the shared documentation script passed. No browser runtime errors observed. Checks used fictional demo metadata only.
+- Strict standalone TypeScript, JavaScript regeneration, formatting and whitespace checks passed. The design detector reported existing page typography, spacing and style findings outside this refinement. Extension runtime is unchanged and extension tests were not rerun.
+
 ## Bubble typography and Hyperlane header — 2026-10-07
 
 - Browser confirmed local Plus Jakarta Sans loaded for the homepage and documentation, with 700-weight headings. JetBrains Mono is packaged for numbered labels and code, with both font licenses included.

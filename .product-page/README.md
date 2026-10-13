@@ -8,7 +8,7 @@ Open `index.html` directly or serve this directory with a static server. All fon
 
 The page combines Hollowback Apiary’s cream/green palette with Tally’s readable product presentation, [Bubble’s typography](https://www.usehallmark.com/examples/hum-07/), and [Hyperlane’s floating header](https://www.usehallmark.com/examples/hyperlane/). Plus Jakarta Sans carries headings and body copy; JetBrains Mono supplies small numbered labels and code. Both variable fonts and their OFL licenses are packaged locally (`PLUS-JAKARTA-SANS-LICENSE.txt`, `JETBRAINS-MONO-LICENSE.txt`). The homepage and docs preload the same local sans font.
 
-The pill-shaped header stays visible while scrolling, narrows after 48px, and centers navigation links on desktop. Below 960px it retains the menu dialog. Scroll transitions honor reduced motion. The hero spotlight follows mouse input, fades on exit, and stays disabled for touch and reduced motion.
+The pill-shaped header stays visible while scrolling, narrows after 48px, and centers navigation links on desktop. Below 960px it retains the menu dialog. Scroll transitions honor reduced motion. The hero spotlight follows mouse input across the full browser width, including both margins around the centered content, fades on exit, and stays disabled for touch and reduced motion.
 
 The original stylesheet is preserved; `guide.css` applies the guide’s visual system. Hallmark records are scoped to `.hallmark/` here. Branding retains the existing Login Pal mark. Previous locally packaged fonts remain available as historical assets.
 
