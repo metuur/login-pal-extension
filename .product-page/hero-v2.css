@@ -2,6 +2,7 @@
 .hero-v2 .hero-spotlight {
   --hero-drift-x: 0px;
   --hero-drift-y: 0px;
+  --hero-browser-rule: #adb7c4;
 }
 .hero-v2 .hero {
   position: relative;
@@ -18,19 +19,19 @@
   width: min(1180px, calc(100% - 64px));
   height: 470px;
   margin: 98px auto 0;
-  border: 1px solid var(--color-rule);
+  border: 1px solid var(--hero-browser-rule);
   border-radius: 22px;
   background: transparent;
   /* Fade the illustration itself so the spotlight remains visible underneath. */
   mask-image: radial-gradient(
     ellipse at 50% 36%,
     transparent 18%,
-    rgb(0 0 0 / 0.03) 45%,
+    rgb(0 0 0 / 0.12) 45%,
     black 100%
   );
   box-shadow: 0 20px 64px var(--color-shadow);
   transform: translate3d(calc(var(--hero-drift-x) * -0.65), calc(var(--hero-drift-y) * -0.65), 0)
-    rotate(-2deg);
+    rotate(var(--browser-angle, -2deg));
   transition: transform 180ms var(--ease-out);
 }
 .hero-browser-bar {
@@ -38,7 +39,7 @@
   align-items: center;
   gap: 32px;
   padding: 16px 24px;
-  border-bottom: 1px solid var(--color-rule);
+  border-bottom: 1px solid var(--hero-browser-rule);
 }
 .hero-browser-dots {
   display: inline-flex;
@@ -47,7 +48,7 @@
 .hero-browser-dots i {
   width: 8px;
   height: 8px;
-  background: var(--color-rule);
+  background: var(--hero-browser-rule);
   border-radius: 50%;
 }
 .hero-browser-address {
@@ -84,6 +85,19 @@
 .hero-browser-submit {
   font-size: 13px;
   margin-top: 8px;
+}
+.hero-demo-ambient {
+  --browser-angle: 2deg;
+  position: absolute;
+  inset: 72px -88px -44px;
+  z-index: -1;
+  pointer-events: none;
+}
+.hero-demo-ambient .hero-browser {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  mask-image: none;
 }
 .hero-notes {
   display: none;
@@ -206,6 +220,9 @@
   }
 }
 @media (max-width: 79.99rem) {
+  .hero-demo-ambient {
+    inset: 72px -32px -36px;
+  }
   .hero-browser-body {
     visibility: hidden;
   }
@@ -220,6 +237,10 @@
   }
 }
 @media (max-width: 47.99rem) {
+  .hero-demo-ambient {
+    --browser-angle: 1deg;
+    inset: 72px -10px -24px;
+  }
   .hero-ambient {
     height: 560px;
   }
@@ -227,7 +248,7 @@
     width: calc(100% - 32px);
     height: 380px;
     margin-top: 80px;
-    transform: rotate(-2deg);
+    transform: rotate(var(--browser-angle, -2deg));
   }
   .hero-browser-body {
     margin-top: 24px;

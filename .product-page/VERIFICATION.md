@@ -1,3 +1,9 @@
+## More visible browser and floating demo underlay — 2026-10-14
+
+- Increased the decorative browser frame/toolbar contrast and softened its center mask less. Added the same transparent browser illustration behind the extension walkthrough, with a slight opposite tilt and visible sides/bottom. It shares the existing pointer-depth properties and is hidden from assistive technology with pointer events disabled.
+- Chromium verified the underlay extends beyond the demo at 320, 375, 768, 1024, 1440 and 1920px without horizontal document overflow. Desktop hero/demo and mobile screenshots were visually reviewed.
+- Both browser layers move with the pointer; all five scenes retain stable panel height. Note navigation, role filtering and fill remain clickable through the decorative layer. Native and forced reduced-motion settings keep both windows static. Formatting and whitespace checks passed; original homepage and shared runtime remain unchanged.
+
 ## Transparent illustration background — 2026-10-14
 
 - Removed the illustration's white overlay and made the browser frame and decorative fields transparent. A mask fades only the illustration, allowing the mouse spotlight to remain visible underneath without the previous rectangular cutoff.

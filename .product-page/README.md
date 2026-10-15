@@ -24,6 +24,8 @@ The layers move by at most 8px horizontally and 5px vertically, with one update 
 
 The variant adds only `hero-v2.css` and `hero-v2.js`; edit `hero-v2.ts` and regenerate its script using the commands below. Homepage navigation stays within `index-v2.html`; the original `index.html` and shared scripts/styles are unchanged by this variant.
 
+The transparent browser illustration has a slightly stronger frame, toolbar and window dots. A second copy sits behind the walkthrough as a tilted floating underlay, extending past the panel's sides and bottom. Both windows share the same pointer-depth offset and reduced-motion handling; neither decorative layer accepts input or appears in the accessibility tree.
+
 ### Walkthrough controls
 
 The page opens on **Choose**, without autoplay. Search fictional names, emails or roles, filter by role, choose an account, and select **Preview fill**. The final illustration carries the selected name and explains that the user presses the website’s Sign in button. No passwords are included or used. A search with no matches disables filling and gives recovery guidance.
