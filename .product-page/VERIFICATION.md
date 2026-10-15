@@ -1,3 +1,11 @@
+## Alternate hero background — 2026-10-14
+
+- Added `index-v2.html` with a local HTML/CSS login-window illustration and three notes linked to Import, Approve, and Choose. The original homepage and shared runtime/styles are unchanged. The variant uses its own stylesheet and generated TypeScript script.
+- Chromium checked 320, 375, 414, 768, 1024, 1280, 1440 and 1920px: no horizontal document overflow. Two compact notes appear on phones; all three appear from 768px. Every visible note opened the correct scene and focused its heading. Desktop/tablet/mobile screenshots were visually inspected; faint background form text was removed on compact layouts to keep the hero copy clear.
+- Observed mouse movement in both axes within the 8px/5px bounds, live reduced-motion cleanup, forced static mode including hover, keyboard Enter/Space note activation, touch activation without depth movement, mobile-menu/Escape behavior, installation checkbox labels, and the existing search/filter/fill demo.
+- All local links and fragments resolve. Each note's source label, question, and action met 4.5:1 text contrast. The JavaScript-disabled fallback hid note controls and retained the readable picker with no overflow. No browser runtime errors or remote runtime requests were observed.
+- Strict standalone TypeScript, generated JavaScript, formatting and whitespace checks passed. No extension behavior or storage changed; extension tests were not rerun for this standalone variant.
+
 ## Apple-inspired product UX — 2026-10-12
 
 - Implemented the user's selected white/silver direction, system typography, centered hero, larger interactive showcase, slim full-width sticky navigation, blue primary install action, and shared documentation presentation. Preserved the full-width spotlight and original product mark.

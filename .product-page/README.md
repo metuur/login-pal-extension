@@ -16,6 +16,16 @@ The reading order follows the product story before installation. Workflow and we
 
 ## Interactive demo
 
+### Alternate interactive hero
+
+`index-v2.html` is an alternate homepage with the same Apple-inspired presentation and product content. Its faint login-window illustration and floating CSV, setup, and team-chat notes add two mouse-responsive depth layers. Clicking or keyboard-activating a note opens its matching demo step, scrolls the demo into view, and focuses its heading through the existing `data-demo-step` controls.
+
+The layers move by at most 8px horizontally and 5px vertically, with one update per animation frame. Pointer exit, scrolling, resize, blur, visibility changes, and preference changes reset them. Touch and narrow screens stay static. Below 768px, two compact notes remain and the background form detail is hidden. Reduced motion and `?reduce=1` disable movement, including hover transforms. There is no autoplay or continuous animation in the background. Without JavaScript, note controls are hidden and the original readable demo remains.
+
+The variant adds only `hero-v2.css` and `hero-v2.js`; edit `hero-v2.ts` and regenerate its script using the commands below. Homepage navigation stays within `index-v2.html`; the original `index.html` and shared scripts/styles are unchanged by this variant.
+
+### Walkthrough controls
+
 The page opens on **Choose**, without autoplay. Search fictional names, emails or roles, filter by role, choose an account, and select **Preview fill**. The final illustration carries the selected name and explains that the user presses the website’s Sign in button. No passwords are included or used. A search with no matches disables filling and gives recovery guidance.
 
 **Play tour** starts the Before → Import → Approve → Choose → Fill walkthrough. It runs once (14 seconds total), then stops. Scene buttons provide manual access; the first-use guide also links back to specific scenes. Interaction stops automatic progression. Hovering over a scene temporarily pauses playback. Leaving the viewport, hiding the browser tab or opening navigation also pauses playback. Reduced motion disables playback and scene animation entirely. Inactive panels reserve layout space but are inert and hidden from assistive technology.
@@ -33,6 +43,13 @@ Edit `main.ts`, then validate and regenerate `main.js` from the repository root:
 ```sh
 rtk proxy node node_modules/typescript/bin/tsc .product-page/main.ts --target ES2020 --lib ES2020,DOM --strict --skipLibCheck --module esnext --noEmit --ignoreConfig
 rtk proxy node_modules/.bin/esbuild .product-page/main.ts --outfile=.product-page/main.js --target=es2020
+```
+
+Validate and regenerate the alternate hero script:
+
+```sh
+rtk proxy node node_modules/typescript/bin/tsc .product-page/hero-v2.ts --target ES2020 --lib ES2020,DOM --strict --skipLibCheck --module esnext --noEmit --ignoreConfig
+rtk proxy node_modules/.bin/esbuild .product-page/hero-v2.ts --outfile=.product-page/hero-v2.js --target=es2020
 ```
 
 Deterministic visual capture still supports `?t=2.8`, `?t=5.8`, `?t=8.3`, `?t=10.8` and `?t=13.3`; `?reduce=1` forces reduced-motion behavior. These are review controls, not product features.

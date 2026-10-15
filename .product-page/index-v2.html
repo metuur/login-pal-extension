@@ -1,0 +1,906 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta
+      name="description"
+      content="Login Pal brings your synthetic QA accounts into one local Chrome extension. Import, find, and intentionally fill your next test login."
+    />
+    <title>Login Pal — Test accounts, ready to fill</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="alternate icon" href="favicon.ico" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="guide.css" />
+    <link rel="stylesheet" href="product.css" />
+    <link rel="stylesheet" href="hero-v2.css" />
+    <script src="main.js" defer></script>
+    <script src="hero-v2.js" defer></script>
+  </head>
+  <body class="home-page hero-v2">
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="nav">
+      <a href="index-v2.html" class="brand" aria-label="Login Pal home"
+        ><img class="brand-icon" src="favicon.svg" alt="" width="29" height="29" />Login Pal<span
+          class="dev"
+          >FOR TEST ACCOUNTS</span
+        ></a
+      >
+      <nav aria-label="Main navigation">
+        <a href="index-v2.html#overview">Overview</a
+        ><a href="index-v2.html#how-it-works">How it works</a><a href="docs.html">Docs</a>
+      </nav>
+      <a class="nav-cta" href="index-v2.html#setup">Install locally</a>
+      <button
+        class="menu-button"
+        aria-label="Open menu"
+        aria-controls="mobile-menu"
+        aria-expanded="false"
+      >
+        <span></span><span></span>
+      </button>
+    </header>
+    <dialog id="mobile-menu" aria-label="Navigation">
+      <button class="menu-close" aria-label="Close menu">×</button>
+      <nav>
+        <a href="index-v2.html#overview">Overview</a
+        ><a href="index-v2.html#how-it-works">How it works</a
+        ><a href="index-v2.html#offline">Offline capabilities</a
+        ><a href="index-v2.html#access">Website access</a><a href="docs.html">Docs</a
+        ><a href="index-v2.html#setup">Install locally</a>
+      </nav>
+    </dialog>
+    <main id="main">
+      <section class="hero-spotlight">
+        <div class="hero-ambient" aria-hidden="true">
+          <div class="hero-browser">
+            <div class="hero-browser-bar">
+              <span class="hero-browser-dots"><i></i><i></i><i></i></span>
+              <span class="hero-browser-address">qa.example.com/login</span>
+            </div>
+            <div class="hero-browser-body">
+              <span class="hero-browser-label">QA workspace</span>
+              <strong>Sign in to test.</strong>
+              <span class="hero-browser-field">Username<span></span></span>
+              <span class="hero-browser-field">Password<span></span></span>
+              <span class="hero-browser-submit">Waiting for the right account</span>
+            </div>
+          </div>
+        </div>
+        <div class="hero wrap">
+          <div class="hero-copy reveal">
+            <h1 class="brand-headline">
+              Less account hunting.<br /><span class="flow">More testing.</span>
+            </h1>
+            <p class="lead">
+              Your test accounts. One place. Ready when you are.<br />
+              Import a CSV, choose a persona, and fill your approved login page.
+            </p>
+            <div class="hero-actions">
+              <a href="index-v2.html#setup" class="button primary">Install locally</a
+              ><a href="#account-search" class="text-link" id="try-demo-link"
+                >Try the demo
+                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5" /></svg
+              ></a>
+            </div>
+            <div class="compatibility">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" />
+                <circle cx="12" cy="12" r="3.7" />
+                <path d="M12 8.3h8M8.8 13.8l-4-7M13.8 15.2l-4 7" /></svg
+              >Synthetic accounts only <b>·</b> Stored locally
+            </div>
+            <p class="hero-aside">You choose the account. You press Sign in.</p>
+          </div>
+
+          <div class="hero-notes" role="group" aria-label="Explore the Login Pal walkthrough">
+            <button
+              class="hero-note hero-note-csv"
+              type="button"
+              data-demo-step="1"
+              aria-controls="workflow-demo"
+              hidden
+            >
+              <span class="hero-note-source"
+                ><svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M14 3H5v18h14V8Zm0 0v5h5M8 12h8M8 16h6" /></svg
+                >test-accounts-old.csv</span
+              >
+              <strong>Is this the latest list?</strong>
+              <span class="hero-note-action"
+                >See CSV import
+                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5" /></svg
+              ></span>
+            </button>
+            <button
+              class="hero-note hero-note-setup"
+              type="button"
+              data-demo-step="2"
+              aria-controls="workflow-demo"
+              hidden
+            >
+              <span class="hero-note-source"
+                ><svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 3 4 6v6c0 4 4 7 8 9 4-2 8-5 8-9V6Z" />
+                  <path d="m8 12 3 3 5-6" /></svg
+                >Setup notes</span
+              >
+              <strong>Which site can I fill?</strong>
+              <span class="hero-note-action"
+                >See site approval
+                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5" /></svg
+              ></span>
+            </button>
+            <button
+              class="hero-note hero-note-chat"
+              type="button"
+              data-demo-step="3"
+              aria-controls="workflow-demo"
+              hidden
+            >
+              <span class="hero-note-source"
+                ><svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 4h16v12H9l-5 4Z" />
+                  <path d="M8 8h8M8 12h5" /></svg
+                >Team chat</span
+              >
+              <strong>Who has an Admin account?</strong>
+              <span class="hero-note-action"
+                >Find a persona
+                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5" /></svg
+              ></span>
+            </button>
+          </div>
+          <div
+            class="hero-scene workflow-demo"
+            id="workflow-demo"
+            role="region"
+            aria-label="Login Pal product walkthrough"
+          >
+            <div class="flow-toolbar">
+              <p><span class="flow-live" aria-hidden="true"></span> See Login Pal in action.</p>
+              <button type="button" id="flow-play" hidden>Play tour</button>
+            </div>
+            <div class="flow-window">
+              <div class="flow-brand">
+                <img class="app-symbol" src="favicon.svg" alt="" width="29" height="29" /><strong
+                  >Login Pal</strong
+                ><span class="flow-example">Interactive demo</span>
+              </div>
+              <div class="flow-panels">
+                <section
+                  class="flow-panel flow-chaos"
+                  data-flow-panel="0"
+                  aria-labelledby="flow-problem-title"
+                  hidden
+                >
+                  <div class="flow-panel-heading">
+                    <span class="flow-step-label">BEFORE LOGIN PAL</span>
+                    <h2 id="flow-problem-title">The test is ready.<br />The login isn’t.</h2>
+                    <p>You need an Admin account. Now, where did you put it?</p>
+                  </div>
+                  <div class="dev-chaos-stage">
+                    <div
+                      class="dev-login-page"
+                      role="group"
+                      aria-label="Illustrative development login page"
+                    >
+                      <div class="example-site-label">
+                        <span>qa.example.com/login</span><b>DEV MODE</b>
+                      </div>
+                      <div class="dev-login-body">
+                        <div class="dev-login-heading">
+                          <strong>Sign in to test</strong><span>QA workspace · Admin scenario</span>
+                        </div>
+                        <div class="dev-empty-field">
+                          <span>Username</span>
+                          <div>Which test account?</div>
+                        </div>
+                        <div class="dev-empty-field">
+                          <span>Password</span>
+                          <div>Still looking…</div>
+                        </div>
+                        <div class="dev-login-waiting">
+                          <span>Sign in</span><small>Waiting for an account</small>
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      class="account-hunt"
+                      role="group"
+                      aria-label="Scattered places to look for a test account"
+                    >
+                      <div class="hunt-note">
+                        <div class="hunt-note-inner">
+                          <span>test-accounts-old.csv</span
+                          ><strong>Is this the latest list?</strong>
+                        </div>
+                      </div>
+                      <div class="hunt-note">
+                        <div class="hunt-note-inner">
+                          <span>SETUP NOTES</span><strong>Which user has Admin?</strong>
+                        </div>
+                      </div>
+                      <div class="hunt-note">
+                        <div class="hunt-note-inner">
+                          <span>TEAM CHAT</span><strong>“Anyone have a test account?”</strong>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <p class="flow-panel-note chaos-caption">
+                    <strong>More searching. Less testing.</strong> Keep your test accounts in one
+                    searchable catalog with Login Pal.
+                  </p>
+                </section>
+                <section
+                  class="flow-panel"
+                  data-flow-panel="1"
+                  aria-labelledby="flow-import-title"
+                  hidden
+                >
+                  <div class="flow-panel-heading">
+                    <span class="flow-step-label">01 / IMPORT</span>
+                    <h2 id="flow-import-title">Your CSV becomes<br />an account catalog.</h2>
+                    <p>Keep test personas together in a named group.</p>
+                  </div>
+                  <div class="csv-preview flow-item">
+                    <div class="csv-title">
+                      <span class="csv-icon" aria-hidden="true">CSV</span>
+                      <div>
+                        <strong>test-accounts.csv</strong><span>Synthetic sample · 3 accounts</span>
+                      </div>
+                      <span class="flow-check" aria-hidden="true">✓</span>
+                    </div>
+                    <div class="csv-row flow-item"><span>Alex Morgan</span><span>Admin</span></div>
+                    <div class="csv-row flow-item"><span>Jamie Chen</span><span>Member</span></div>
+                    <div class="csv-row flow-item"><span>Sam Rivera</span><span>Viewer</span></div>
+                  </div>
+                  <div class="flow-transfer flow-item">
+                    <span aria-hidden="true">↓</span
+                    ><span class="flow-group">QA workspace <span>3 accounts</span></span>
+                  </div>
+                  <p class="flow-panel-note">
+                    Import → review → confirm. Extra CSV columns become searchable metadata.
+                  </p>
+                </section>
+                <section
+                  class="flow-panel"
+                  data-flow-panel="2"
+                  aria-labelledby="flow-authorize-title"
+                  hidden
+                >
+                  <div class="flow-panel-heading">
+                    <span class="flow-step-label">02 / AUTHORIZE</span>
+                    <h2 id="flow-authorize-title">Tell it where<br />to lend a hand.</h2>
+                    <p>Configure the login form and approve site access.</p>
+                  </div>
+                  <div class="site-permission flow-item">
+                    <span class="field-caption">Your chosen login domain</span
+                    ><strong>https://qa.example.com</strong>
+                    <div class="field-mapping">
+                      <span>Username field</span><b>Configured <span aria-hidden="true">✓</span></b>
+                      <i class="field-progress" aria-hidden="true"></i>
+                    </div>
+                    <div class="field-mapping">
+                      <span>Password field</span><b>Configured <span aria-hidden="true">✓</span></b>
+                      <i class="field-progress" aria-hidden="true"></i>
+                    </div>
+                    <div class="permission-approved flow-item">
+                      <span aria-hidden="true">✓</span> You approve access to this site
+                    </div>
+                  </div>
+                  <p class="flow-panel-note">
+                    Importing a CSV doesn’t grant access. You choose which site the extension can
+                    fill.
+                  </p>
+                </section>
+                <section
+                  class="flow-panel flow-picker"
+                  data-flow-panel="3"
+                  aria-labelledby="flow-choose-title"
+                >
+                  <div class="flow-panel-heading">
+                    <span class="flow-step-label">Choose an account</span>
+                    <h2 id="flow-choose-title">Who are you testing as?</h2>
+                    <p>Search or filter the sample accounts. Pick one to try a fill.</p>
+                  </div>
+                  <label class="search-label" for="account-search">Search sample accounts</label>
+                  <div class="search">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <circle cx="10" cy="10" r="6" />
+                      <path d="m15 15 5 5" /></svg
+                    ><input
+                      id="account-search"
+                      type="search"
+                      placeholder="Name, email, or role…"
+                      aria-label="Search demo accounts"
+                    /><kbd>/</kbd>
+                  </div>
+                  <div
+                    class="role-filters"
+                    role="group"
+                    aria-label="Filter sample accounts by role"
+                    hidden
+                  >
+                    <button type="button" data-role="all" aria-pressed="true">All roles</button>
+                    <button type="button" data-role="admin" aria-pressed="false">Admin</button>
+                    <button type="button" data-role="member" aria-pressed="false">Member</button>
+                    <button type="button" data-role="viewer" aria-pressed="false">Viewer</button>
+                  </div>
+                  <div class="list-heading">
+                    <span>Staging · sample group</span
+                    ><span id="account-count" role="status">3 accounts</span>
+                  </div>
+                  <div id="account-list">
+                    <button
+                      class="account selected"
+                      data-name="Alex Morgan"
+                      data-search="alex morgan qa-001 admin"
+                      aria-pressed="true"
+                    >
+                      <span class="avatar lavender">AM</span
+                      ><span class="account-details"
+                        ><strong>Alex Morgan</strong><small>alex@qa.example.com</small></span
+                      ><span class="role">Admin</span><span class="selection"></span>
+                    </button>
+                    <button
+                      class="account"
+                      data-name="Jamie Chen"
+                      data-search="jamie chen qa-002 member"
+                      aria-pressed="false"
+                    >
+                      <span class="avatar peach">JC</span
+                      ><span class="account-details"
+                        ><strong>Jamie Chen</strong><small>jamie@qa.example.com</small></span
+                      ><span class="role">Member</span><span class="selection"></span>
+                    </button>
+                    <button
+                      class="account"
+                      data-name="Sam Rivera"
+                      data-search="sam rivera qa-003 viewer"
+                      aria-pressed="false"
+                    >
+                      <span class="avatar mint">SR</span
+                      ><span class="account-details"
+                        ><strong>Sam Rivera</strong><small>sam@qa.example.com</small></span
+                      ><span class="role">Viewer</span><span class="selection"></span>
+                    </button>
+                  </div>
+                  <p id="no-results" hidden>
+                    No matching accounts. Clear your search or choose All roles.
+                  </p>
+                  <div class="demo-bottom">
+                    <span class="domain"><i></i> qa.example.com</span
+                    ><button id="demo-fill" class="button primary">
+                      Preview fill <span aria-hidden="true">↗</span>
+                    </button>
+                  </div>
+                  <p id="demo-status" role="status">
+                    Fictional accounts. This demo never touches a real login.
+                  </p>
+                </section>
+                <section
+                  class="flow-panel"
+                  data-flow-panel="4"
+                  aria-labelledby="flow-fill-title"
+                  hidden
+                >
+                  <div class="flow-panel-heading">
+                    <span class="flow-step-label">04 / FILL</span>
+                    <h2 id="flow-fill-title">Fill the fields.<br />You take it from here.</h2>
+                    <p>Choose Autofill on the approved login page.</p>
+                  </div>
+                  <div class="fill-preview dev-login-page flow-item">
+                    <div class="example-site-label">
+                      <span>qa.example.com/login</span><b>DEV MODE</b>
+                    </div>
+                    <div class="dev-login-body">
+                      <div class="fill-identity">
+                        <span class="flow-check" aria-hidden="true">✓</span>
+                        <div>
+                          <span>Selected test account</span
+                          ><strong id="flow-selected-name">Alex Morgan</strong>
+                        </div>
+                      </div>
+                      <div class="filled-row flow-item">
+                        <span>Username</span><b>Filled <span aria-hidden="true">✓</span></b>
+                        <i class="field-progress" aria-hidden="true"></i>
+                      </div>
+                      <div class="filled-row flow-item">
+                        <span>Password</span><b>Filled <span aria-hidden="true">✓</span></b>
+                        <i class="field-progress" aria-hidden="true"></i>
+                      </div>
+                      <div class="manual-submit">
+                        <span>Sign in</span><small>← You click this on the website</small>
+                      </div>
+                    </div>
+                  </div>
+                  <p class="flow-panel-note">
+                    <strong>Login Pal never submits the form.</strong> This is an illustration; no
+                    credentials are used.
+                  </p>
+                  <button class="flow-back" type="button" data-flow-target="3" hidden>
+                    Try another account <span aria-hidden="true">↗</span>
+                  </button>
+                </section>
+              </div>
+              <div class="flow-steps" role="group" aria-label="Walkthrough steps" hidden>
+                <button type="button" data-flow-target="0" aria-pressed="false">
+                  Before<i aria-hidden="true"></i>
+                </button>
+                <button type="button" data-flow-target="1" aria-pressed="false">
+                  Import<i aria-hidden="true"></i>
+                </button>
+                <button type="button" data-flow-target="2" aria-pressed="false">
+                  Approve<i aria-hidden="true"></i>
+                </button>
+                <button type="button" data-flow-target="3" aria-pressed="true">
+                  Choose<i aria-hidden="true"></i>
+                </button>
+                <button type="button" data-flow-target="4" aria-pressed="false">
+                  Fill<i aria-hidden="true"></i>
+                </button>
+              </div>
+            </div>
+            <div class="flow-footnote">
+              <span>Sample data only. No installation needed.</span
+              ><span id="flow-position" hidden>1 of 5</span>
+            </div>
+            <span class="sr-only" id="flow-announcement" role="status"></span>
+          </div>
+        </div>
+      </section>
+      <section id="overview" class="section wrap">
+        <div class="section-heading reveal">
+          <div>
+            <h2>Every persona.<br />One familiar place.</h2>
+          </div>
+          <p>
+            A CSV in one folder. An account in a chat. A role you can’t remember. Bring the accounts
+            you test with into a searchable, local catalog.
+          </p>
+        </div>
+        <div class="feature-grid">
+          <article class="bezel feature-wide reveal">
+            <div class="feature-inner">
+              <h3>Keep each environment together.</h3>
+              <p>
+                Import your CSV into named groups. Keep environments, roles, and account metadata
+                together—and search them in seconds.
+              </p>
+              <div class="group-art" aria-hidden="true">
+                <div class="group-row">
+                  <span class="folder" aria-hidden="true"
+                    ><svg viewBox="0 0 24 24"><path d="M3 7V5h6l2 2h10v13H3Z" /></svg></span
+                  ><strong>Staging workspace</strong><span class="group-tag">12 accounts</span>
+                </div>
+                <div class="group-row">
+                  <span class="folder" aria-hidden="true"
+                    ><svg viewBox="0 0 24 24"><path d="M3 7V5h6l2 2h10v13H3Z" /></svg></span
+                  ><strong>Support scenarios</strong><span class="group-tag">8 accounts</span>
+                </div>
+                <div class="group-caption">ILLUSTRATIVE GROUPS</div>
+              </div>
+            </div>
+          </article>
+          <article class="bezel feature-narrow reveal">
+            <div class="feature-inner">
+              <div class="intent-diagram" aria-label="Choose account, approve site, fill fields">
+                <span>Choose account</span><b aria-hidden="true">→</b><span>Approved site</span
+                ><b aria-hidden="true">→</b><span>Fill fields</span>
+              </div>
+              <h3>A deliberate fill. Every time.</h3>
+              <p>
+                Authorize a domain, choose an account, and fill on your command. You always press
+                the site’s Login button yourself.
+              </p>
+            </div>
+          </article>
+        </div>
+      </section>
+      <section id="how-it-works" class="workflow section">
+        <div class="wrap workflow-grid">
+          <div class="workflow-intro reveal">
+            <h2>Your first login,<br />step by step.</h2>
+            <p>
+              After installation, import your accounts and authorize a login page. Then choose the
+              account you need.
+            </p>
+            <a class="button secondary" href="index-v2.html#setup"
+              >Installation guide <span>↗</span></a
+            >
+            <div class="workflow-caption">
+              <span>01 → 02 → 03</span><small>Import. Configure. Choose.</small>
+            </div>
+          </div>
+          <ol class="steps">
+            <li class="reveal">
+              <span class="step-number">01</span>
+              <div>
+                <h3>Import your CSV.</h3>
+                <button class="step-demo" data-demo-step="1" type="button" hidden>
+                  Preview import <span aria-hidden="true">↗</span>
+                </button>
+                <p class="step-description">
+                  Bring your test accounts into a named group. Keep each environment together.
+                </p>
+                <details class="setup-details">
+                  <summary>Setup details</summary>
+                  <p>
+                    Open Settings, name a CSV group, and choose your file. Include
+                    <code>account_id</code>, <code>username</code>, and <code>password</code>; extra
+                    columns become searchable metadata. Set the authorized domain, verify the file,
+                    then confirm the import.
+                  </p>
+                  <span class="hint">Start with “Download sample CSV (3 rows)” in Settings.</span>
+                </details>
+              </div>
+            </li>
+            <li class="reveal">
+              <span class="step-number">02</span>
+              <div>
+                <h3>Configure and authorize your site.</h3>
+                <button class="step-demo" data-demo-step="2" type="button" hidden>
+                  Preview approval <span aria-hidden="true">↗</span>
+                </button>
+                <p class="step-description">
+                  Choose your login page and match its username and password fields.
+                </p>
+                <details class="setup-details">
+                  <summary>Setup details</summary>
+                  <p>
+                    Configure the group’s login profile: your authorized login domain, username and
+                    password matching rules, and optional successful-login tracking. Choose a
+                    success URL or visible element if you want tracking, then save and approve the
+                    site permission.
+                  </p>
+                  <span class="hint">Importing accounts alone doesn’t authorize autofill.</span>
+                </details>
+              </div>
+            </li>
+            <li class="reveal">
+              <span class="step-number">03</span>
+              <div>
+                <h3>Choose an account and fill.</h3>
+                <button class="step-demo" data-demo-step="3" type="button" hidden>
+                  Try account selection <span aria-hidden="true">↗</span>
+                </button>
+                <p class="step-description">
+                  Find the persona you need. Fill on your command, then press Sign in yourself.
+                </p>
+                <details class="setup-details">
+                  <summary>Setup details</summary>
+                  <p>
+                    Visit the authorized login page and open the extension. Choose a group, search
+                    by ID, username, or metadata, and select an account. Review it, choose Autofill,
+                    then submit the website’s form yourself.
+                  </p>
+                  <span class="hint">“Recent” means filled. “Last successful” means verified.</span>
+                </details>
+              </div>
+            </li>
+          </ol>
+        </div>
+      </section>
+      <section id="offline" class="section wrap offline-grid">
+        <div class="reveal">
+          <h2>Your catalog works offline.</h2>
+          <p class="section-description">
+            Once installed, the extension runs locally. Import a CSV, find an account, organize
+            groups, review history, or export your data—even without an internet connection.
+          </p>
+          <a class="text-link" href="docs.html#docs-storage"
+            >Understand local storage <span>↗</span></a
+          >
+        </div>
+        <div class="bezel reveal">
+          <div class="offline-panel">
+            <div class="offline-panel-heading">
+              <span class="offline-symbol" aria-hidden="true">◎</span>
+            </div>
+            <h3>What works without a connection</h3>
+            <ul class="offline-checks">
+              <li>
+                <span aria-hidden="true">✓</span> Import, search, edit groups, and export locally
+              </li>
+              <li><span aria-hidden="true">✓</span> Packaged fonts and scripts—no runtime CDN</li>
+              <li><span aria-hidden="true">✓</span> No cloud account, sync, or telemetry</li>
+            </ul>
+            <p class="doc-note">
+              <strong>The website is a separate connection.</strong> Detection and autofill need an
+              accessible login page and approved access. A local site can work without the internet;
+              signing into a remote service still depends on that service and your connection.
+            </p>
+          </div>
+        </div>
+      </section>
+      <section class="privacy-section wrap reveal">
+        <div class="privacy-icon" aria-hidden="true">◎</div>
+        <div>
+          <h2>Your test data stays close.</h2>
+          <p>
+            Accounts and history stay in this browser. No application server, sync, or telemetry. No
+            master password or lock prompt, either: the local encryption key is stored alongside the
+            data. <strong>Use synthetic accounts only.</strong>
+          </p>
+        </div>
+        <span class="privacy-stamp">ON YOUR<br />COMPUTER ↙</span>
+      </section>
+      <section id="access" class="section wrap">
+        <div class="section-heading reveal">
+          <div>
+            <h2>You approve<br />where it can fill.</h2>
+          </div>
+          <p>
+            Chrome asks before the extension can work on your configured sites. Here’s what that
+            access enables, and what stays in your control.
+          </p>
+        </div>
+        <div class="access-grid">
+          <article class="bezel reveal">
+            <div class="access-panel">
+              <h3>You choose the sites.</h3>
+              <details class="setup-details">
+                <summary>How site access works</summary>
+                <p>
+                  Website access is requested when you use
+                  <strong>Save &amp; authorize website</strong> or
+                  <strong>Detect fields from the login page</strong>. Detection can request access
+                  to all domains configured for the selected group, including newly added ones.
+                </p>
+                <p>
+                  For missing detection permissions, the extension first names the sites and
+                  explains the request. Select <strong>Continue</strong> to open Chrome’s permission
+                  prompt. Importing a CSV alone does not grant site access.
+                </p>
+              </details>
+              <a href="docs.html#docs-domains" class="text-link"
+                >See accepted domains <span>↗</span></a
+              >
+            </div>
+          </article>
+          <article class="bezel reveal">
+            <div class="access-panel">
+              <h3>Read field names. Fill on request.</h3>
+              <details class="setup-details">
+                <summary>How the permission is used</summary>
+                <p>
+                  Chrome may describe site access as permission to
+                  <strong>read and change data</strong>. The extension uses it to list matching open
+                  tabs, inspect login-field attributes, fill your selected account, and observe a
+                  success condition if you enable tracking.
+                </p>
+                <p>
+                  Field detection reports labels and identifying attributes, not the values entered
+                  into inputs. Autofill delivers only the chosen account to the approved page after
+                  your explicit action. It never submits the form.
+                </p>
+              </details>
+            </div>
+          </article>
+        </div>
+        <div class="access-controls reveal">
+          <span class="control-mark" aria-hidden="true">↳</span>
+          <p>
+            <strong>You can decline or revoke access.</strong> Denying the request leaves local
+            account management available, but blocks the site action that needs it. Manage access in
+            Chrome → Extensions → Login Pal → Details → Site access. After revoking access,
+            authorize the site again before detection or autofill.
+          </p>
+        </div>
+        <details class="permission-details reveal">
+          <summary>
+            What about the other extension permissions?<span aria-hidden="true">+</span>
+          </summary>
+          <dl>
+            <div>
+              <dt>Local storage</dt>
+              <dd>Keeps groups, settings, accounts, and history on this computer.</dd>
+            </div>
+            <div>
+              <dt>Page scripting</dt>
+              <dd>
+                Runs the field-detection and autofill helpers on approved pages; it does not
+                independently grant access to every website.
+              </dd>
+            </div>
+            <div>
+              <dt>Active tab</dt>
+              <dd>
+                Provides temporary access to the current tab when you invoke the extension,
+                supporting actions tied to that tab. The configured-domain checks still apply.
+              </dd>
+            </div>
+            <div>
+              <dt>Clipboard writing</dt>
+              <dd>
+                Supports explicit copy actions for account details, including a chosen synthetic
+                password. The extension does not request clipboard-read permission.
+              </dd>
+            </div>
+          </dl>
+          <p class="doc-note">
+            Chrome’s host permission is broader than the extension’s rules: it is not limited to
+            your configured path or port. The extension separately checks the exact scheme,
+            hostname, and port. Requested HTTP/HTTPS support does not mean automatic access to all
+            sites.
+          </p>
+          <a
+            class="text-link"
+            href="https://developer.chrome.com/docs/extensions/develop/concepts/declare-permissions"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Chrome permissions <span>↗</span></a
+          >
+        </details>
+      </section>
+      <section id="questions" class="section wrap faq-grid">
+        <div class="reveal">
+          <h2>Questions before<br />your first login?</h2>
+        </div>
+        <div class="faq-list reveal">
+          <details>
+            <summary>Will it work with every login page?<span>+</span></summary>
+            <p>
+              It supports top-level, visible, writable username and password inputs. Embedded
+              frames, closed shadow roots, SSO handoffs, and multi-step logins are outside this
+              version’s scope. Configure and test your own site’s field matching and success signal
+              before relying on it.
+            </p>
+          </details>
+          <details>
+            <summary>Can I use it on localhost?<span>+</span></summary>
+            <p>
+              Yes. HTTP and HTTPS are supported on local and regular hosts. Authorization matches
+              the exact scheme, hostname, and port. Subdomains need separate authorization; a path
+              does not narrow autofill access. See
+              <a href="docs.html#docs-domains">accepted domains</a> for examples.
+            </p>
+          </details>
+          <details>
+            <summary>What’s the difference between Merge and Replace?<span>+</span></summary>
+            <p>
+              Merge &amp; Update adds or updates accounts by ID and keeps omitted accounts in the
+              selected group. Wipe &amp; Replace replaces that group’s entire dataset. Invalid rows
+              are excluded, so review the verification results carefully before confirming Replace.
+              Other groups are unaffected.
+            </p>
+          </details>
+          <details>
+            <summary>How do recent and successful logins work?<span>+</span></summary>
+            <p>
+              Recent records a successful field fill. Last successful changes only when the
+              configured success condition is observed within two minutes. A failed login leaves the
+              previous successful account unchanged. Editing filled values cancels attribution.
+            </p>
+          </details>
+          <details>
+            <summary>What should I know about CSV files?<span>+</span></summary>
+            <p>
+              Imports support UTF-8 CSV files up to 2 MiB, 10,000 rows, and 100 columns. Account IDs
+              must be unique within a group. Export CSV downloads the entire selected group,
+              including synthetic passwords. Original and exported CSV files remain on your disk;
+              the extension does not encrypt or delete them.
+            </p>
+          </details>
+        </div>
+      </section>
+      <section id="setup" class="section wrap setup-grid">
+        <div class="reveal">
+          <h2>Install Login Pal<br />in Chrome.</h2>
+          <p class="section-description">
+            Install the unpacked extension in Chrome 121 or newer. No account to create. No service
+            to connect.
+          </p>
+          <span class="install-note">Local installation · not on the Chrome Web Store</span>
+        </div>
+        <div class="bezel reveal">
+          <div class="install-inner">
+            <h3>Your installation checklist.</h3>
+            <p class="checklist-help">Tick each step as you go. Progress stays on this page.</p>
+            <p id="setup-progress" class="setup-progress" role="status" hidden>
+              0 of 4 steps complete
+            </p>
+            <ol class="install-steps">
+              <li>
+                <span class="install-number">1</span
+                ><input
+                  type="checkbox"
+                  class="setup-check"
+                  id="setup-check-1"
+                  aria-label="Mark installation step 1 complete"
+                  hidden
+                />
+                <label class="install-description" for="setup-check-1">
+                  <strong>Get the extension package.</strong> Extract
+                  <code>login-pal.zip</code> from your project or team maintainer. If you build from
+                  source, use the generated <code>dist</code> folder.
+                </label>
+              </li>
+              <li>
+                <span class="install-number">2</span
+                ><input
+                  type="checkbox"
+                  class="setup-check"
+                  id="setup-check-2"
+                  aria-label="Mark installation step 2 complete"
+                  hidden
+                />
+                <label class="install-description" for="setup-check-2">
+                  <strong>Open Chrome’s extensions page.</strong> Enter
+                  <code>chrome://extensions</code> in the address bar and switch on
+                  <strong>Developer mode</strong>.
+                </label>
+              </li>
+              <li>
+                <span class="install-number">3</span
+                ><input
+                  type="checkbox"
+                  class="setup-check"
+                  id="setup-check-3"
+                  aria-label="Mark installation step 3 complete"
+                  hidden
+                />
+                <label class="install-description" for="setup-check-3">
+                  <strong>Load your extension.</strong> Select <strong>Load unpacked</strong> and
+                  choose the extracted <code>dist</code> folder. Keep this folder in place.
+                </label>
+              </li>
+              <li>
+                <span class="install-number">4</span
+                ><input
+                  type="checkbox"
+                  class="setup-check"
+                  id="setup-check-4"
+                  aria-label="Mark installation step 4 complete"
+                  hidden
+                />
+                <label class="install-description" for="setup-check-4">
+                  <strong>Pin Login Pal and open Settings.</strong> Pin Login Pal from Chrome’s
+                  Extensions menu, then open Settings to import your first group.
+                </label>
+              </li>
+            </ol>
+            <div class="copy-address" hidden>
+              <button type="button" id="copy-extensions" class="button secondary">
+                Copy extensions address <span aria-hidden="true">↗</span>
+              </button>
+              <p id="copy-status" role="status"></p>
+            </div>
+            <a href="index-v2.html#how-it-works" class="button primary"
+              >Set up a group <span>↑</span></a
+            >
+          </div>
+        </div>
+      </section>
+      <section class="closing wrap reveal">
+        <h2>Your next test starts<br />with the right account.</h2>
+        <a href="index-v2.html#setup" class="button primary">Install Login Pal <span>↗</span></a>
+        <p>Start with a CSV. Keep the rest close at hand.</p>
+      </section>
+    </main>
+    <footer class="wrap product-footer">
+      <div class="footer-top">
+        <a href="index-v2.html" class="brand" aria-label="Login Pal home"
+          ><img class="brand-icon" src="favicon.svg" alt="" width="29" height="29" />Login Pal<span
+            class="dev"
+            >FOR TEST ACCOUNTS</span
+          ></a
+        >
+        <nav class="footer-nav" aria-label="Footer navigation">
+          <a href="index-v2.html#overview">Overview</a>
+          <a href="index-v2.html#how-it-works">How it works</a>
+          <a href="docs.html">Docs</a>
+          <a href="index-v2.html#setup">Install locally <span aria-hidden="true">↗</span></a>
+        </nav>
+      </div>
+      <div class="footer-bottom">
+        <p>Login Pal <span>·</span> Crafted by metuur</p>
+        <a href="#main">Back to top ↑</a>
+      </div>
+    </footer>
+  </body>
+</html>
