@@ -1,23 +1,26 @@
-/* V2 keeps the existing Apple-inspired page and adds two quiet depth layers. */
+/* The illustration stays in the viewport while the hero content scrolls over it. */
 .hero-v2 .hero-spotlight {
-  --hero-drift-x: 0px;
-  --hero-drift-y: 0px;
+  --hero-scroll-offset: 0px;
   --hero-browser-rule: #adb7c4;
 }
 .hero-v2 .hero {
   position: relative;
 }
+.hero-v2 .nav {
+  min-height: 64px;
+}
 .hero-ambient {
   position: absolute;
   inset: 0 0 auto;
-  height: 650px;
+  height: calc(100svh - 64px);
   overflow: clip;
   pointer-events: none;
   z-index: -1;
+  transform: translate3d(0, var(--hero-scroll-offset), 0);
 }
 .hero-browser {
   width: min(1180px, calc(100% - 64px));
-  height: 470px;
+  height: min(760px, calc(100svh - 200px));
   margin: 98px auto 0;
   border: 1px solid var(--hero-browser-rule);
   border-radius: 22px;
@@ -30,9 +33,7 @@
     black 100%
   );
   box-shadow: 0 20px 64px var(--color-shadow);
-  transform: translate3d(calc(var(--hero-drift-x) * -0.65), calc(var(--hero-drift-y) * -0.65), 0)
-    rotate(var(--browser-angle, -2deg));
-  transition: transform 180ms var(--ease-out);
+  transform: rotate(-2deg);
 }
 .hero-browser-bar {
   display: flex;
@@ -86,19 +87,6 @@
   font-size: 13px;
   margin-top: 8px;
 }
-.hero-demo-ambient {
-  --browser-angle: 2deg;
-  position: absolute;
-  inset: 72px -88px -44px;
-  z-index: -1;
-  pointer-events: none;
-}
-.hero-demo-ambient .hero-browser {
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  mask-image: none;
-}
 .hero-notes {
   display: none;
 }
@@ -107,8 +95,6 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px;
   width: min(100%, 860px);
-  transform: translate3d(var(--hero-drift-x), var(--hero-drift-y), 0);
-  transition: transform 180ms var(--ease-out);
 }
 .hero-note {
   display: flex;
@@ -126,7 +112,6 @@
   box-shadow: 0 8px 24px rgb(105 83 33 / 0.06);
   transform: rotate(var(--note-angle, 0deg));
   transition:
-    transform 180ms var(--ease-out),
     box-shadow 180ms var(--ease-out),
     border-color 180ms var(--ease-out);
 }
@@ -200,6 +185,7 @@
     display: block;
     width: auto;
     pointer-events: none;
+    transform: translate3d(0, var(--hero-scroll-offset), 0);
   }
   .hero-v2 .hero-note {
     position: absolute;
@@ -220,9 +206,6 @@
   }
 }
 @media (max-width: 79.99rem) {
-  .hero-demo-ambient {
-    inset: 72px -32px -36px;
-  }
   .hero-browser-body {
     visibility: hidden;
   }
@@ -237,18 +220,14 @@
   }
 }
 @media (max-width: 47.99rem) {
-  .hero-demo-ambient {
-    --browser-angle: 1deg;
-    inset: 72px -10px -24px;
-  }
   .hero-ambient {
-    height: 560px;
+    height: calc(100svh - 64px);
   }
   .hero-browser {
     width: calc(100% - 32px);
-    height: 380px;
+    height: min(680px, calc(100svh - 160px));
     margin-top: 80px;
-    transform: rotate(var(--browser-angle, -2deg));
+    transform: rotate(-2deg);
   }
   .hero-browser-body {
     margin-top: 24px;
@@ -284,12 +263,12 @@
 }
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
   .hero-note:hover {
-    transform: translateY(-3px) rotate(0deg);
     border-color: var(--color-accent);
     box-shadow: 0 12px 28px var(--color-shadow);
   }
 }
 .hero-v2 .hero-spotlight[data-depth-motion='reduced'] .hero-browser,
+.hero-v2 .hero-spotlight[data-depth-motion='reduced'] .hero-ambient,
 .hero-v2 .hero-spotlight[data-depth-motion='reduced'] .hero-notes,
 .hero-v2 .hero-spotlight[data-depth-motion='reduced'] .hero-note {
   transform: none;
@@ -297,6 +276,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .hero-v2 .hero-notes:has(.hero-note:not([hidden])),
+  .hero-ambient,
   .hero-browser {
     transform: none;
     transition: none;

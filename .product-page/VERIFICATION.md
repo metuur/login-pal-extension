@@ -1,3 +1,10 @@
+## Fixed hero background during scroll — 2026-10-14
+
+- Replaced pointer parallax with a single scroll-compensated browser illustration. At desktop widths, notes remain at the same viewport coordinates while the title and demo scroll past. The hero clips the scene at its boundary; desktop notes become inert after leaving that section. The separate demo underlay was removed.
+- Chromium observed identical browser and all three note positions at 0, 200 and 450px scroll on 1440px desktop. The browser remained fixed without horizontal overflow at 320, 375, 768, 1024, 1280 and 1920px. Title/demo screenshots were reviewed. Pointer movement leaves the illustration and notes in place; the shared mouse spotlight still operates.
+- Verified keyboard recovery for partially clipped notes, note-to-scene activation, role filtering/fill, mobile menu/Escape and compact note activation. Smaller screens retain notes in the content flow so they cannot cover the demo. Native and forced reduced-motion modes restore normal scrolling and disable scene pinning.
+- Strict standalone TypeScript, JavaScript regeneration, formatting and whitespace checks passed. Original homepage, extension runtime and storage are unchanged.
+
 ## More visible browser and floating demo underlay — 2026-10-14
 
 - Increased the decorative browser frame/toolbar contrast and softened its center mask less. Added the same transparent browser illustration behind the extension walkthrough, with a slight opposite tilt and visible sides/bottom. It shares the existing pointer-depth properties and is hidden from assistive technology with pointer events disabled.

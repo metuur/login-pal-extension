@@ -18,13 +18,13 @@ The reading order follows the product story before installation. Workflow and we
 
 ### Alternate interactive hero
 
-`index-v2.html` is an alternate homepage with the same Apple-inspired presentation and product content. Its faint login-window illustration and floating CSV, setup, and team-chat notes add two mouse-responsive depth layers. Clicking or keyboard-activating a note opens its matching demo step, scrolls the demo into view, and focuses its heading through the existing `data-demo-step` controls.
+`index-v2.html` is an alternate homepage with the same Apple-inspired presentation and product content. A single transparent browser illustration stays fixed in the viewport while the hero title and extension demo scroll over it. On desktop (1280px and wider), the CSV, setup, and team-chat notes also stay fixed. Clicking or keyboard-activating a note opens its matching demo step, scrolls the demo into view, and focuses its heading through the existing `data-demo-step` controls.
 
-The layers move by at most 8px horizontally and 5px vertically, with one update per animation frame. Pointer exit, scrolling, resize, blur, visibility changes, and preference changes reset them. Touch and narrow screens stay static. Below 768px, two compact notes remain and the background form detail is hidden. Reduced motion and `?reduce=1` disable movement, including hover transforms. There is no autoplay or continuous animation in the background. Without JavaScript, note controls are hidden and the original readable demo remains.
+The illustration and notes do not shift with the pointer or on hover. The original full-width mouse spotlight remains. One animation-frame-batched scroll update compensates the background's page offset, and the hero clips it when the section ends. Desktop note controls become inert outside the hero. Reduced motion and `?reduce=1` disable the pinning effect and use ordinary page scrolling. On smaller screens, the notes remain in the content flow to avoid covering the demo; below 768px, two compact notes remain. There is no autoplay or continuous background animation. Without JavaScript, note controls are hidden and the original readable demo remains.
 
 The variant adds only `hero-v2.css` and `hero-v2.js`; edit `hero-v2.ts` and regenerate its script using the commands below. Homepage navigation stays within `index-v2.html`; the original `index.html` and shared scripts/styles are unchanged by this variant.
 
-The transparent browser illustration has a slightly stronger frame, toolbar and window dots. A second copy sits behind the walkthrough as a tilted floating underlay, extending past the panel's sides and bottom. Both windows share the same pointer-depth offset and reduced-motion handling; neither decorative layer accepts input or appears in the accessibility tree.
+The transparent browser illustration has a slightly stronger frame, toolbar and window dots. Its viewport-sized frame serves as the background for both title and walkthrough, replacing the separate demo underlay. The decorative window accepts no input and is hidden from assistive technology.
 
 ### Walkthrough controls
 
