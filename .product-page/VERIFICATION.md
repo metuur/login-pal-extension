@@ -1,3 +1,8 @@
+## Transparent illustration background — 2026-10-14
+
+- Removed the illustration's white overlay and made the browser frame and decorative fields transparent. A mask fades only the illustration, allowing the mouse spotlight to remain visible underneath without the previous rectangular cutoff.
+- Chromium screenshots before/after at the same pointer position confirmed the blue glow is visible through the illustration. Note activation, the 375px layout without horizontal overflow, reduced-motion behavior, formatting and whitespace checks passed.
+
 ## Alternate hero background — 2026-10-14
 
 - Added `index-v2.html` with a local HTML/CSS login-window illustration and three notes linked to Import, Approve, and Choose. The original homepage and shared runtime/styles are unchanged. The variant uses its own stylesheet and generated TypeScript script.

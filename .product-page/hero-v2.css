@@ -14,26 +14,20 @@
   pointer-events: none;
   z-index: -1;
 }
-.hero-ambient::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(
-      ellipse at 50% 36%,
-      white 18%,
-      rgb(255 255 255 / 0.97) 45%,
-      rgb(255 255 255 / 0.1) 100%
-    ),
-    linear-gradient(transparent 65%, white);
-}
 .hero-browser {
   width: min(1180px, calc(100% - 64px));
   height: 470px;
   margin: 98px auto 0;
   border: 1px solid var(--color-rule);
   border-radius: 22px;
-  background: var(--color-panel);
+  background: transparent;
+  /* Fade the illustration itself so the spotlight remains visible underneath. */
+  mask-image: radial-gradient(
+    ellipse at 50% 36%,
+    transparent 18%,
+    rgb(0 0 0 / 0.03) 45%,
+    black 100%
+  );
   box-shadow: 0 20px 64px var(--color-shadow);
   transform: translate3d(calc(var(--hero-drift-x) * -0.65), calc(var(--hero-drift-y) * -0.65), 0)
     rotate(-2deg);
@@ -83,7 +77,7 @@
 }
 .hero-browser-field > span {
   height: 40px;
-  background: var(--color-paper);
+  background: transparent;
   border: 1px solid var(--color-rule);
   border-radius: 8px;
 }
