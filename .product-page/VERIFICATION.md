@@ -1,3 +1,8 @@
+## More visible background login fields — 2026-10-15
+
+- Increased the illustration mask's minimum opacity and the Username/Password label emphasis; empty field outlines are now 1.5px with the browser-frame color. Other form text stays subdued. The fields remain transparent decorative spans, not editable credential inputs.
+- Desktop screenshot reviewed. Chromium confirmed the fields stay fixed during scroll, retain transparent backgrounds, and leave note activation working. The 375px layout has no horizontal overflow. Formatting and whitespace checks passed.
+
 ## Fixed hero background during scroll — 2026-10-14
 
 - Replaced pointer parallax with a single scroll-compensated browser illustration. At desktop widths, notes remain at the same viewport coordinates while the title and demo scroll past. The hero clips the scene at its boundary; desktop notes become inert after leaving that section. The separate demo underlay was removed.

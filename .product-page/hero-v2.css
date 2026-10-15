@@ -28,8 +28,8 @@
   /* Fade the illustration itself so the spotlight remains visible underneath. */
   mask-image: radial-gradient(
     ellipse at 50% 36%,
-    transparent 18%,
-    rgb(0 0 0 / 0.12) 45%,
+    rgb(0 0 0 / 0.3) 18%,
+    rgb(0 0 0 / 0.4) 45%,
     black 100%
   );
   box-shadow: 0 20px 64px var(--color-shadow);
@@ -63,7 +63,11 @@
   margin: 36px auto;
   padding-inline: 24px;
   color: var(--color-muted);
-  opacity: 0.2;
+}
+.hero-browser-label,
+.hero-browser-body > strong,
+.hero-browser-submit {
+  opacity: 0.12;
 }
 .hero-browser-label {
   font-size: 13px;
@@ -75,12 +79,14 @@
 .hero-browser-field {
   display: grid;
   gap: 8px;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0.65;
 }
 .hero-browser-field > span {
-  height: 40px;
+  height: 44px;
   background: transparent;
-  border: 1px solid var(--color-rule);
+  border: 1.5px solid var(--hero-browser-rule);
   border-radius: 8px;
 }
 .hero-browser-submit {
