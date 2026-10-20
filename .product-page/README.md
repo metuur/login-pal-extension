@@ -4,6 +4,14 @@ Open `index.html` directly or serve this directory with a static server. All fon
 
 `index.html` explains the extension and provides a synthetic account demo, first-use instructions, developer installation, local/offline behavior, permissions and questions. `docs.html` retains detailed documentation and direct topic links. Both pages share `styles.css`, `tokens.css`, the additive `guide.css` and `product.css`, and `main.js`.
 
+## Privacy policy
+
+`privacy/index.html` serves the standalone privacy policy at `/privacy/`. Static servers that support directory indexes redirect `/privacy` to `/privacy/`; no application router is required. Deploy the entire `.product-page` directory, including `privacy/` and its parent styles and scripts. Parent-relative links also support hosting beneath a path prefix. The policy text remains readable without JavaScript or an account.
+
+The homepage, alternate homepage, and documentation footers link to this page. Existing `/#privacy` links still reach a short overview with a link to the full policy. The policy describes local data processing, website/clipboard/export sharing, encryption limits, retention, deletion, Limited Use, and the privacy contact `support@metuur.com`.
+
+After deployment, enter the public HTTPS URL ending in `/privacy/` in the Chrome Web Store Developer Dashboard’s Privacy policy field. Verify it opens without signing in and keep the dashboard disclosures consistent with the policy and the shipped extension. Creating this local page does not publish it or confirm Web Store approval. Requirements: [Privacy Policies](https://developer.chrome.com/docs/webstore/program-policies/privacy/) and [User Data FAQ](https://developer.chrome.com/docs/webstore/program-policies/user-data-faq).
+
 ## Design
 
 The Apple-inspired presentation uses a white canvas, silver surfaces, near-black headings, blue actions, and system typography. The centered introduction leads into a larger interactive product demonstration. One primary action points to local installation; trying the demo is secondary. JetBrains Mono remains packaged for code. Previous locally packaged fonts and their licenses remain available as historical assets.

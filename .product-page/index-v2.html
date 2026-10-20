@@ -620,67 +620,11 @@
       <section id="privacy" class="privacy-section wrap reveal" aria-labelledby="privacy-title">
         <h2 id="privacy-title">Privacy &amp; data protection</h2>
         <p>
-          Login Pal stores your test-account catalog in your browser and fills credentials only when
-          you ask. <strong>Use synthetic test accounts only.</strong>
+          Your account catalog stays in your browser. You control website access, credential filling,
+          exports, and deletion. Local encryption has limits: its key is stored in the same browser
+          profile. <strong>Use synthetic test accounts only.</strong>
         </p>
-        <div class="privacy-details">
-          <h3>What Login Pal handles</h3>
-          <p>
-            When you import a CSV, Login Pal reads account IDs, usernames, passwords, and any extra
-            columns you include. It also stores group names, authorized domains, login-field settings,
-            and local history of recent fills and detected successful logins. This data supports
-            account search, organization, and filling.
-          </p>
-          <h3>Local storage and its limits</h3>
-          <p>
-            Accounts and history are encrypted with AES-GCM in extension-local storage. The encryption
-            key is stored in the same browser profile so the catalog can open automatically. There is
-            no master password or lock screen. This does not protect your catalog from someone who
-            can access your browser profile or device. Keep production credentials and personal or
-            sensitive information out of imported files.
-          </p>
-          <h3>What happens on a website</h3>
-          <p>
-            You choose which sites Login Pal may access and approve Chrome’s permission request.
-            Field detection reads input labels and attributes, not the values you type. When you
-            explicitly choose to fill, the selected username and password are written into the
-            approved page, where that website can access them. Login Pal never submits the form;
-            you press Sign in. Optional success detection checks your configured URL or page element.
-            The website’s own privacy practices apply to data it receives.
-          </p>
-          <h3>No cloud collection or tracking</h3>
-          <p>
-            The extension has no application server, cloud sync, advertising, analytics, or telemetry.
-            It does not send your catalog or login history to Login Pal’s developer, sell it, or use
-            it for advertising. Its scripts and fonts are packaged locally.
-          </p>
-          <h3>Exports and clipboard copies</h3>
-          <p>
-            Export CSV downloads all accounts in the selected group, including readable passwords.
-            Original and exported CSV files are not protected by the catalog’s encryption. Copying a
-            username or password places that value on your system clipboard, where clipboard tools
-            or other apps may access it. Share these files and copies only where you intend, and
-            remove them when no longer needed.
-          </p>
-          <h3>Your controls and deletion</h3>
-          <p>
-            Data stays in your local catalog until you change or remove it. In Settings, delete
-            individual accounts or use Purge to clear the selected group’s accounts and history while
-            keeping its setup. Reset also clears that group’s login profile and session state and
-            creates an empty catalog. Repeat for each group you want to clear. These actions do not
-            delete CSV files, clipboard copies, or data already received by a website.
-          </p>
-          <p>
-            You can revoke website access in Chrome → Extensions → Login Pal → Details → Site access.
-            Revoking access blocks site actions; it does not delete your stored catalog.
-          </p>
-          <h3>About this product page</h3>
-          <p>
-            This notice describes the Login Pal extension. The demo on this page uses fictional
-            accounts and cannot read your extension catalog. For storage and setup instructions,
-            see <a href="docs.html#docs-storage">Local data &amp; troubleshooting</a>.
-          </p>
-        </div>
+        <p class="privacy-policy-link"><a href="privacy/">Read the full privacy policy</a></p>
       </section>
       <section id="access" class="section wrap">
         <div class="section-heading reveal">
@@ -947,7 +891,7 @@
           <a href="index-v2.html#overview">Overview</a>
           <a href="index-v2.html#how-it-works">How it works</a>
           <a href="docs.html">Docs</a>
-          <a href="#privacy">Privacy</a>
+          <a href="privacy/">Privacy</a>
           <a href="index-v2.html#setup">Install locally <span aria-hidden="true">↗</span></a>
         </nav>
       </div>
