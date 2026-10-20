@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "layout-transition",
+        "value": "*",
+        "files": [
+          ".product-page/privacy/index.html"
+        ],
+        "createdAt": "2026-10-20T01:03:36.931Z",
+        "reason": "Agent verified: guide.css legacy .nav max-width transition is overridden by later product.css .nav and .nav[data-state=scrolled] transition:none; privacy/index.html loads product.css last."
+      }
+    ]
+  }
+}
