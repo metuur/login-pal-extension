@@ -7,6 +7,7 @@ import type {
   FieldMatch,
   DetectResult,
   DetectTab,
+  TitleRule,
 } from '../shared/types';
 import {
   parseRule,
@@ -362,6 +363,82 @@ const profileName = field('Profile name'),
   passwordSelector = field('Password field CSS selector'),
   successUrl = field('Exact success / observation URL', 'url'),
   successSelector = field('Visible success element CSS selector');
+const titleRulesPanel = el('section', 'stack title-rules');
+titleRulesPanel.append(
+  el('h3', '', 'Application recognition'),
+  el(
+    'p',
+    'subtle',
+    'Optionally distinguish applications that share a domain by the page title. This only suggests a CSV group; it never grants website access or fills an account automatically.',
+  ),
+);
+const titleRuleControls = new Map<
+  string,
+  { enabled: HTMLInputElement; mode: HTMLSelectElement; value: HTMLInputElement }
+>();
+function renderTitleRuleControls(origins: string[], saved: TitleRule[] = []) {
+  const prior = new Map(
+    [...titleRuleControls].map(([origin, control]) => [
+      origin,
+      { enabled: control.enabled.checked, mode: control.mode.value, value: control.value.value },
+    ]),
+  );
+  titleRuleControls.clear();
+  titleRulesPanel.replaceChildren(
+    el('h3', '', 'Application recognition'),
+    el(
+      'p',
+      'subtle',
+      'Optionally distinguish applications that share a domain by the page title. This only suggests a CSV group; it never grants website access or fills an account automatically.',
+    ),
+  );
+  for (const origin of origins) {
+    const existing = saved.find((rule) => rule.origin === origin);
+    const previous = prior.get(origin);
+    const enabled = el('input');
+    enabled.type = 'checkbox';
+    enabled.checked = previous?.enabled ?? !!existing;
+    const toggleLabel = el('label', 'checkbox-label');
+    toggleLabel.append(enabled, el('span', '', `Recognize this application on ${origin}`));
+    const mode = el('select');
+    mode.setAttribute('aria-label', `Title matching mode for ${origin}`);
+    for (const [value, label] of [
+      ['contains', 'Title contains'],
+      ['equals', 'Title equals'],
+    ] as const) {
+      const option = el('option', '', label);
+      option.value = value;
+      mode.append(option);
+    }
+    mode.value = previous?.mode ?? existing?.mode ?? 'contains';
+    const value = el('input');
+    value.type = 'text';
+    value.maxLength = 200;
+    value.placeholder = 'For example, Vite + React';
+    value.setAttribute('aria-label', `Page title for ${origin}`);
+    value.value = previous?.value ?? existing?.value ?? '';
+    const fields = el('div', 'settings-grid');
+    fields.append(mode, value);
+    const row = el('div', 'stack title-rule');
+    row.append(toggleLabel, fields);
+    const update = () => {
+      mode.disabled = value.disabled = !enabled.checked;
+    };
+    enabled.addEventListener('change', update);
+    update();
+    titleRuleControls.set(origin, { enabled, mode, value });
+    titleRulesPanel.append(row);
+  }
+  if (!origins.length)
+    titleRulesPanel.append(el('p', 'subtle', 'Add an authorized login domain to configure title recognition.'));
+}
+function selectedTitleRules(): TitleRule[] {
+  return [...titleRuleControls].flatMap(([origin, control]) =>
+    control.enabled.checked
+      ? [{ origin, mode: control.mode.value as TitleRule['mode'], value: control.value.value }]
+      : [],
+  );
+}
 for (const f of [profileName, login, usernameSelector, passwordSelector, successUrl])
   f.input.required = true;
 function matchingControl(label: string, target: ReturnType<typeof field>, password: boolean) {
@@ -751,6 +828,7 @@ profileForm.append(
     'Common username/email and password selectors are prefilled for new profiles. If more than one field matches, narrow the selector to the login form.',
   ),
   matchingHelp,
+  titleRulesPanel,
   successFields,
   successHint,
   profileStatus,
@@ -775,6 +853,14 @@ function populateProfile() {
     matched = false;
   }
   login.input.value = matched ? saved.join(', ') : rules.join(', ');
+  try {
+    renderTitleRuleControls(
+      parseDomainRules(login.input.value).map((rule) => rule.origin),
+      p?.titleRules ?? [],
+    );
+  } catch {
+    renderTitleRuleControls([]);
+  }
   usernameMatch.select.value = p?.usernameMatch ?? 'css';
   passwordMatch.select.value = p?.passwordMatch ?? 'css';
   usernameMatch.update();
@@ -786,6 +872,13 @@ function populateProfile() {
   successSelector.input.value = p?.success?.kind === 'element' ? p.success.selector : '';
   updateSuccessFields();
 }
+login.input.addEventListener('change', () => {
+  try {
+    renderTitleRuleControls(parseDomainRules(login.input.value).map((rule) => rule.origin));
+  } catch {
+    renderTitleRuleControls([]);
+  }
+});
 function invalidatePreview() {
   preview = undefined;
   const wasReviewing = importSetup.hidden;
@@ -1139,6 +1232,7 @@ profileForm.addEventListener('submit', (event) => {
   const profile: ProfileInput = {
     name: profileName.input.value,
     loginUrl: login.input.value,
+    titleRules: selectedTitleRules(),
     usernameMatch: usernameMatch.select.value as FieldMatch,
     passwordMatch: passwordMatch.select.value as FieldMatch,
     usernameSelector: usernameSelector.input.value,

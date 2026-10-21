@@ -200,6 +200,8 @@ export class AssistantService {
     const key = typeof local.catalogKey === 'string' ? local.catalogKey : previous?.key;
     if (this.envelope && key) {
       this.payload = await decryptVault(this.envelope, key);
+      if (this.profile)
+        this.profile = { ...this.profile, titleRules: this.payload.titleRules ?? [] };
       this.session = { key, attempts: previous?.attempts ?? [], undo: previous?.undo ?? null };
       await this.saveLocal({ catalogKey: key });
       await this.persistSession();
@@ -216,6 +218,7 @@ export class AssistantService {
     await this.saveLocal({ vault: envelope, catalogKey: key });
     this.envelope = envelope;
     this.payload = payload;
+    if (this.profile) this.profile = { ...this.profile, titleRules: [] };
     this.session = { key, attempts: [], undo: null };
     await this.persistSession();
   }
@@ -239,19 +242,34 @@ export class AssistantService {
     await chrome.storage.session.remove(this.sessionKey);
   }
   // Serialized callers publish one authenticated snapshot; reset can invalidate work mid-flight.
-  private async write(next: VaultPayload, accountMutation = false, stillValid = () => true) {
+  private async write(
+    next: VaultPayload,
+    accountMutation = false,
+    stillValid = () => true,
+    localUpdates: Record<string, unknown> = {},
+  ) {
     this.assert();
     const generation = this.generation;
     const oldEnvelope = this.envelope;
+    const oldLocalUpdates = Object.keys(localUpdates).length
+      ? await this.readLocal(Object.keys(localUpdates))
+      : {};
     next.snapshotRevision = this.payload!.snapshotRevision + 1;
     if (accountMutation) next.revision = this.payload!.revision + 1;
     const envelope = await encryptVault(next, this.session!.key, this.envelope!.salt);
     if (bytes(envelope) > 5 * 1024 * 1024) throw new Error('Vault size limit.');
     this.assert(generation);
     if (!stillValid()) throw new Error('Cancelled.');
-    await this.saveLocal({ vault: envelope });
+    await this.saveLocal({ vault: envelope, ...localUpdates });
     if (generation !== this.generation || !this.session || !stillValid()) {
-      await this.saveLocal({ vault: oldEnvelope });
+      const restore = Object.fromEntries(
+        Object.entries(oldLocalUpdates).filter(([, value]) => value !== undefined),
+      );
+      await this.saveLocal({ vault: oldEnvelope, ...restore });
+      const missing = Object.entries(oldLocalUpdates)
+        .filter(([, value]) => value === undefined)
+        .map(([name]) => name);
+      if (missing.length) await this.removeLocal(missing);
       throw new Error('Cancelled.');
     }
     this.envelope = envelope;
@@ -627,7 +645,11 @@ export class AssistantService {
       },
     ]);
     this.assert(generation);
-    await this.saveLocal({ profile: next });
+    const nextPayload = structuredClone(this.payload!);
+    nextPayload.titleRules = next.titleRules ?? [];
+    const storedProfile = { ...next };
+    delete storedProfile.titleRules;
+    await this.write(nextPayload, false, () => true, { profile: storedProfile });
     this.assert(generation);
     this.profile = next;
     if (previous)

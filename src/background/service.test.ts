@@ -551,6 +551,35 @@ describe('migrating records written before multi-environment support', () => {
     const state = await command<AppState>(service, { type: 'STATE' });
     expect(state.profile?.logins.map((l) => l.origin)).toEqual(['https://legacy.example.test']);
     expect(state.profile && 'login' in state.profile).toBe(false);
+    expect(state.profile?.titleRules).toEqual([]);
+  });
+  it('stores title rules only inside the encrypted per-group vault and reloads them', async () => {
+    const service = await setup();
+    await importAccount(service);
+    await command(service, {
+      type: 'SAVE_PROFILE',
+      profile: {
+        name: 'QA',
+        loginUrl: 'https://qa.example.com/login',
+        usernameSelector: '#u',
+        passwordSelector: '#p',
+        successKind: 'none',
+        successUrl: '',
+        titleRules: [
+          { origin: 'https://qa.example.com', mode: 'contains', value: 'QA Console' },
+        ],
+      },
+    });
+    expect(JSON.stringify(local.profile)).not.toContain('QA Console');
+    const { decryptVault } = await import('../domain/crypto');
+    const envelope = local.vault as import('../shared/types').Envelope;
+    const encryptedPayload = await decryptVault(envelope, local.catalogKey as string);
+    expect(encryptedPayload.titleRules).toEqual([
+      { origin: 'https://qa.example.com', mode: 'contains', value: 'QA Console' },
+    ]);
+    const restarted = new AssistantService();
+    await restarted.ready;
+    expect((await state(restarted)).profile?.titleRules).toEqual(encryptedPayload.titleRules);
   });
   it('discards a stored profile with no usable origin instead of breaking state', async () => {
     local.profile = { id: 'broken', revision: 1, name: 'broken' };

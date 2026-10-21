@@ -4,7 +4,16 @@ export interface Account {
   password: string;
   metadata: Record<string, string>;
 }
-export type AccountSummary = Omit<Account, 'password'>;
+export type AccountSummary = Omit<Account, 'password'> & {
+  groupId?: string;
+  groupName?: string;
+  applicationIdentity?: {
+    status: 'matched' | 'choice-required' | 'unavailable';
+    title: string | null;
+    rule: TitleRule | null;
+    matched: boolean;
+  };
+};
 export interface Route {
   origin: string;
   pathname: string;
@@ -15,6 +24,11 @@ export interface CatalogRule extends Route {
 }
 export type FieldMatch =
   'css' | 'id' | 'name' | 'autocomplete' | 'placeholder' | 'label' | 'aria-label';
+export interface TitleRule {
+  origin: string;
+  mode: 'contains' | 'equals';
+  value: string;
+}
 export interface LoginProfile {
   id: string;
   revision: number;
@@ -22,6 +36,8 @@ export interface LoginProfile {
   name: string;
   /** Every authorized origin shares one set of field selectors. */
   logins: Route[];
+  /** Optional application identity hints; persisted inside the encrypted vault. */
+  titleRules?: TitleRule[];
   usernameSelector: string;
   passwordSelector: string;
   usernameMatch?: FieldMatch;
@@ -32,6 +48,8 @@ export interface LoginProfile {
 export interface ProfileInput {
   name: string;
   loginUrl: string;
+  /** Omitted by legacy callers; no title recognition is configured. */
+  titleRules?: TitleRule[];
   usernameSelector: string;
   passwordSelector: string;
   usernameMatch?: FieldMatch;
@@ -53,6 +71,8 @@ export interface VaultPayload {
   catalogRule?: CatalogRule | null;
   /** Origins this group's accounts may be filled on, e.g. prod and staging. */
   catalogRules: CatalogRule[];
+  /** Optional for backwards compatibility; encrypted with this group's vault. */
+  titleRules?: TitleRule[];
   catalogRuleRevision: number;
   accounts: Account[];
   history: Record<string, ProfileHistory>;
@@ -112,6 +132,14 @@ export interface AppState {
   groups?: CsvGroup[];
   groupId?: string;
   groupName?: string;
+  applicationIdentity?: {
+    status: 'matched' | 'choice-required' | 'unavailable';
+    title: string | null;
+    groupId: string | null;
+    groupName: string | null;
+    rule: TitleRule | null;
+    matched: boolean;
+  };
   initialized: boolean;
   migrationRequired: boolean;
   profile: LoginProfile | null;

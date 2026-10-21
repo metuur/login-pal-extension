@@ -23,6 +23,8 @@ import {
   parseDomainRules,
   matchesAnyOrigin,
   matchesAnyRule,
+  normalizeApplicationTitle,
+  matchesTitleRule,
 } from './rules';
 import { emptyVault, planImport } from './import';
 import { searchAccounts } from './search';
@@ -131,6 +133,31 @@ describe('authorization rules', () => {
     expect(() =>
       validateProfile({ ...p, successUrl: p.loginUrl }, [parseRule('https://qa.example.com/*')], 2),
     ).toThrow();
+  });
+});
+describe('application title rules', () => {
+  it('normalizes titles and configured values with trim, NFKC, and case folding', () => {
+    expect(normalizeApplicationTitle('  ＡＣＭＥ　Console  ')).toBe('acme console');
+    expect(
+      matchesTitleRule({ mode: 'equals', value: 'ACME Console' }, '  ＡＣＭＥ　Console  '),
+    ).toBe(true);
+  });
+  it('uses literal contains matching by default-compatible mode and supports exact mode', () => {
+    expect(matchesTitleRule({ mode: 'contains', value: 'dashboard' }, 'QA Dashboard - Local')).toBe(
+      true,
+    );
+    expect(matchesTitleRule({ mode: 'equals', value: 'dashboard' }, 'QA Dashboard - Local')).toBe(
+      false,
+    );
+    expect(matchesTitleRule({ mode: 'contains', value: 'a+b' }, 'QA a+b Local')).toBe(true);
+    expect(matchesTitleRule({ mode: 'contains', value: 'a+b' }, 'QA aaab Local')).toBe(false);
+  });
+  it('does not match empty or malformed rule values', () => {
+    expect(matchesTitleRule({ mode: 'contains', value: '  ' }, 'Any Application')).toBe(false);
+    expect(matchesTitleRule({ mode: 'equals', value: '  ' }, '  ')).toBe(false);
+    expect(matchesTitleRule({ mode: 'regex' as never, value: '.*' }, 'Any Application')).toBe(
+      false,
+    );
   });
 });
 describe('transaction planning', () => {
@@ -484,6 +511,48 @@ describe('optional success tracking', () => {
     expect(() => validateProfile({ ...base, successKind: 'maybe' as never }, [rule], 1)).toThrow(
       'Choose a supported success condition.',
     );
+  });
+  it('defaults title rules to an empty list and preserves valid per-origin rules', () => {
+    expect(validateProfile(base, [rule], 1).titleRules).toEqual([]);
+    expect(
+      validateProfile(
+        {
+          ...base,
+          titleRules: [
+            { origin: 'https://qa.example.test', mode: 'contains', value: ' ＡＣＭＥ Console ' },
+            { origin: 'https://qa.example.test', mode: 'equals', value: 'QA dashboard' },
+          ],
+        },
+        [rule],
+        1,
+      ).titleRules,
+    ).toEqual([
+      { origin: 'https://qa.example.test', mode: 'contains', value: 'ＡＣＭＥ Console' },
+      { origin: 'https://qa.example.test', mode: 'equals', value: 'QA dashboard' },
+    ]);
+  });
+  it('rejects unsupported modes, empty normalized values, and origins outside login origins', () => {
+    for (const titleRules of [
+      [{ origin: 'https://qa.example.test', mode: 'regex', value: 'QA' }],
+      [{ origin: 'https://qa.example.test', mode: 'contains', value: '　 ' }],
+      [{ origin: 'https://other.example.test', mode: 'contains', value: 'QA' }],
+    ])
+      expect(() => validateProfile({ ...base, titleRules: titleRules as never }, [rule], 1)).toThrow();
+  });
+  it('rejects duplicate normalized title values per origin even across modes', () => {
+    expect(() =>
+      validateProfile(
+        {
+          ...base,
+          titleRules: [
+            { origin: 'https://qa.example.test', mode: 'contains', value: ' ACME ' },
+            { origin: 'https://qa.example.test', mode: 'equals', value: 'ＡＣＭＥ' },
+          ],
+        },
+        [rule],
+        1,
+      ),
+    ).toThrow('duplicate');
   });
 });
 

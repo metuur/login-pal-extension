@@ -245,6 +245,33 @@ svg {
   font-size: 11px;
   cursor: pointer;
 }
+.title-rules {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 12px;
+}
+.title-rules h3 {
+  margin: 0;
+  font-size: 13px;
+}
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.checkbox-label input {
+  width: auto;
+  margin: 0;
+}
+.title-rule {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px;
+}
+.title-rule select:disabled,
+.title-rule input:disabled {
+  opacity: 0.55;
+}
 .settings-help[open] > :not(summary) {
   margin-top: 8px;
 }
