@@ -18,3 +18,7 @@ dist-dev/
 .playwright-mcp/
 .headroom_**
 scratch/
+
+
+.claude/
+.agents/
