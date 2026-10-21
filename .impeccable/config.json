@@ -11,6 +11,18 @@
         ],
         "createdAt": "2026-10-20T01:03:36.931Z",
         "reason": "Agent verified: guide.css legacy .nav max-width transition is overridden by later product.css .nav and .nav[data-state=scrolled] transition:none; privacy/index.html loads product.css last."
+      },
+      {
+        "rule": "overused-font",
+        "value": "geist",
+        "createdAt": "2026-10-21T23:52:57.286Z",
+        "reason": "Project: public/ui.css bundles Geist locally and uses it as the existing interface typeface; this task preserves that typography."
+      },
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "createdAt": "2026-10-21T23:53:07.118Z",
+        "reason": "Project: public/ui.css bundles Inter locally and uses it as the existing interface typeface; this task preserves that typography."
       }
     ]
   }
