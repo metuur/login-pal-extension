@@ -14,9 +14,9 @@ After deployment, enter the public HTTPS URL ending in `/privacy/` in the Chrome
 
 ## Design
 
-The Apple-inspired presentation uses a white canvas, silver surfaces, near-black headings, blue actions, and system typography. The centered introduction leads into a larger interactive product demonstration. One primary action points to local installation; trying the demo is secondary. JetBrains Mono remains packaged for code. Previous locally packaged fonts and their licenses remain available as historical assets.
+The Apple-inspired presentation uses a white canvas, silver surfaces, near-black headings, blue actions, and system typography. The centered introduction leads into a larger interactive product demonstration. The primary install action opens the [Login Pal Chrome Web Store listing](https://chromewebstore.google.com/detail/login-pal/dkddogeonokbdhnnkkjcmacpmkokhnlf); trying the demo is secondary. JetBrains Mono remains packaged for code. Previous locally packaged fonts and their licenses remain available as historical assets.
 
-The full-width navigation stays at the top while scrolling and indicates the current linked section. Below 960px it retains the menu dialog and local-install action. The softened hero spotlight follows mouse input across the full browser width, including both margins around the centered content, fades on exit, and stays disabled for touch and reduced motion.
+The full-width navigation stays at the top while scrolling and indicates the current linked section. Below 960px it retains the menu dialog and browser-install action. The softened hero spotlight follows mouse input across the full browser width, including both margins around the centered content, fades on exit, and stays disabled for touch and reduced motion.
 
 `tokens.css` owns the current palette and typography. `product.css` owns the new presentation over the retained component layouts in `styles.css` and `guide.css`. Branding retains the existing Login Pal mark. Historical Hallmark records are scoped to `.hallmark/`. The selected design and implementation contract is recorded in `../docs/plans/2026-10-12-product-page-apple-design.md`.
 
@@ -64,4 +64,4 @@ rtk proxy node_modules/.bin/esbuild .product-page/hero-v2.ts --outfile=.product-
 
 Deterministic visual capture still supports `?t=2.8`, `?t=5.8`, `?t=8.3`, `?t=10.8` and `?t=13.3`; `?reduce=1` forces reduced-motion behavior. These are review controls, not product features.
 
-See `AUDIT.md` for the design findings and `VERIFICATION.md` for observed checks and limitations. No extension package or Web Store release is offered by this page.
+See `AUDIT.md` for the design findings and `VERIFICATION.md` for observed checks and limitations. The page links to the Chrome Web Store listing and retains manual instructions for development builds.
