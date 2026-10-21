@@ -103,6 +103,10 @@ try {
     check(response?.ok === false, label);
   };
   const state = () => send({ type: 'STATE' });
+  const fillWithGroup = async (accountId, targetTabId = tabId, groupId = 'default') => {
+    await send({ type: 'CHOOSE_GROUP', groupId, tabId: targetTabId }, popup);
+    return send({ type: 'FILL', accountId, tabId: targetTabId, groupId }, popup);
+  };
   check(
     (await state()).initialized && !(await state()).migrationRequired,
     'New installation opens directly without password setup',
@@ -229,6 +233,14 @@ try {
     (await options.getByLabel('Exact success URL (after login)', { exact: true }).count()) === 1,
     'Success detection relabels its URL field back for URL mode',
   );
+  await options.getByLabel(`Recognize this application on ${origin}`, { exact: false }).check();
+  await options.getByLabel(`Page title for ${origin}`, { exact: true }).fill('Local synthetic');
+  check(
+    (await options
+      .getByRole('combobox', { name: `Title matching mode for ${origin}` })
+      .inputValue()) === 'contains',
+    'Application recognition defaults to literal title containment',
+  );
   await options.getByRole('button', { name: 'Save & authorize website', exact: true }).click();
   await options.getByText('Website profile saved.', { exact: true }).waitFor();
   check(
@@ -244,7 +256,42 @@ try {
   );
   check(Number.isInteger(tabId), 'Authorized fixture tab is identifiable');
   await site.bringToFront();
-  await send({ type: 'FILL', accountId: 'ACC-1234', tabId }, popup);
+  await popup.evaluate(() => chrome.storage.session.remove('popup-open-details'));
+  await popup.goto(`${base}popup.html?sourceTab=${tabId}`);
+  await popup.getByRole('searchbox', { name: 'Search accounts', exact: true }).fill('ACC-1234');
+  const identityRow = popup.locator('#results .account-row').first();
+  await identityRow.waitFor();
+  check(
+    (await identityRow.innerText()).includes('Group · Imported accounts'),
+    'A uniquely matched group labels its account rows',
+  );
+  check(
+    !(await identityRow.locator('details.metadata').evaluate((details) => details.open)) &&
+      !(await popup.getByText('Page title', { exact: true }).isVisible()),
+    'Title evidence stays out of collapsed account rows',
+  );
+  await identityRow.locator('details.metadata > summary').click();
+  check(
+    (await identityRow.innerText()).includes('Local synthetic login') &&
+      (await identityRow.innerText()).includes('Matched'),
+    'Account details disclose the current page title and match state',
+  );
+  const identitySettings = await context.newPage();
+  await identitySettings.goto(`${base}options.html?sourceTab=${tabId}`);
+  await identitySettings.getByRole('tab', { name: 'Indexed accounts', exact: true }).click();
+  const settingsIdentityRow = identitySettings
+    .locator('.account-row')
+    .filter({ hasText: 'ACC-1234' })
+    .first();
+  await settingsIdentityRow.waitFor();
+  await settingsIdentityRow.locator('details.metadata > summary').click();
+  check(
+    (await settingsIdentityRow.innerText()).includes('Local synthetic login') &&
+      (await settingsIdentityRow.innerText()).includes('Matched'),
+    'Settings Account details disclose the current title and match state',
+  );
+  await identitySettings.close();
+  await fillWithGroup('ACC-1234');
   check(
     (await site.locator('#username').inputValue()) === 'john@example.test',
     'Autofill fills the intended username',
@@ -274,7 +321,7 @@ try {
   );
   await site.goto(origin + '/login?flow=fail');
   await site.bringToFront();
-  await send({ type: 'FILL', accountId: 'ACC-5678', tabId }, popup);
+  await fillWithGroup('ACC-5678');
   await site.locator('#login').click();
   check(
     (await state()).lastSuccessful?.accountId === 'ACC-1234',
@@ -282,14 +329,14 @@ try {
   );
   await site.goto(origin + '/unrelated');
   await site.bringToFront();
-  await send({ type: 'FILL', accountId: 'ACC-5678', tabId }, popup);
+  await fillWithGroup('ACC-5678');
   check(
     (await site.locator('#username').inputValue()) === 'maria@example.test',
     'Autofill accepts another path on the authorized domain',
   );
   await site.goto(origin + '/login?flow=spa');
   await site.bringToFront();
-  await send({ type: 'FILL', accountId: 'ACC-5678', tabId }, popup);
+  await fillWithGroup('ACC-5678');
   await site.locator('#login').click();
   await waitState(
     (s) => s.lastSuccessful?.accountId === 'ACC-5678',
@@ -297,7 +344,7 @@ try {
   );
   await site.goto(origin + '/login');
   await site.bringToFront();
-  await send({ type: 'FILL', accountId: 'ACC-1234', tabId }, popup);
+  await fillWithGroup('ACC-1234');
   const cdp = await context.newCDPSession(options);
   const targets = await cdp.send('Target.getTargets');
   const workerTarget = targets.targetInfos.find(
@@ -322,7 +369,7 @@ try {
   });
   await site.goto(origin + '/login?flow=element');
   await site.bringToFront();
-  await send({ type: 'FILL', accountId: 'ACC-9042', tabId }, popup);
+  await fillWithGroup('ACC-9042');
   await site.locator('#login').click();
   await waitState(
     (s) => s.lastSuccessful?.accountId === 'ACC-9042',
@@ -366,7 +413,7 @@ try {
   await send({ type: 'SAVE_PROFILE', profile });
   await site.goto(origin + '/login');
   await site.bringToFront();
-  await send({ type: 'FILL', accountId: 'ACC-1234', tabId }, popup);
+  await fillWithGroup('ACC-1234');
   await site.locator('#login').click();
   await waitState(
     (s) => s.lastSuccessful?.accountId === 'ACC-1234',
@@ -623,7 +670,7 @@ try {
     'A profile saves with no success condition at all',
   );
   await site.goto(origin + '/login');
-  await send({ type: 'FILL', accountId: 'ACC-1234', tabId }, popup);
+  await fillWithGroup('ACC-1234');
   check(
     (await site.locator('#username').inputValue()) === 'john@example.test' &&
       (await site.locator('#password').inputValue()).length > 0,
@@ -659,7 +706,7 @@ try {
       const tabs = await options.evaluate(() => chrome.tabs.query({}));
       return tabs.find((t) => t.url?.startsWith('https://127.0.0.1'))?.id;
     });
-  await send({ type: 'FILL', accountId: 'ACC-1234', tabId: secondTabId }, popup);
+  await fillWithGroup('ACC-1234', secondTabId);
   check(
     (await secondSite.locator('#username').inputValue()) === 'john@example.test' &&
       (await secondSite.locator('#password').inputValue()).length > 0,
@@ -680,7 +727,7 @@ try {
   // A concurrent refresh can overwrite the global banner, so assert the panel's own notice.
   await options.getByText('Profile saved.', { exact: false }).first().waitFor();
   await site.goto(origin + '/login');
-  await send({ type: 'FILL', accountId: 'ACC-1234', tabId }, popup);
+  await fillWithGroup('ACC-1234');
   check(
     (await site.locator('#username').inputValue()) === 'john@example.test',
     'Label and autocomplete matching configured in Settings fills the browser form',

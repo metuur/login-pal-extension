@@ -12,6 +12,7 @@ export type AccountSummary = Omit<Account, 'password'> & {
     title: string | null;
     rule: TitleRule | null;
     matched: boolean;
+    selected?: boolean;
   };
 };
 export interface Route {
@@ -139,6 +140,7 @@ export interface AppState {
     groupName: string | null;
     rule: TitleRule | null;
     matched: boolean;
+    selected: boolean;
   };
   initialized: boolean;
   migrationRequired: boolean;
@@ -162,12 +164,21 @@ export type Command =
   | { type: 'CREATE_GROUP'; name: string }
   | { type: 'RENAME_GROUP'; name: string }
   | { type: 'STATE'; query?: string; page?: number; tabId?: number }
+  | { type: 'CHOOSE_GROUP'; groupId: string; tabId: number }
   | { type: 'MIGRATE'; password: string }
   | { type: 'RESET' | 'UNDO' | 'PURGE' | 'EXPORT_CSV' }
   | { type: 'PREVIEW_IMPORT'; bytes: number[]; rule: string; mode: ImportMode }
   | { type: 'COMMIT_IMPORT'; token: string }
   | { type: 'SAVE_PROFILE'; profile: ProfileInput }
-  | { type: 'DELETE' | 'FILL'; accountId: string; tabId?: number }
+  | {
+      type: 'DELETE' | 'FILL';
+      accountId: string;
+      tabId?: number;
+      groupId?: string;
+      fromSearch?: boolean;
+      /** Background-only snapshot passed to the owning service before delivery. */
+      expectedPage?: { documentId: string; url: string; title: string | null };
+    }
   | { type: 'COPY_PASSWORD'; accountId: string }
   | { type: 'DETECT_FIELDS'; tabId?: number }
   | { type: 'DETECT_TABS' }

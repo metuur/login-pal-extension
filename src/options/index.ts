@@ -430,7 +430,9 @@ function renderTitleRuleControls(origins: string[], saved: TitleRule[] = []) {
     titleRulesPanel.append(row);
   }
   if (!origins.length)
-    titleRulesPanel.append(el('p', 'subtle', 'Add an authorized login domain to configure title recognition.'));
+    titleRulesPanel.append(
+      el('p', 'subtle', 'Add an authorized login domain to configure title recognition.'),
+    );
 }
 function selectedTitleRules(): TitleRule[] {
   return [...titleRuleControls].flatMap(([origin, control]) =>
@@ -1032,7 +1034,13 @@ async function commit(token: string) {
     );
   }, 'Importing encrypted accounts…');
   if (imported) {
-    if (!login.input.value && state?.rules.length) login.input.value = state.rules.join(', ');
+    if (!login.input.value && state?.rules.length) {
+      login.input.value = state.rules.join(', ');
+      renderTitleRuleControls(
+        parseDomainRules(login.input.value).map((rule) => rule.origin),
+        state?.profile?.titleRules ?? [],
+      );
+    }
     selectTab('profile', true);
   }
 }
@@ -1150,21 +1158,61 @@ function updateAccounts() {
           : 'No accounts indexed. Open Import CSV to begin.',
       ),
     );
-  for (const account of s.accounts)
-    list.append(
-      accountRow(
-        account,
-        () =>
-          mutate(async () => {
-            await request({ type: 'DELETE', accountId: account.accountId });
-            deletedId = account.accountId;
-            invalidatePreview();
-            message(status, `Deleted ${account.accountId}.`);
-          }),
-        true,
-        origin,
-      ),
+  for (const account of s.accounts) {
+    const row = accountRow(
+      account,
+      () =>
+        mutate(async () => {
+          await request({
+            type: 'DELETE',
+            accountId: account.accountId,
+            groupId: account.groupId,
+          });
+          deletedId = account.accountId;
+          invalidatePreview();
+          message(status, `Deleted ${account.accountId}.`);
+        }),
+      true,
+      origin,
     );
+    if (account.groupName)
+      row
+        .querySelector('.account-content')
+        ?.append(el('p', 'scope mono truncate', `Group · ${account.groupName}`));
+    const identity =
+      account.applicationIdentity ??
+      (!account.groupId || account.groupId === s.applicationIdentity?.groupId
+        ? s.applicationIdentity
+        : undefined);
+    const details = row.querySelector('details.metadata dl');
+    if (identity && details) {
+      const addRow = (label: string, value: string) => {
+        details.append(el('dt', '', label), el('dd', '', value));
+      };
+      addRow('Page title', identity.title?.trim() || 'Unavailable');
+      addRow(
+        'Title rule',
+        identity.rule
+          ? `${identity.rule.mode === 'contains' ? 'Contains' : 'Exactly'} “${identity.rule.value}”`
+          : 'Not configured',
+      );
+      addRow(
+        'Title match',
+        !identity.rule
+          ? 'Not configured'
+          : identity.status === 'unavailable'
+            ? 'Unavailable'
+            : identity.matched
+              ? 'Matched'
+              : identity.status === 'choice-required'
+                ? identity.selected
+                  ? 'No match — selected manually'
+                  : 'Choose an application'
+                : 'No match',
+      );
+    }
+    list.append(row);
+  }
   if (s.matches > 50)
     list.append(
       pagination(s, (p) => {
@@ -1322,6 +1370,8 @@ async function done() {
 function render() {
   if (!state) return;
   const s = state;
+  if (s.applicationIdentity?.matched && s.applicationIdentity.groupId)
+    chooseGroup(s.applicationIdentity.groupId);
   badge.textContent = s.migrationRequired ? 'Migration needed' : `${s.total} accounts`;
   badge.className = s.migrationRequired ? 'pill' : 'pill authorized';
   groupBar.replaceChildren(

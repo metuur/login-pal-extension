@@ -27,7 +27,7 @@ import {
   matchesTitleRule,
 } from './rules';
 import { emptyVault, planImport } from './import';
-import { searchAccounts } from './search';
+import { searchAccounts, searchAccountsAcrossGroups } from './search';
 const csv = (s: string) => parseCsv(new TextEncoder().encode(s));
 const header = 'account_id,username,password,company';
 describe('CSV validation', () => {
@@ -202,6 +202,36 @@ describe('search', () => {
     expect(searchAccounts(a, 'secretneedle', 0).matches).toBe(0);
     expect(searchAccounts(a, '', 0).accounts.map((a) => a.accountId)).toEqual(['a', 'b']);
     expect(searchAccounts(a, '', 0).accounts[0]).not.toHaveProperty('password');
+  });
+  it('searches group context and title rules across groups without exposing passwords', () => {
+    const accounts = csv(header + '\nA,user,secretneedle,Premium').accounts;
+    const records = [
+      {
+        account: accounts[0]!,
+        groupId: 'z-group',
+        groupName: 'Platform Z',
+        profileName: 'Z staging',
+        authorizedOrigins: ['http://localhost:5173'],
+        titleRules: [{ origin: 'http://localhost:5173', mode: 'contains' as const, value: 'Vite' }],
+      },
+      {
+        account: { ...accounts[0]!, username: 'other-user' },
+        groupId: 'a-group',
+        groupName: 'Platform A',
+        profileName: 'A local',
+        authorizedOrigins: ['http://localhost:5173'],
+        titleRules: [{ origin: 'http://localhost:5173', mode: 'equals' as const, value: 'React' }],
+      },
+    ];
+    const result = searchAccountsAcrossGroups(records, 'platform vite', 0);
+    expect(result.accounts.map((item) => [item.groupId, item.accountId])).toEqual([
+      ['z-group', 'A'],
+    ]);
+    expect(searchAccountsAcrossGroups(records, 'secretneedle', 0).matches).toBe(0);
+    expect(result.accounts[0]).not.toHaveProperty('password');
+    expect(searchAccountsAcrossGroups(records, '5173 React', 0).accounts[0]?.groupId).toBe(
+      'a-group',
+    );
   });
 });
 describe('vault cryptography', () => {
@@ -537,7 +567,9 @@ describe('optional success tracking', () => {
       [{ origin: 'https://qa.example.test', mode: 'contains', value: '　 ' }],
       [{ origin: 'https://other.example.test', mode: 'contains', value: 'QA' }],
     ])
-      expect(() => validateProfile({ ...base, titleRules: titleRules as never }, [rule], 1)).toThrow();
+      expect(() =>
+        validateProfile({ ...base, titleRules: titleRules as never }, [rule], 1),
+      ).toThrow();
   });
   it('rejects duplicate normalized title values per origin even across modes', () => {
     expect(() =>

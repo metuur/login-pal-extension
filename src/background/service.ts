@@ -15,6 +15,7 @@ import type {
   ProfileHistory,
   Reply,
   Route,
+  TitleRule,
   VaultPayload,
 } from '../shared/types';
 import {
@@ -33,6 +34,7 @@ import {
   matchesAnyRule,
   matchesRoute,
   matchesAnyOrigin,
+  matchesTitleRule,
   validateProfile,
   isAuthorizedPageUrl,
 } from '../domain/rules';
@@ -63,6 +65,12 @@ type Undo = {
 };
 type Session = { key: string; attempts: Attempt[]; undo: Undo | null };
 type Preview = { public: ImportPreview; payload: VaultPayload; revision: number };
+export interface CurrentPage {
+  tabId: number;
+  documentId: string;
+  url: string;
+  title: string | null;
+}
 // @spec R-1.1..R-1.9, R-3.1..R-3.6: worker owns the encrypted vault and session.
 /**
  * Profiles are stored outside the encrypted vault, so they need their own
@@ -100,6 +108,8 @@ const FILL_NO_FIELDS =
   'The login fields were not found on that page. Check the match values, or detect them again.';
 const FILL_ALREADY_SUCCESS =
   'That page already shows the success condition, so no credentials were sent.';
+const FILL_APP_CHANGED =
+  'This page changed while the application was being checked. Review the selected application and try again.';
 const SAFE_ERRORS = new Set<string>([
   FILL_NO_PROFILE,
   FILL_STALE_PROFILE,
@@ -109,6 +119,7 @@ const SAFE_ERRORS = new Set<string>([
   FILL_OFF_PROFILE,
   FILL_NO_FIELDS,
   FILL_ALREADY_SUCCESS,
+  FILL_APP_CHANGED,
   ACCOUNT_NOT_IN_GROUP,
   DETECT_OFF_DOMAIN,
   DETECT_NO_TAB,
@@ -592,7 +603,7 @@ export class AssistantService {
       return;
     }
     if (command.type === 'FILL') {
-      await this.fill(command.accountId, command.tabId);
+      await this.fill(command.accountId, command.tabId, command.expectedPage);
       return;
     }
     throw new Error();
@@ -669,11 +680,72 @@ export class AssistantService {
   private async probe(tabId: number) {
     const results = await chrome.scripting.executeScript({
       target: { tabId, frameIds: [0] },
-      func: () => location.href,
+      func: () => ({ url: location.href, title: document.title }),
     });
     const top = results.find((r) => r.frameId === 0);
-    if (!top?.documentId || typeof top.result !== 'string') throw new Error();
-    return { documentId: top.documentId, url: top.result };
+    if (!top?.documentId) throw new Error();
+    const page =
+      typeof top.result === 'string'
+        ? { url: top.result, title: null }
+        : (top.result as { url?: unknown; title?: unknown } | undefined);
+    if (!page || typeof page.url !== 'string') throw new Error();
+    return {
+      documentId: top.documentId,
+      url: page.url,
+      title: typeof page.title === 'string' && page.title.trim() ? page.title : null,
+    };
+  }
+  /** Read only the explicitly targeted top-level page under current access. */
+  async currentPage(tabId?: number): Promise<CurrentPage> {
+    await this.ready;
+    const tab = await this.targetTab(tabId);
+    const current = await this.probe(tab.id!);
+    return { tabId: tab.id!, ...current };
+  }
+  /** Return the profile's rule and match signal only for its authorized origin. */
+  async titleIdentity(url: string, title: string | null) {
+    await this.ready;
+    if (!this.profile || !this.payload || !matchesAnyRule(this.payload.catalogRules, url))
+      return null;
+    if (
+      this.profile.approvedCatalogRuleRevision !== this.payload.catalogRuleRevision ||
+      !matchesAnyOrigin(this.profile.logins, url) ||
+      !(await chrome.permissions.contains({ origins: this.hosts(this.profile) }))
+    )
+      return null;
+    const origin = new URL(url).origin;
+    const rule = this.profile.titleRules?.find((candidate) => candidate.origin === origin) ?? null;
+    return { rule, matched: !!rule && !!title && matchesTitleRule(rule, title) };
+  }
+  async fillContextError(url: string): Promise<string | null> {
+    await this.ready;
+    if (!this.profile || !this.payload?.catalogRules.length) return FILL_NO_PROFILE;
+    if (this.profile.approvedCatalogRuleRevision !== this.payload.catalogRuleRevision)
+      return FILL_STALE_PROFILE;
+    if (!(await chrome.permissions.contains({ origins: this.hosts(this.profile) })))
+      return FILL_NO_PERMISSION;
+    if (!matchesAnyRule(this.payload.catalogRules, url)) return FILL_OFF_CATALOG;
+    if (!matchesAnyOrigin(this.profile.logins, url)) return FILL_OFF_PROFILE;
+    return null;
+  }
+  /** Worker-only source data for a password-free cross-group search. */
+  async searchableAccounts(groupName: string) {
+    await this.ready;
+    const payload = this.payload;
+    if (!this.session || !payload) return null;
+    return payload.accounts.map((account) => ({
+      account,
+      groupId: this.groupId,
+      groupName,
+      profileName: this.profile?.name ?? '',
+      authorizedOrigins: [
+        ...new Set([
+          ...payload.catalogRules.map((rule) => rule.origin),
+          ...(this.profile?.logins.map((login) => login.origin) ?? []),
+        ]),
+      ],
+      titleRules: this.profile?.titleRules ?? [],
+    }));
   }
   /**
    * Lists the recently used tabs already on the approved catalog domain so the
@@ -767,7 +839,11 @@ export class AssistantService {
     return { inputs: result?.inputs ?? [], frames: result?.frames ?? [] };
   }
   // @spec R-6.1..R-6.8: explicit account delivery is bound to a current top-frame document.
-  private async fill(accountId: string, tabId?: number) {
+  private async fill(
+    accountId: string,
+    tabId?: number,
+    expectedPage?: { documentId: string; url: string; title: string | null },
+  ) {
     const generation = this.generation;
     const authorization = this.authorizationRevision;
     const profile = this.profile;
@@ -782,6 +858,13 @@ export class AssistantService {
     const tab = await this.targetTab(tabId);
     if (!tab.active) throw new Error(FILL_TAB_INACTIVE);
     const current = await this.probe(tab.id!);
+    if (
+      expectedPage &&
+      (current.documentId !== expectedPage.documentId ||
+        current.url !== expectedPage.url ||
+        current.title !== expectedPage.title)
+    )
+      throw new Error(FILL_APP_CHANGED);
     if (!matchesAnyRule(rules, current.url)) throw new Error(FILL_OFF_CATALOG);
     if (!matchesAnyOrigin(profile.logins, current.url)) throw new Error(FILL_OFF_PROFILE);
     await chrome.scripting.executeScript({
