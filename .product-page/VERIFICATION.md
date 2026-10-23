@@ -187,3 +187,11 @@ The existing `styles.css` is unchanged; the new `guide.css` layers the design ov
 - Reduced maximum width to 400px, scene headings to 22–24px, and panel padding/minimum height. Control target sizes remain unchanged.
 - Before now lasts four seconds with more gradual detail motion. Other scenes remain at 2.5 seconds, for a 14-second loop. Frozen timestamps account for the differing scene durations.
 - Strict TypeScript, generated JavaScript, CSS syntax, formatting, and whitespace checks passed. Local DOM simulation verified scene durations, loop wrap, and seek boundaries. Browser layout/timing verification remains subject to the local-file preview restriction noted above.
+
+## JPG logo assets — 2026-10-23
+
+- Converted the existing logo artwork to real RGB JPEG files: `favicon.jpg` at 512 × 512 and `apple-touch-icon.jpg` at 180 × 180. Alpha was composited over white; quality 95 and no chroma subsampling preserve the teal and navy detail.
+- Chromium loaded the homepage, alternate homepage, documentation, and privacy policy at 1440px and 390px. All 10 logo image references use JPG and decode at the expected dimensions. Browser/touch icon links use JPG with the browser icon declared as `image/jpeg`; both files return HTTP 200 with JPEG content types and JPEG signatures.
+- No horizontal document overflow, browser console warnings/errors, runtime errors, failed requests, or HTTP errors were observed across the eight page/viewport checks.
+- Demo entry, synthetic account search, and Preview fill passed on desktop and mobile. Mobile menus opened and closed with Escape on all four pages.
+- Desktop and mobile screenshots and the converted logo were visually reviewed. Formatting and whitespace checks passed. Extension source and build inputs are outside this standalone asset change. Apple home-screen installation was not exercised; the touch-icon check covers the local JPEG file and link.
