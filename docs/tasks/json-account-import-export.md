@@ -15,11 +15,11 @@
 
 ## Command pinning integrity
 
-- [ ] 1.1 Type the page-pin declaration (est: ~45m) (mutex: worker-dispatch)
+- [x] 1.1 Type the page-pin declaration (est: ~45m) (mutex: worker-dispatch)
   - why: The pin that keeps plaintext-password export off the popup surface compares a string literal no compiler checks — `src/background/service.ts:316` reads `message.type` while the guard at `:295-301` narrows it only to `string`, so a stale literal survives `typecheck` with the pin dead.
   - acceptance: R-JS-7.1, R-JS-7.2, R-JS-7.4 — One `PAGE_PINS` declaration keyed by `Command['type']` replaces both blocks at `:314-319` and `:320-325`; export stays pinned to `options.html` and fill to `popup.html`; each pin carries its own safe message.
-  - verify: A deliberately misspelled key fails `npm run typecheck` with TS2353. Export requested from `popup.html` and from a web origin are both refused. Confirm `src/background/groups.ts:209-216`, which shares the `{ type: string }` cast, routes through the same declaration.
-  - landed:
+  - verify: A key outside the `Command` union fails `npm run typecheck` — TS2353 for an unrelated name, TS2561 for a near-miss that TypeScript offers a suggestion for. Export requested from `popup.html` and from a web origin are both refused. Confirm `src/background/groups.ts:209-216`, which shares the `{ type: string }` cast, routes through the same declaration.
+  - landed: 9ae4a5b — src/background/service.ts
 
 - [ ] 1.2 Assert pin refusals by message (deps: 1.1, est: ~20m) (mutex: worker-tests)
   - why: `src/background/service.test.ts:453-460` asserts only `.ok === false`, which a broken pin also satisfies, because a stale type falls through to the bare `throw` at `src/background/service.ts:609`. The test passes on the exact defect it exists to catch.
