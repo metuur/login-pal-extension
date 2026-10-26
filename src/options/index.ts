@@ -938,6 +938,7 @@ async function verifyImport() {
       bytes: Array.from(bytes),
       rule: target.input.value,
       mode,
+      format: 'csv',
     });
     bytes.fill(0);
     showPreview();
@@ -1117,7 +1118,7 @@ function updateAccounts() {
       setBusy(true);
       let url: string | undefined;
       try {
-        const csv = await request<string>({ type: 'EXPORT_CSV' });
+        const csv = await request<string>({ type: 'EXPORT_ACCOUNTS', format: 'csv' });
         url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
         const link = el('a');
         link.href = url;

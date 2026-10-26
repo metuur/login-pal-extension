@@ -195,7 +195,13 @@ try {
   const csv =
     'account_id,username,password,customer_name,account_type,environment\nACC-1234,john@example.test,synthetic-only-one,Acme Corp,Premium,QA\nACC-5678,maria@example.test,synthetic-only-two,Contoso Global,Basic,QA\nACC-9042,qa@example.test,synthetic-only-three,Test Customer,Admin,QA';
   const bytes = [...new TextEncoder().encode(csv)];
-  const preview = await send({ type: 'PREVIEW_IMPORT', bytes, rule: origin + '/*', mode: 'merge' });
+  const preview = await send({
+    type: 'PREVIEW_IMPORT',
+    bytes,
+    rule: origin + '/*',
+    mode: 'merge',
+    format: 'csv',
+  });
   check(
     preview.valid === 3 && preview.added === 3,
     'CSV preview validates accounts without committing',
@@ -212,7 +218,7 @@ try {
     'Password values are excluded from search',
   );
   await reject(
-    { type: 'PREVIEW_IMPORT', bytes, rule: 'https://*.localhost/*', mode: 'merge' },
+    { type: 'PREVIEW_IMPORT', bytes, rule: 'https://*.localhost/*', mode: 'merge', format: 'csv' },
     'Wildcard hosts are rejected',
   );
   const profile = {
@@ -416,6 +422,7 @@ try {
     bytes: [...new TextEncoder().encode(updated)],
     rule: origin + '/*',
     mode: 'merge',
+    format: 'csv',
   });
   check(merge.updated === 1 && merge.removed === 0, 'Merge preview preserves omitted records');
   await send({ type: 'COMMIT_IMPORT', token: merge.token });
@@ -1106,6 +1113,7 @@ try {
     bytes: [...new TextEncoder().encode(largeCsv)],
     rule: origin + '/*',
     mode: 'replace',
+    format: 'csv',
   });
   await send({ type: 'COMMIT_IMPORT', token: largePreview.token });
   await site.bringToFront();

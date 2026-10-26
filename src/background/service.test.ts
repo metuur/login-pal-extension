@@ -40,6 +40,7 @@ async function preview(service: AssistantService, name = 'A') {
     ],
     rule: 'https://qa.example.com/*',
     mode: 'replace',
+    format: 'csv',
   });
 }
 async function importAccount(service: AssistantService, name = 'A') {
@@ -228,6 +229,7 @@ describe('worker credential and transaction boundary', () => {
           bytes: [...new TextEncoder().encode(csv)],
           rule: 'https://qa.example.com/*',
           mode: 'merge',
+          format: 'csv',
         },
         sender,
       );
@@ -247,6 +249,7 @@ describe('worker credential and transaction boundary', () => {
         ],
         rule: 'https://another.example.com/*',
         mode: 'merge',
+        format: 'csv',
       },
       sender,
     );
@@ -416,6 +419,7 @@ describe('named CSV groups', () => {
       groupId,
       mode,
       rule,
+      format: 'csv',
       bytes: [
         ...new TextEncoder().encode(
           'account_id,username,password\n' +
@@ -449,7 +453,11 @@ describe('named CSV groups', () => {
     await ingest(service, 'default', ['B']);
     expect((await run(service, { type: 'STATE' })).total).toBe(2);
     const { parseCsv } = await import('../domain/csv');
-    const exported = await run<string>(service, { type: 'EXPORT_CSV', groupId: group.id });
+    const exported = await run<string>(service, {
+      type: 'EXPORT_ACCOUNTS',
+      format: 'csv',
+      groupId: group.id,
+    });
     const rows = parseCsv(new TextEncoder().encode(exported));
     expect(rows.valid).toBe(1);
     expect(rows.accounts[0].accountId).toBe('A');
@@ -458,12 +466,12 @@ describe('named CSV groups', () => {
     // error, which is also ok:false.
     expect(
       await service.handle(
-        { type: 'EXPORT_CSV', groupId: group.id },
+        { type: 'EXPORT_ACCOUNTS', format: 'csv', groupId: group.id },
         { ...sender, url: 'chrome-extension://test/popup.html' },
       ),
     ).toEqual({ ok: false, error: 'Export accounts from Settings.' });
     expect(
-      await service.handle({ type: 'EXPORT_CSV', groupId: group.id }, {
+      await service.handle({ type: 'EXPORT_ACCOUNTS', format: 'csv', groupId: group.id }, {
         id: 'test',
         url: 'https://qa.example.com',
         tab: { id: 1 },
@@ -721,6 +729,7 @@ describe('named CSV groups', () => {
       groupId: 'default',
       mode: 'merge',
       rule: 'https://qa.example.com/*',
+      format: 'csv',
       bytes: [
         ...new TextEncoder().encode('account_id,username,password\nA,demo@example.test,synthetic'),
       ],

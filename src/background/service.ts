@@ -158,7 +158,7 @@ const SAFE_ERRORS = new Set<string>([
  * string and a stale literal would otherwise typecheck forever.
  */
 const PAGE_PINS = {
-  EXPORT_CSV: { page: 'options.html', error: 'Export accounts from Settings.' },
+  EXPORT_ACCOUNTS: { page: 'options.html', error: 'Export accounts from Settings.' },
   FILL: { page: 'popup.html', error: 'Open the popup on the target tab to autofill.' },
 } satisfies Partial<Record<Command['type'], { page: string; error: string }>>;
 export class AssistantService {
@@ -453,8 +453,13 @@ export class AssistantService {
       return;
     }
     this.assert();
-    if (command.type === 'EXPORT_CSV') return exportCsv(this.payload!.accounts);
-    // User-authorized exception, same shape as EXPORT_CSV: the password is
+    if (command.type === 'EXPORT_ACCOUNTS') {
+      if (command.format !== 'csv' && command.format !== 'json')
+        throw new Error('Choose a supported file format.');
+      if (command.format === 'csv') return exportCsv(this.payload!.accounts);
+      throw new Error();
+    }
+    // User-authorized exception, same shape as EXPORT_ACCOUNTS: the password is
     // returned only to satisfy an explicit copy gesture from a trusted
     // extension page, which writes it straight to the clipboard. Never
     // rendered, never logged.
@@ -494,9 +499,11 @@ export class AssistantService {
         command.bytes.length > 2 * 1024 * 1024 ||
         command.bytes.some((b) => !Number.isInteger(b) || b < 0 || b > 255) ||
         !['merge', 'replace'].includes(command.mode) ||
-        typeof command.rule !== 'string'
+        typeof command.rule !== 'string' ||
+        (command.format !== 'csv' && command.format !== 'json')
       )
         throw new Error();
+      if (command.format === 'json') throw new Error();
       const parsed = parseCsv(new Uint8Array(command.bytes));
       const rules = parseDomainRules(command.rule);
       const planned = planImport(this.payload!, parsed, rules, command.mode);
@@ -509,6 +516,7 @@ export class AssistantService {
         diagnostics: parsed.diagnostics,
         rule: rules.map(formatRule).join(', '),
         mode: command.mode,
+        format: command.format,
       };
       this.preview = {
         public: preview,

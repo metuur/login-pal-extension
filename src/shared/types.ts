@@ -126,6 +126,7 @@ export interface ImportPreview extends ImportCounts {
   diagnostics: ImportDiagnostic[];
   rule: string;
   mode: ImportMode;
+  format: AccountFormat;
 }
 export interface Attempt {
   token: string;
@@ -185,8 +186,15 @@ export type Command =
   | { type: 'STATE'; query?: string; page?: number; tabId?: number }
   | { type: 'CHOOSE_GROUP'; groupId: string; tabId: number }
   | { type: 'MIGRATE'; password: string }
-  | { type: 'RESET' | 'UNDO' | 'PURGE' | 'EXPORT_CSV' }
-  | { type: 'PREVIEW_IMPORT'; bytes: number[]; rule: string; mode: ImportMode }
+  | { type: 'RESET' | 'UNDO' | 'PURGE' }
+  | { type: 'EXPORT_ACCOUNTS'; format: AccountFormat }
+  | {
+      type: 'PREVIEW_IMPORT';
+      bytes: number[];
+      rule: string;
+      mode: ImportMode;
+      format: AccountFormat;
+    }
   | { type: 'COMMIT_IMPORT'; token: string }
   | { type: 'SAVE_PROFILE'; profile: ProfileInput }
   | {
