@@ -63,6 +63,15 @@ try {
       manifest.action.default_title === manifest.name,
     'Extension name and toolbar tooltip identify the same build',
   );
+  const devBuild = manifest.name === 'Login Pal DEV';
+  check(
+    [16, 32, 48, 128].every(
+      (size) =>
+        manifest.icons[size] === `icon-${devBuild ? 'dev-' : ''}${size}.png` &&
+        manifest.action.default_icon[size] === manifest.icons[size],
+    ),
+    'Extension and toolbar select purple DEV icons only for development builds',
+  );
   check(
     !manifest.host_permissions &&
       manifest.optional_host_permissions?.join(' ') === 'https://*/* http://*/*',

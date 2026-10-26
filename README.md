@@ -51,9 +51,9 @@ Run `npm run dev` for the React + TypeScript localhost SPA at http://127.0.0.1:5
 
 Run `npm run build:web` to compile the SPA into `dist-web/`, then `npm run start` to serve that compiled app at http://127.0.0.1:4174. `start` does not watch or compile source files.
 
-`npm run build` builds the Chrome extension into `dist/`. `npm run dev-ext` watches and rebuilds that extension; reload it manually in Chrome after changes. Both identify the extension as **Login Pal DEV** in Chrome, the toolbar tooltip, and the popup/settings titles. The local web preview also displays **Login Pal DEV**.
+`npm run build` builds the Chrome extension into `dist/`. `npm run dev-ext` watches and rebuilds that extension; reload it manually in Chrome after changes. Both identify the extension as **Login Pal DEV** in Chrome, the toolbar tooltip, and the popup/settings titles, with a **purple icon** in the toolbar and extension list. The local web preview also displays **Login Pal DEV**.
 
-`npm run build-to-publish` builds and packages the store version as **Login Pal**, without the DEV label. It replaces `dist/` with that release build and writes the ZIP to `artifacts/`. Run `npm run build` again to restore the local DEV build.
+`npm run build-to-publish` builds and packages the store version as **Login Pal**, with the original teal icon and without the DEV label. It replaces `dist/` with that release build and writes the ZIP to `artifacts/`. Run `npm run build` again to restore the local DEV build.
 
 Use Node.js 22 or newer and npm. The lockfile pins dependencies; the validated environment is recorded in [verification](docs/verification/account-login-assistant.md).
 

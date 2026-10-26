@@ -1,7 +1,8 @@
 import { build } from 'esbuild';
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 
-const name = process.argv.includes('--production') ? 'Login Pal' : 'Login Pal DEV';
+const development = !process.argv.includes('--production');
+const name = development ? 'Login Pal DEV' : 'Login Pal';
 const { version } = JSON.parse(await readFile('package.json', 'utf8'));
 if (
   typeof version !== 'string' ||
@@ -13,7 +14,9 @@ if (
     'package.json version must be a Chrome-compatible numeric version (1–4 components, 0–65535, not all zero).',
   );
 }
-const icons = Object.fromEntries([16, 32, 48, 128].map((size) => [size, `icon-${size}.png`]));
+const icons = Object.fromEntries(
+  [16, 32, 48, 128].map((size) => [size, `icon-${development ? 'dev-' : ''}${size}.png`]),
+);
 const manifest = {
   manifest_version: 3,
   icons,

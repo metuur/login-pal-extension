@@ -23,10 +23,17 @@ try {
     );
     root.setAttribute('width', '512');
     root.setAttribute('height', '512');
-    return { icon: new XMLSerializer().serializeToString(root) };
+    const icon = new XMLSerializer().serializeToString(root);
+    tile.setAttribute('fill', '#7c3aed');
+    document.getElementById('door-knob').setAttribute('fill', '#7c3aed');
+    root.querySelector('title').textContent = 'Login Pal DEV — Open Door';
+    root.querySelector('desc').textContent =
+      'Development build icon. Transparent canvas, purple tile, white door and friendly navy face.';
+    return { icon, devIcon: new XMLSerializer().serializeToString(root) };
   }, source);
   await writeFile(new URL('logo.svg', publicDir), source);
   await writeFile(new URL('favicon.svg', publicDir), variants.icon + '\n');
+  await writeFile(new URL('favicon-dev.svg', publicDir), variants.devIcon + '\n');
 
   async function render(name, size, svg, background = null) {
     const data = await page.evaluate(
@@ -55,6 +62,9 @@ try {
   }
 
   const faviconImages = [];
+  for (const size of [16, 32, 48, 128]) {
+    await render(`icon-dev-${size}.png`, size, variants.devIcon);
+  }
   for (const size of [16, 32, 48, 64, 128, 256, 512]) {
     const png = await render(`icon-${size}.png`, size, variants.icon);
     if ([16, 32, 48].includes(size)) faviconImages.push({ size, png });
@@ -92,7 +102,7 @@ try {
   for (const name of ['favicon.svg', 'favicon.ico', 'apple-touch-icon.png']) {
     await copyFile(new URL(name, publicDir), new URL(`../.product-page/${name}`, import.meta.url));
   }
-  console.log('Generated 19 brand assets and synced product-page assets. PNG dimensions verified.');
+  console.log('Generated brand assets including purple DEV icons. PNG dimensions verified.');
 } finally {
   await browser.close();
 }
