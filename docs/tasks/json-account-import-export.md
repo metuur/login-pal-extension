@@ -12,6 +12,15 @@
 > `test:browser`. Story 2.2 changes a required field on a command that
 > `tests/browser/run.mjs` sends from plain JS at `:178`, `:195`, `:395` and
 > `:1085`. `npm run test:browser` is mandatory before merging 2.2 and 6.3.
+>
+> `npm test` was `vitest run --root .`, which globbed `.test.mjs` files out of
+> `.claude/skills/` and `.agents/skills/` — installed agent skills living inside
+> the repo. 102 of them failed with "No test suite found", so `check` exited
+> non-zero no matter what the project's own tests did. Scoped to `--dir src` in
+> b4fc859 so the gate means something again.
+>
+> `npm run lint` is red at `HEAD` for an unrelated reason: `src/domain/rules.ts`
+> carries pre-existing prettier drift. Not touched by this feature.
 
 ## Command pinning integrity
 
@@ -29,11 +38,11 @@
 
 ## Import contracts
 
-- [ ] 2.1 Rename the result and diagnostic contracts (deps: 1.1, est: ~40m) (mutex: shared-types)
+- [x] 2.1 Rename the result and diagnostic contracts (deps: 1.1, est: ~40m) (mutex: shared-types)
   - why: A second parser makes `CsvResult` a lie, and `RowDiagnostic.row` already carries two disjoint meanings — a physical CSV file line computed before the blank-record filter at `src/domain/csv.ts:86-87` versus a JSON array index — so the unit has to live in the type instead of in a UI branch.
   - acceptance: LLD "Type changes" — `CsvResult` → `ImportResult`; `RowDiagnostic` → `ImportDiagnostic { at, unit, code }`; `ImportDiagnosticCode` replaces bare `string`; `AccountFormat` added; a `@debt` marker at `src/shared/types.ts:128` records that `CsvGroup` is deliberately left CSV-named.
-  - verify: `npm run check` clean. `src/options/index.ts:1002` renders `${d.unit} ${d.at}: ${d.code}` with no format branch. `src/domain/domain.test.ts:332` updated.
-  - landed:
+  - verify: `npm run check` clean, exit 0. `src/options/index.ts:1002` renders the capitalized unit with the position and code, with no format branch. `src/domain/domain.test.ts:332` updated and now also asserts the unit. Probed that `ImportDiagnosticCode` is enforced: a bogus code raises TS2322 rather than widening to `string`.
+  - landed: b37fa34 — src/shared/types.ts, src/domain/csv.ts, src/domain/import.ts, src/options/index.ts, src/domain/domain.test.ts
 
 - [ ] 2.2 Carry the format explicitly on both commands (deps: 2.1, est: ~50m) (mutex: shared-types, worker-dispatch)
   - why: The worker holds the decrypted vault and must not guess the type of a file it was handed; the export command must name what it is serializing.
