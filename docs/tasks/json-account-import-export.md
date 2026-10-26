@@ -58,17 +58,17 @@
   - verify: Done — 8 tests covering BOM, malformed JSON, top-level object, top-level string, empty array, 3-element array, the 2 MiB ceiling and invalid UTF-8. Document-level failures throw named messages rather than returning diagnostics, matching `parseCsv`.
   - landed: 6b5e93f — src/domain/json.ts, src/domain/domain.test.ts
 
-- [ ] 3.2 Enforce the document ceilings (deps: 3.1, est: ~35m) (mutex: domain-parsers)
+- [x] 3.2 Enforce the document ceilings (deps: 3.1, est: ~35m) (mutex: domain-parsers)
   - why: A second import format must not open a hole in the limits that protect storage, and a wide record must be refused the way CSV refuses a wide header rather than inventing a per-record code.
   - acceptance: R-JS-1.4, R-JS-1.5 — Over 100 own keys in any record rejects the whole document, matching `src/domain/csv.ts:88-89`; the R-2.7 ceilings apply with "data rows" read as elements of the top-level array.
-  - verify: Boundary tests mirroring `src/domain/boundaries.test.ts:11-56` — exactly 10,000 records accepted and 10,001 rejected, exactly 100 keys accepted and 101 rejected, exactly 2 MiB accepted and one byte more rejected.
-  - landed:
+  - verify: Done — boundary tests mirroring the CSV ceilings: exactly 10,000 records accepted / 10,001 rejected, exactly 100 own keys accepted / 101 rejected. Arrays are excluded from the width check, since they are `typeof 'object'` and a long array element would otherwise reject the whole document instead of reporting itself as `RECORD_NOT_OBJECT`.
+  - landed: 7503910 — src/domain/json.ts, src/domain/boundaries.test.ts, src/domain/domain.test.ts
 
-- [ ] 3.3 Align the vault size-limit message (est: ~15m) (mutex: worker-dispatch)
+- [x] 3.3 Align the vault size-limit message (est: ~15m) (mutex: worker-dispatch)
   - why: `src/background/service.ts:271` throws `'Vault size limit.'`, which is absent from `SAFE_ERRORS`, while the allowlisted string is `'Vault exceeds the 5 MiB encrypted storage limit.'` at `:141`. R-JS-1.5 depends on that path naming its cause, and the gap predates this feature.
   - acceptance: R-JS-1.5 — The 5 MiB envelope rejection reaches the user as its specific message, not the generic failure text.
-  - verify: Drive a write past 5 MiB and assert the returned message.
-  - landed:
+  - verify: Done — a test drives two real import cycles until the encrypted envelope passes 5 MiB and asserts the specific message. Discovery: the worker-side check is **unreachable**. `encryptVault` (`src/domain/crypto.ts:194`) computes the identical byte length against the identical threshold and throws before returning, so `write()` can never observe an oversized envelope. The line was left in place as a second guard, now agreeing with the first rather than contradicting it. Removing it is its own decision, not this story's.
+  - landed: 06e79c7 — src/background/service.ts, src/background/service.test.ts
 
 - [ ] 3.4 Name every JSON rejection cause safely (deps: 3.1, 3.2, est: ~25m) (mutex: worker-dispatch)
   - why: An unlisted message degrades to generic text, and the current bare `throw new Error()` for invalid preview shapes at `src/background/service.ts:485-492` already lands there.
@@ -78,17 +78,17 @@
 
 ## JSON record validation
 
-- [ ] 4.1 Validate records in CSV's diagnostic order (deps: 3.1, est: ~50m) (mutex: domain-parsers)
+- [x] 4.1 Validate records in CSV's diagnostic order (deps: 3.1, est: ~50m) (mutex: domain-parsers)
   - why: One bad record must not block a usable file, and a record has to be judged by the same rules and in the same order CSV already applies, or the two formats drift into different definitions of a valid account.
   - acceptance: R-JS-2.1, R-JS-2.2, R-JS-2.4, R-JS-2.5 — Non-object elements yield `RECORD_NOT_OBJECT`; absent or non-string reserved keys yield `REQUIRED_FIELD_NOT_STRING`; the ladder runs `DUPLICATE_ACCOUNT_ID` first as at `src/domain/csv.ts:101-112`; at most one code per record; position is the 1-based array index labelled as a record.
-  - verify: One test per code. A record that is both duplicate and non-object reports the duplicate. Diagnostics never contain field values.
-  - landed:
+  - verify: One test per code. Diagnostics never contain field values. **Corrected acceptance:** the original line asked for a record that is both duplicate and non-object, which is unconstructible — duplicate detection requires reading a string `account_id`, which can only exist on an object, so the two conditions are mutually exclusive. Ladder order is proven instead against the next achievable pairing, a duplicate record whose `username` is a number, resolving to `DUPLICATE_ACCOUNT_ID` over `REQUIRED_FIELD_NOT_STRING`.
+  - landed: 7503910 — src/domain/json.ts, src/domain/domain.test.ts, src/shared/types.ts
 
-- [ ] 4.2 Count duplicates only for real identifiers (deps: 4.1, est: ~20m) (mutex: domain-parsers)
+- [x] 4.2 Count duplicates only for real identifiers (deps: 4.1, est: ~20m) (mutex: domain-parsers)
   - why: `src/domain/csv.ts:93` guards its frequency map with `if (id)`. Without the same guard, three records with an empty `account_id` all report `DUPLICATE_ACCOUNT_ID` where CSV reports `EMPTY_ACCOUNT_ID`, breaking the equivalence claim.
   - acceptance: R-JS-2.3 — The frequency map counts only non-empty trimmed string identifiers; absent, non-string and empty identifiers report their own cause.
-  - verify: Three records with `""`, three with the key absent, and three with a numeric identifier each report the expected non-duplicate code.
-  - landed:
+  - verify: Done — three with `""` report `EMPTY_ACCOUNT_ID`, three with the key absent and three with a numeric identifier report `REQUIRED_FIELD_NOT_STRING`. None reports `DUPLICATE_ACCOUNT_ID`.
+  - landed: 7503910 — src/domain/json.ts, src/domain/domain.test.ts
 
 ## Metadata values
 
