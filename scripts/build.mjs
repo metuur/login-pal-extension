@@ -1,6 +1,7 @@
 import { build } from 'esbuild';
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 
+const name = process.argv.includes('--production') ? 'Login Pal' : 'Login Pal DEV';
 const { version } = JSON.parse(await readFile('package.json', 'utf8'));
 if (
   typeof version !== 'string' ||
@@ -16,7 +17,7 @@ const icons = Object.fromEntries([16, 32, 48, 128].map((size) => [size, `icon-${
 const manifest = {
   manifest_version: 3,
   icons,
-  name: 'Login Pal',
+  name,
   description:
     'Switch accounts. Keep moving. A local account catalog for authorized QA login pages.',
   // 121 is the first version with tabs.lastAccessed, used to offer the most
@@ -30,7 +31,7 @@ const manifest = {
     service_worker: 'background.js',
   },
   action: {
-    default_title: 'Login Pal',
+    default_title: name,
     default_icon: icons,
     default_popup: 'popup.html',
   },

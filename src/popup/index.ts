@@ -23,6 +23,8 @@ import {
 } from '../ui/common';
 
 const app = document.querySelector<HTMLElement>('#app')!;
+const appName = chrome.runtime.getManifest().name;
+document.title = appName;
 const status = liveRegion();
 const body = el('div', 'popup-body stack');
 const header = el('header', 'app-header');
@@ -30,7 +32,7 @@ const top = el('div', 'header-line');
 const brand = el('div', 'brand');
 const logo = el('div', 'logo');
 logo.setAttribute('aria-hidden', 'true');
-brand.append(logo, el('strong', '', 'Login Pal'));
+brand.append(logo, el('strong', '', appName));
 const actions = el('div', 'header-actions');
 let tabId: number | undefined,
   state: AppState | undefined,

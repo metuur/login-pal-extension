@@ -59,6 +59,11 @@ try {
   const packageInfo = JSON.parse(await readFile('package.json', 'utf8'));
   check(manifest.version === packageInfo.version, 'Generated manifest uses the package version');
   check(
+    ['Login Pal', 'Login Pal DEV'].includes(manifest.name) &&
+      manifest.action.default_title === manifest.name,
+    'Extension name and toolbar tooltip identify the same build',
+  );
+  check(
     !manifest.host_permissions &&
       manifest.optional_host_permissions?.join(' ') === 'https://*/* http://*/*',
     'Shipping manifest has optional host access only, over http and https',
@@ -85,6 +90,12 @@ try {
   popup.on('pageerror', (e) => errors.push(e.message));
   await popup.goto(base + 'popup.html');
   for (const page of [popup, options]) {
+    check(
+      (await page.locator('.brand strong').innerText()) === manifest.name &&
+        (await page.title()) ===
+          (page === popup ? manifest.name : `Manage accounts · ${manifest.name}`),
+      `${page === popup ? 'Popup' : 'Settings'} heading and document title match the build name`,
+    );
     const credit = page.locator('.version-footer');
     await credit.waitFor();
     const text = await credit.innerText();

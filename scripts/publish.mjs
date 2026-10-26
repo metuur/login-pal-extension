@@ -11,7 +11,7 @@ function run(command, args, options) {
 // Clean first: build.mjs also clears dist, but a publish run should never be
 // able to pack a leftover file from an earlier build.
 await rm('dist', { recursive: true, force: true });
-run(process.execPath, ['scripts/build.mjs']);
+run(process.execPath, ['scripts/build.mjs', '--production']);
 
 // Name and version come from the manifest just written, so the archive can only
 // ever be labelled with what is actually inside it.
