@@ -9,7 +9,7 @@
     "build": "node scripts/build.mjs",
     "build-to-publish": "node scripts/publish.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --root .",
+    "test": "vitest run --root . --dir src",
     "test:browser": "node tests/browser/run.mjs",
     "check": "npm run typecheck && npm test && npm run build",
     "lint": "prettier --check src scripts tests public package.json tsconfig.json preview vite.config.ts",
