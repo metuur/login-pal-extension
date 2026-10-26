@@ -70,11 +70,11 @@
   - verify: Done — a test drives two real import cycles until the encrypted envelope passes 5 MiB and asserts the specific message. Discovery: the worker-side check is **unreachable**. `encryptVault` (`src/domain/crypto.ts:194`) computes the identical byte length against the identical threshold and throws before returning, so `write()` can never observe an oversized envelope. The line was left in place as a second guard, now agreeing with the first rather than contradicting it. Removing it is its own decision, not this story's.
   - landed: 06e79c7 — src/background/service.ts, src/background/service.test.ts
 
-- [ ] 3.4 Name every JSON rejection cause safely (deps: 3.1, 3.2, est: ~25m) (mutex: worker-dispatch)
+- [x] 3.4 Name every JSON rejection cause safely (deps: 3.1, 3.2, est: ~25m) (mutex: worker-dispatch)
   - why: An unlisted message degrades to generic text, and the current bare `throw new Error()` for invalid preview shapes at `src/background/service.ts:485-492` already lands there.
   - acceptance: R-JS-1.6 — The seven strings enumerated in the LLD "Safe messages" section are added to `SAFE_ERRORS`, and no JSON rejection echoes document contents, field values or passwords.
-  - verify: Assert each rejection path returns its own message verbatim. Grep the new parser for any thrown string absent from the allowlist.
-  - landed:
+  - verify: Done — grep cross-check confirms all six strings `parseJson` throws are in `SAFE_ERRORS` verbatim, plus `'Choose a supported file format.'`. **Scope grew by one step:** the story also wires `parseJson` into the `PREVIEW_IMPORT` dispatch, replacing the placeholder bare throw left by 2.2. Without the wiring the messages are unreachable and the allowlist cannot be verified at all.
+  - landed: 4b3b204 — src/background/service.ts, src/background/service.test.ts
 
 ## JSON record validation
 
@@ -92,23 +92,23 @@
 
 ## Metadata values
 
-- [ ] 5.1 Coerce scalar metadata to text (deps: 3.1, est: ~40m) (mutex: domain-parsers)
+- [x] 5.1 Coerce scalar metadata to text (deps: 3.1, est: ~40m) (mutex: domain-parsers)
   - why: The vault accepts only flat string metadata, and rejecting numbers outright would refuse ordinary QA fixtures like `{"port": 8080}` that CSV accepts as text.
   - acceptance: R-JS-3.1, R-JS-3.2, R-JS-3.3, R-JS-3.4, R-JS-3.5, R-JS-3.7 — Non-reserved keys become metadata; strings stored unchanged; numbers and booleans stored as `String(value)`; null stored as `''`; every value stored and rendered as text; the numeric-spelling limitation is documented where users will meet it.
-  - verify: Values of each kind round-trip to the expected string. Assert the documented limitation explicitly for an integer beyond 2^53, an exponent-form number and negative zero, rather than skipping them.
-  - landed:
+  - verify: Done — each kind round-trips. The limitation is asserted against exact outputs: `12345678901234567890` → `'12345678901234567000'`, `1e21` → `'1e+21'`, `-0` → `'0'`. Tests are built from raw JSON text rather than `JSON.stringify`, since JS number literals would round before the parser ever saw them.
+  - landed: da91373 — src/domain/json.ts, src/domain/domain.test.ts
 
-- [ ] 5.2 Reject non-scalar metadata values (deps: 5.1, est: ~20m) (mutex: domain-parsers)
+- [x] 5.2 Reject non-scalar metadata values (deps: 5.1, est: ~20m) (mutex: domain-parsers)
   - why: Flattening an array or object would invent a representation the user never wrote, and `validPayload` at `src/domain/crypto.ts:117` would reject it at write time anyway — later, and less legibly.
   - acceptance: R-JS-3.6 — An array or object metadata value marks the record invalid with `METADATA_VALUE_NOT_SCALAR`, with no flattening or stringification.
-  - verify: A record with a nested object and one with an array are both invalid; neither contributes an account; the rest of the document still imports.
-  - landed:
+  - verify: Done — both invalid with `METADATA_VALUE_NOT_SCALAR`, slotted last in the ladder so the one-code-per-record rule holds; a third valid record in the same document still imports.
+  - landed: da91373 — src/domain/json.ts, src/shared/types.ts, src/domain/domain.test.ts
 
-- [ ] 5.3 Build metadata without touching a prototype (deps: 5.1, est: ~15m) (mutex: domain-parsers)
+- [x] 5.3 Build metadata without touching a prototype (deps: 5.1, est: ~15m) (mutex: domain-parsers)
   - why: `JSON.parse` makes `__proto__` an own property on the parsed record, so the hazard is the object being built — `metadata['__proto__'] = v` on a `{}` literal invokes the prototype setter. `src/domain/csv.ts:117-121` is safe only because it uses `Object.fromEntries`.
   - acceptance: R-JS-3.8 — Metadata is constructed by own-property assignment that cannot invoke a setter, so a `__proto__` key becomes an ordinary entry.
-  - verify: Mirror `src/domain/domain.test.ts:56-59` for JSON — assert `Object.hasOwn(metadata, '__proto__')` and that no prototype was mutated.
-  - landed:
+  - verify: Done. Satisfied by the `Object.fromEntries` construction 5.1 introduced, mirroring `src/domain/csv.ts:117-121`; no separate change was needed. The test is written from raw JSON text because a JS object literal `{ __proto__: v }` sets the prototype instead of creating an own property, which would have made the test vacuous.
+  - landed: da91373 — src/domain/json.ts, src/domain/domain.test.ts
 
 ## Import format selection
 
