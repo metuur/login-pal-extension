@@ -44,19 +44,19 @@
   - verify: `npm run check` clean, exit 0. `src/options/index.ts:1002` renders the capitalized unit with the position and code, with no format branch. `src/domain/domain.test.ts:332` updated and now also asserts the unit. Probed that `ImportDiagnosticCode` is enforced: a bogus code raises TS2322 rather than widening to `string`.
   - landed: b37fa34 — src/shared/types.ts, src/domain/csv.ts, src/domain/import.ts, src/options/index.ts, src/domain/domain.test.ts
 
-- [ ] 2.2 Carry the format explicitly on both commands (deps: 2.1, est: ~50m) (mutex: shared-types, worker-dispatch)
+- [x] 2.2 Carry the format explicitly on both commands (deps: 2.1, est: ~50m) (mutex: shared-types, worker-dispatch)
   - why: The worker holds the decrypted vault and must not guess the type of a file it was handed; the export command must name what it is serializing.
   - acceptance: R-JS-4.1, R-JS-4.2, R-JS-4.3, R-JS-4.4 — `PREVIEW_IMPORT` gains `format`; `EXPORT_CSV` is extracted from the grouped member at `src/shared/types.ts:169` into `EXPORT_ACCOUNTS { format }`; both validate the format at the worker; no code path infers format from file contents.
-  - verify: `npm run check` **and** `npm run test:browser`. Confirm a stale `EXPORT_CSV` key in the 1.1 pin table is now a compile error rather than a silent mismatch.
-  - landed:
+  - verify: `npm run check` exit 0; `npm run test:browser` exit 0, 58 checks. Probe confirmed a misspelled pin key raises TS2561. The four `tests/browser/run.mjs` call sites had shifted to `:199`, `:221`, `:421`, `:1112`; all updated. No raw `EXPORT_CSV` literal existed in that file — its export path goes through the UI button. The `json` branches throw bare errors until `parseJson` is wired (3.1+) and `exportJson` exists (8.1).
+  - landed: e8c6a62 — src/shared/types.ts, src/background/service.ts, src/background/service.test.ts, src/options/index.ts, tests/browser/run.mjs
 
 ## JSON document acceptance
 
-- [ ] 3.1 Parse a JSON account document (deps: 2.1, est: ~45m) (mutex: domain-parsers)
+- [x] 3.1 Parse a JSON account document (deps: 2.1, est: ~45m) (mutex: domain-parsers)
   - why: Accept fixtures that already exist as JSON without a conversion step, refusing a malformed or wrongly shaped document whole so the user gets one cause instead of ten thousand.
   - acceptance: R-JS-1.1, R-JS-1.2, R-JS-1.3 — `src/domain/json.ts` exporting `parseJson(bytes): ImportResult`; UTF-8 decode with a leading BOM stripped before `JSON.parse`; malformed JSON becomes one whole-document rejection with no per-record diagnostics; a non-array top level is rejected.
-  - verify: Malformed JSON yields a single rejection and an empty diagnostics list. A BOM-prefixed document parses. `{"accounts": []}` and `"string"` are both rejected.
-  - landed:
+  - verify: Done — 8 tests covering BOM, malformed JSON, top-level object, top-level string, empty array, 3-element array, the 2 MiB ceiling and invalid UTF-8. Document-level failures throw named messages rather than returning diagnostics, matching `parseCsv`.
+  - landed: 6b5e93f — src/domain/json.ts, src/domain/domain.test.ts
 
 - [ ] 3.2 Enforce the document ceilings (deps: 3.1, est: ~35m) (mutex: domain-parsers)
   - why: A second import format must not open a hole in the limits that protect storage, and a wide record must be refused the way CSV refuses a wide header rather than inventing a per-record code.
