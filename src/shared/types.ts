@@ -94,7 +94,8 @@ export type ImportDiagnosticCode =
   | 'REQUIRED_FIELD_NOT_STRING'
   | 'EMPTY_ACCOUNT_ID'
   | 'EMPTY_USERNAME'
-  | 'EMPTY_PASSWORD';
+  | 'EMPTY_PASSWORD'
+  | 'METADATA_VALUE_NOT_SCALAR';
 export interface ImportDiagnostic {
   /**
    * Position in the source document, counted in that format's own unit: a CSV

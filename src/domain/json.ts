@@ -1,6 +1,17 @@
 import type { Account, ImportDiagnostic, ImportResult } from '../shared/types';
-// @spec R-JS-1.1..R-JS-1.5, R-JS-2.1..R-JS-2.5: decode, strip BOM, parse, require
-// a top-level array, enforce document ceilings, then validate records in CSV's order.
+// A non-reserved key whose value is an array or a non-null object makes the
+// record invalid (R-JS-3.6) rather than being flattened or stringified.
+function hasNonScalarMetadata(fields: Record<string, unknown>): boolean {
+  return Object.entries(fields).some(
+    ([key, value]) =>
+      !['account_id', 'username', 'password'].includes(key) &&
+      typeof value === 'object' &&
+      value !== null,
+  );
+}
+// @spec R-JS-1.1..R-JS-1.5, R-JS-2.1..R-JS-2.5, R-JS-3.1..R-JS-3.8: decode, strip BOM,
+// parse, require a top-level array, enforce document ceilings, then validate
+// records in CSV's order, coercing scalar metadata to text.
 export function parseJson(bytes: Uint8Array): ImportResult {
   if (bytes.byteLength > 2 * 1024 * 1024) throw new Error('JSON exceeds the 2 MiB file limit.');
   let text: string;
@@ -64,14 +75,32 @@ export function parseJson(bytes: Uint8Array): ImportResult {
                 ? 'EMPTY_USERNAME'
                 : password === ''
                   ? 'EMPTY_PASSWORD'
-                  : null;
+                  : hasNonScalarMetadata(fields)
+                    ? 'METADATA_VALUE_NOT_SCALAR'
+                    : null;
     if (code) {
       diagnostics.push({ at, unit: 'record', code });
       return;
     }
-    // Non-reserved keys become metadata. Story 5.1 fills in scalar coercion;
-    // this placeholder keeps the shape stable until then.
-    const metadata: Record<string, string> = {};
+    // Non-reserved keys become metadata. Strings are stored unchanged; numbers
+    // and booleans as String(value); null as ''. Object.fromEntries builds the
+    // object by own-property assignment, so a `__proto__` key cannot invoke the
+    // prototype setter the way `metadata['__proto__'] = v` on a `{}` literal would.
+    //
+    // Numeric spelling is not preserved: JSON.parse already loses precision
+    // beyond 2^53 (12345678901234567890 becomes 12345678901234567000),
+    // String() renders large/small magnitudes in exponent form (1e21 becomes
+    // '1e+21'), and String(-0) is '0'. This is a documented limitation
+    // (R-JS-3.4), not a bug — CSV preserves exact spelling because it never
+    // parses the value as a number in the first place.
+    const metadata: Record<string, string> = Object.fromEntries(
+      Object.entries(fields)
+        .filter(([key]) => !['account_id', 'username', 'password'].includes(key))
+        .map(([key, value]) => [
+          key,
+          typeof value === 'string' ? value : value === null ? '' : String(value),
+        ]),
+    );
     accounts.push({ accountId, username, password, metadata });
   });
   return {

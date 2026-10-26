@@ -180,6 +180,83 @@ describe('JSON validation', () => {
     );
     expect(numericIds.diagnostics.every((d) => d.code === 'REQUIRED_FIELD_NOT_STRING')).toBe(true);
   });
+  it('coerces each scalar metadata value kind to its expected string (story 5.1)', () => {
+    const r = json(
+      JSON.stringify([
+        {
+          account_id: 'a',
+          username: 'u',
+          password: 'p',
+          str: 'hello',
+          int: 42,
+          float: 3.14,
+          yes: true,
+          no: false,
+          nothing: null,
+        },
+      ]),
+    );
+    expect(r.accounts[0]?.metadata).toEqual({
+      str: 'hello',
+      int: '42',
+      float: '3.14',
+      yes: 'true',
+      no: 'false',
+      nothing: '',
+    });
+  });
+  it('documents the numeric-spelling limitation rather than preserving source spelling (R-JS-3.4)', () => {
+    // Known, accepted limitation: JSON.parse loses integer precision beyond
+    // 2^53, String() renders extreme magnitudes in exponent form, and
+    // String(-0) collapses to '0'. CSV preserves exact spelling because it
+    // never parses the value as a number; JSON does, and this is the cost.
+    // Written as literal JSON text (not JSON.stringify of a JS number
+    // literal), so the source spelling under test is the one a user's file
+    // would actually contain, not one already rounded by the JS parser.
+    const r = json(
+      '[' +
+        '{"account_id":"a","username":"u","password":"p","big":12345678901234567890},' +
+        '{"account_id":"b","username":"u","password":"p","exp":1e21},' +
+        '{"account_id":"c","username":"u","password":"p","negZero":-0}' +
+        ']',
+    );
+    expect(r.accounts[0]?.metadata.big).toBe('12345678901234567000');
+    expect(r.accounts[1]?.metadata.exp).toBe('1e+21');
+    expect(r.accounts[2]?.metadata.negZero).toBe('0');
+  });
+  it('rejects a record whose metadata value is an array or a nested object (story 5.2)', () => {
+    const r = json(
+      JSON.stringify([
+        { account_id: 'a', username: 'u', password: 'p', tags: ['x', 'y'] },
+        { account_id: 'b', username: 'u', password: 'p', nested: { x: 1 } },
+        { account_id: 'c', username: 'u', password: 'p', fine: 'ok' },
+      ]),
+    );
+    expect(r.diagnostics).toEqual([
+      { at: 1, unit: 'record', code: 'METADATA_VALUE_NOT_SCALAR' },
+      { at: 2, unit: 'record', code: 'METADATA_VALUE_NOT_SCALAR' },
+    ]);
+    expect(r.valid).toBe(1);
+    expect(r.accounts).toHaveLength(1);
+    expect(r.accounts[0]?.accountId).toBe('c');
+  });
+  it('preserves a __proto__ metadata key as an own property without mutating the prototype (story 5.3)', () => {
+    // Written as literal JSON text, not an object-literal key: `{ __proto__: v }`
+    // in JS source sets the prototype instead of creating an own property, so
+    // JSON.stringify would never emit it. JSON.parse, unlike object-literal
+    // syntax, builds `__proto__` as an ordinary own property.
+    const r = json('[{"account_id":"a","username":"u","password":"p","__proto__":"text"}]');
+    expect(Object.hasOwn(r.accounts[0]!.metadata, '__proto__')).toBe(true);
+    expect(r.accounts[0]!.metadata.__proto__).toBe('text');
+    expect(({} as Record<string, unknown>).evil).toBeUndefined();
+  });
+  it('does not leak reserved keys into metadata', () => {
+    const r = json(JSON.stringify([{ account_id: 'a', username: 'u', password: 'p', note: 'x' }]));
+    expect(r.accounts[0]?.metadata).toEqual({ note: 'x' });
+    expect(r.accounts[0]?.metadata.account_id).toBeUndefined();
+    expect(r.accounts[0]?.metadata.username).toBeUndefined();
+    expect(r.accounts[0]?.metadata.password).toBeUndefined();
+  });
 });
 describe('authorization rules', () => {
   it('matches domains regardless of path and hash, keeping success routes exact', () => {
