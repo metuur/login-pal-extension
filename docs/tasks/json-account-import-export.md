@@ -21,6 +21,11 @@
 >
 > `npm run lint` is red at `HEAD` for an unrelated reason: `src/domain/rules.ts`
 > carries pre-existing prettier drift. Not touched by this feature.
+>
+> `npm run test:browser` is **intermittently flaky**: one run in four failed
+> during this work and the failure could not be reproduced across three
+> subsequent runs. Treat a single red run as inconclusive and re-run before
+> investigating. The suite reports 58 checks.
 
 ## Command pinning integrity
 
@@ -112,23 +117,23 @@
 
 ## Import format selection
 
-- [ ] 6.1 Accept JSON in the Settings file picker (deps: 2.2, 5.1, est: ~45m) (mutex: options-import)
+- [x] 6.1 Accept JSON in the Settings file picker (deps: 2.2, 5.1, est: ~45m) (mutex: options-import)
   - why: The UI is the only layer that knows the filename, so it is where the format is declared and where a mislabelled file is refused before the worker sees it.
   - acceptance: R-JS-4.5, R-JS-4.6 — `accept` at `src/options/index.ts:115` widened to `.csv,.json,text/csv,application/json`; format derived from the extension at `:898-904`; any other extension refused with the accepted list named and no preview request sent; `src/shared/formats.ts` holds extension, MIME, label and diagnostic unit.
-  - verify: Upload `.csv`, `.json` and a third extension. Confirm format is **not** wired as a fifth preview-invalidation trigger — it is derived from the file selection, which already invalidates, so a fifth condition could never fire independently.
-  - landed:
+  - verify: Done — `npm run test:browser` exit 0. Format is set only in the file-input change listener, which already calls `invalidatePreview()`, and is reset alongside every existing `file = undefined` site. No fifth trigger added, as specified.
+  - landed: 81258e5 — src/shared/formats.ts, src/options/index.ts
 
-- [ ] 6.2 Name the validated format in review (deps: 6.1, est: ~25m) (mutex: options-import)
+- [x] 6.2 Name the validated format in review (deps: 6.1, est: ~25m) (mutex: options-import)
   - why: The review step is the last point before a commit that cannot be undone, so it must state what was actually validated rather than what was chosen.
   - acceptance: R-JS-4.7 — The review panel names the validated format beside the file name, and diagnostics render `${d.unit} ${d.at}: ${d.code}` from the descriptor with no format branch.
-  - verify: A JSON preview reads "record", a CSV preview reads "row", and neither path branches on format in the renderer.
-  - landed:
+  - verify: Done — the review panel reads e.g. `accounts.json · JSON`. The diagnostics renderer was already format-neutral from story 2.1 and was left untouched; no branch was added.
+  - landed: 81258e5 — src/options/index.ts
 
-- [ ] 6.3 Reword format-specific microcopy (deps: 6.1, est: ~25m) (mutex: options-import)
+- [x] 6.3 Reword format-specific microcopy (deps: 6.1, est: ~25m) (mutex: options-import)
   - why: Six strings become false the moment `.json` is accepted, and a user who reads "Choose an account CSV" above a picker that takes JSON will not try it.
   - acceptance: LLD "Microcopy" — `'Import CSV'` (`:292`), `'Choose an account CSV'` (`:118` and its reuses at `:101`, `:134`, `:901`, `:1027`, `:1386`, `:1399`), `'Choose a CSV file first.'` (`:909`), `${p.valid} valid rows` (`:962`), `${p.invalid} invalid rows will be excluded` (`:990-995`), `Row diagnostics (n)` (`:1000`). `'CSV group name'` (`:80`) and `'Download sample CSV (3 rows)'` (`:138`) are deliberately left alone.
-  - verify: `npm run test:browser` with its string expectations updated in the same commit.
-  - landed:
+  - verify: Done — exit 0. **My list was incomplete:** it omitted the section heading `'↥ Import CSV dataset'` and the `'Upload another CSV'` button, which would have left a CSV-only heading above a picker that accepts JSON. Both reworded, with the matching `tests/browser/run.mjs` assertions and the README reference. `'CSV group name'` and `'Download sample CSV (3 rows)'` stay as specified.
+  - landed: 81258e5 — src/options/index.ts, tests/browser/run.mjs, README.md
 
 - [x] 6.4 Widen the directory ownership contracts (deps: 5.1, est: ~25m) (mutex: agents-docs)
   - why: Two `AGENTS.md` files grant the password carve-out in CSV-only terms, so as written neither authorizes Settings or the worker to handle exported JSON containing passwords. The grant has to be widened explicitly, not inherited.
@@ -138,23 +143,23 @@
 
 ## Round-trip fidelity
 
-- [ ] 7.1 Prove the seam is format-neutral (deps: 4.1, est: ~30m) (mutex: domain-tests)
+- [x] 7.1 Prove the seam is format-neutral (deps: 4.1, est: ~30m) (mutex: domain-tests)
   - why: `src/domain/domain.test.ts:31`'s `csv()` helper means every `planImport` test currently routes through `parseCsv`, so the central architectural claim of this design is asserted nowhere.
   - acceptance: LLD "Test plan" — At least one test feeds `planImport` a hand-built `ImportResult` literal and asserts merge behaviour without invoking either parser.
-  - verify: The new test passes with both parsers stubbed out of the import graph.
-  - landed:
+  - verify: Done — the literal carries deliberately nonsensical `found`/`valid`/`invalid`/`diagnostics`, so the test fails the moment `planImport` reads anything but `.accounts`.
+  - landed: f402952 — src/domain/domain.test.ts
 
-- [ ] 7.2 Assert CSV and JSON equivalence (deps: 4.2, 5.2, est: ~40m) (mutex: domain-tests)
+- [x] 7.2 Assert CSV and JSON equivalence (deps: 4.2, 5.2, est: ~40m) (mutex: domain-tests)
   - why: The claim that both formats describe the same accounts the same way is the one most likely to be assumed rather than checked, and it is false in two known places.
   - acceptance: R-JS-6.2 — A CSV document and a JSON document describing the same accounts produce identical accounts, counts and codes, with the metadata-padding difference and the `R-JS-3.4` numeric exception asserted explicitly rather than skipped.
-  - verify: The paired fixtures differ only in the two documented ways; any third divergence fails the test.
-  - landed:
+  - verify: Done — 7 paired records, comparing codes and ordering rather than positions, since CSV counts physical lines and JSON counts array indices. Both exceptions asserted: CSV pads an absent `company` key with `''` where JSON omits it, and CSV keeps `'0042'` verbatim where JSON coerces `42` through `String()` and loses the leading zero. No third divergence found.
+  - landed: f402952 — src/domain/domain.test.ts
 
-- [ ] 7.3 Preserve awkward values across re-import (deps: 7.2, est: ~25m) (mutex: domain-tests)
+- [x] 7.3 Preserve awkward values across re-import (deps: 7.2, est: ~25m) (mutex: domain-tests)
   - why: Commas, quotes, newlines and non-ASCII are exactly the values a format conversion loses, and passwords are the field where a silent loss is unrecoverable.
   - acceptance: R-JS-6.3 — Metadata containing commas, double quotes, newlines and non-ASCII survives an export and re-import in either format.
-  - verify: Round-trip both formats with a password carrying leading and trailing whitespace, an embedded newline and a double quote.
-  - landed:
+  - verify: **Partially satisfied.** The CSV export/re-import round trip is covered. The JSON half is not, because `exportJson` does not exist until story 8.1 — only `parseJson`'s leg is exercised. The test name states this, so it is not mistaken for full coverage. R-JS-6.3 is not fully met until 8.1 lands.
+  - landed: f402952 — src/domain/domain.test.ts
 
 ## Dual-format export
 
