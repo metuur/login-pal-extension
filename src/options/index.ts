@@ -1,4 +1,5 @@
 import type {
+  AccountFormat,
   AppState,
   ImportMode,
   ImportPreview,
@@ -9,6 +10,7 @@ import type {
   DetectTab,
   TitleRule,
 } from '../shared/types';
+import { FORMATS } from '../shared/formats';
 import {
   parseRule,
   parseDomainRules,
@@ -73,6 +75,7 @@ let state: AppState | undefined,
   mounted = false,
   preview: ImportPreview | undefined,
   file: File | undefined,
+  format: AccountFormat | undefined,
   mode: ImportMode = 'merge',
   undoTimer: ReturnType<typeof setTimeout> | undefined,
   deletedId = '',
@@ -100,8 +103,9 @@ groupActions.append(
       chooseGroup(group.id);
       mounted = false;
       file = undefined;
+      format = undefined;
       fileInput.value = '';
-      fileName.textContent = 'Choose an account CSV';
+      fileName.textContent = 'Choose an account file';
       invalidatePreview();
       query = '';
       page = 0;
@@ -109,21 +113,21 @@ groupActions.append(
     }),
   ),
 );
-const importHeading = sectionLabel('↥ Import CSV dataset');
+const importHeading = sectionLabel('↥ Import accounts');
 const step = el('span', 'step', 'Step 1 of 2');
 importHeading.append(step);
 const fileInput = el('input');
 fileInput.type = 'file';
-fileInput.accept = '.csv,text/csv';
+fileInput.accept = '.csv,.json,text/csv,application/json';
 fileInput.id = 'csv-file';
 fileInput.className = 'file-input';
-const fileName = el('strong', '', 'Choose an account CSV'),
+const fileName = el('strong', '', 'Choose an account file'),
   fileInfo = el('p', 'mono subtle', 'UTF-8 · up to 2 MiB');
 const fileCard = el('div', 'file-card');
 const fileText = el('div', 'grow');
 fileText.append(fileName, fileInfo);
 const change = button('Choose file', () => fileInput.click());
-const another = button('Upload another CSV', () => {
+const another = button('Upload another file', () => {
   mode = 'merge';
   modeWrap.querySelectorAll<HTMLInputElement>('input').forEach((radio) => {
     radio.checked = radio.value === 'merge';
@@ -133,7 +137,8 @@ const another = button('Upload another CSV', () => {
   invalidatePreview();
   fileInput.value = '';
   file = undefined;
-  fileName.textContent = 'Choose an account CSV';
+  format = undefined;
+  fileName.textContent = 'Choose an account file';
   change.textContent = 'Choose file';
   fileInput.click();
 });
@@ -291,7 +296,7 @@ let activeTab: SettingsTab = 'import';
 const tabPanels = { import: importPanel, accounts: accountsPanel, profile: profilePanel };
 const tabButtons = new Map<SettingsTab, HTMLButtonElement>();
 for (const [id, label] of [
-  ['import', 'Import CSV'],
+  ['import', 'Import accounts'],
   ['accounts', 'Indexed accounts'],
   ['profile', 'Login page setup'],
 ] as const) {
@@ -896,11 +901,21 @@ function invalidatePreview() {
     ? `${(file.size / 1024).toFixed(1)} KiB · not yet validated`
     : 'UTF-8 · up to 2 MiB';
 }
+const supportedExtensions = Object.values(FORMATS)
+  .map((d) => d.extension)
+  .join(', ');
+function formatFromFileName(name: string): AccountFormat | undefined {
+  const lower = name.toLowerCase();
+  return (Object.keys(FORMATS) as AccountFormat[]).find((key) =>
+    lower.endsWith(FORMATS[key].extension),
+  );
+}
 target.input.addEventListener('input', invalidatePreview);
 fileInput.addEventListener('change', () => {
   file = fileInput.files?.[0];
+  format = file ? formatFromFileName(file.name) : undefined;
   invalidatePreview();
-  fileName.textContent = file?.name ?? 'Choose an account CSV';
+  fileName.textContent = file?.name ?? 'Choose an account file';
   change.textContent = file ? 'Change' : 'Choose file';
   message(importError, '');
 });
@@ -908,7 +923,15 @@ async function verifyImport() {
   if (busy) return;
   message(importError, '');
   if (!file) {
-    message(importError, 'Choose a CSV file first.', true);
+    message(importError, 'Choose an account file first.', true);
+    return;
+  }
+  if (!format) {
+    message(
+      importError,
+      `Choose a file with one of these extensions: ${supportedExtensions}.`,
+      true,
+    );
     return;
   }
   if (!groupName.input.value.trim()) {
@@ -928,6 +951,7 @@ async function verifyImport() {
   busy = true;
   setBusy(true);
   const chosen = file;
+  const chosenFormat = format;
   try {
     if (groupName.input.value.trim() !== state?.groupName) {
       await request({ type: 'RENAME_GROUP', name: groupName.input.value });
@@ -938,7 +962,7 @@ async function verifyImport() {
       bytes: Array.from(bytes),
       rule: target.input.value,
       mode,
-      format: 'csv',
+      format: chosenFormat,
     });
     bytes.fill(0);
     showPreview();
@@ -962,10 +986,10 @@ function showPreview() {
   step.textContent = 'Step 2 of 2';
   importSetup.hidden = true;
   verify.hidden = true;
-  fileInfo.textContent = `${((file?.size ?? 0) / 1024).toFixed(1)} KiB · ${p.valid} valid rows`;
+  fileInfo.textContent = `${((file?.size ?? 0) / 1024).toFixed(1)} KiB · ${p.valid} valid entries`;
   previewBox.replaceChildren(
     el('h2', '', `Review import into ${state?.groupName ?? 'this group'}`),
-    el('p', 'wrap', file?.name ?? 'Account CSV'),
+    el('p', 'wrap', `${file?.name ?? 'Account file'} · ${FORMATS[p.format].label}`),
     el('p', 'mono wrap', p.rule),
     el(
       'p',
@@ -995,7 +1019,7 @@ function showPreview() {
       el(
         'p',
         'notice warning',
-        `${p.invalid} invalid rows will be excluded.${p.mode === 'replace' ? ' In Replace mode, existing IDs absent from the valid rows will be removed.' : ''}`,
+        `${p.invalid} invalid entries will be excluded.${p.mode === 'replace' ? ' In Replace mode, existing IDs absent from the valid entries will be removed.' : ''}`,
       ),
     );
   if (p.diagnostics.length) {
@@ -1032,8 +1056,9 @@ async function commit(token: string) {
     await request({ type: 'COMMIT_IMPORT', token });
     imported = true;
     file = undefined;
+    format = undefined;
     fileInput.value = '';
-    fileName.textContent = 'Choose an account CSV';
+    fileName.textContent = 'Choose an account file';
     change.textContent = 'Choose file';
     invalidatePreview();
     message(importError, '');
@@ -1391,8 +1416,9 @@ function render() {
         query = '';
         page = 0;
         file = undefined;
+        format = undefined;
         fileInput.value = '';
-        fileName.textContent = 'Choose an account CSV';
+        fileName.textContent = 'Choose an account file';
         invalidatePreview();
         void refresh();
       },
@@ -1404,8 +1430,9 @@ function render() {
     tabs.hidden = true;
     mounted = false;
     file = undefined;
+    format = undefined;
     fileInput.value = '';
-    fileName.textContent = 'Choose an account CSV';
+    fileName.textContent = 'Choose an account file';
     change.textContent = 'Choose file';
     deletedId = '';
     query = '';

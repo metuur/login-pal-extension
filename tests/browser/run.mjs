@@ -135,10 +135,10 @@ try {
   const settingsTab = (name) => options.getByRole('tab', { name, exact: true });
   check(
     (await options.getByRole('tabpanel').count()) === 1 &&
-      (await settingsTab('Import CSV').getAttribute('aria-selected')) === 'true',
+      (await settingsTab('Import accounts').getAttribute('aria-selected')) === 'true',
     'Settings starts with only the import panel visible',
   );
-  await settingsTab('Import CSV').focus();
+  await settingsTab('Import accounts').focus();
   await options.keyboard.press('ArrowRight');
   check(
     (await settingsTab('Indexed accounts').getAttribute('aria-selected')) === 'true' &&
@@ -183,7 +183,7 @@ try {
     'Switching tabs preserves unfinished profile edits',
   );
   await options.getByLabel('Profile name', { exact: true }).fill('');
-  await settingsTab('Import CSV').click();
+  await settingsTab('Import accounts').click();
   check(
     (await options.locator('input[type="password"]').count()) === 0,
     'Fresh settings has no master-password inputs',
@@ -479,7 +479,7 @@ try {
     'Import review replaces setup instead of extending the settings page',
   );
   await settingsTab('Indexed accounts').click();
-  await settingsTab('Import CSV').click();
+  await settingsTab('Import accounts').click();
   check(
     await options.getByRole('button', { name: 'Import 3 valid accounts', exact: true }).isVisible(),
     'A verified import survives tab navigation',
@@ -521,7 +521,7 @@ try {
   await waitState((s) => s.total === 3, 'Settings Undo action restores the deleted account');
   for (const width of [360, 430, 1000]) {
     await options.setViewportSize({ width, height: 800 });
-    for (const name of ['Import CSV', 'Indexed accounts', 'Login page setup']) {
+    for (const name of ['Import accounts', 'Indexed accounts', 'Login page setup']) {
       await settingsTab(name).click();
       check(
         await options.evaluate(() => {
@@ -539,7 +539,7 @@ try {
     }
   }
   await options.screenshot({ path: 'artifacts/settings-profile.png', fullPage: true });
-  await settingsTab('Import CSV').click();
+  await settingsTab('Import accounts').click();
   await options.screenshot({ path: 'artifacts/settings-import.png', fullPage: true });
   await options.setViewportSize({ width: 430, height: 800 });
   await settingsTab('Indexed accounts').click();
@@ -650,12 +650,12 @@ try {
   );
   await popup.getByRole('button', { name: '← Back to accounts', exact: true }).click();
   await site.bringToFront();
-  await settingsTab('Import CSV').click();
+  await settingsTab('Import accounts').click();
   check(
     (await options.locator('body').innerText()).includes('Merge'),
     'Settings renders account import modes',
   );
-  await settingsTab('Import CSV').click();
+  await settingsTab('Import accounts').click();
   check(
     await options.locator('.change-domain').isHidden(),
     'The change-domain offer stays hidden while the typed domain matches the group',
@@ -983,7 +983,7 @@ try {
   });
   await site.locator('#username').fill('edited@example.test');
   await site.locator('#login').click();
-  await settingsTab('Import CSV').click();
+  await settingsTab('Import accounts').click();
   await options.locator('.options-body').evaluate((node) => {
     node.scrollTop = 0;
   });
@@ -1030,8 +1030,8 @@ try {
     'CSV group stores its own URL and duplicate account ID',
   );
   const chooserEvent = options.waitForEvent('filechooser');
-  await settingsTab('Import CSV').click();
-  await options.getByRole('button', { name: 'Upload another CSV', exact: true }).click();
+  await settingsTab('Import accounts').click();
+  await options.getByRole('button', { name: 'Upload another file', exact: true }).click();
   const chooser = await chooserEvent;
   const extraPath = join(temp, 'additional.csv');
   await writeFile(
@@ -1043,7 +1043,7 @@ try {
   await options.getByRole('button', { name: 'Import 1 valid accounts', exact: true }).click();
   for (let i = 0; i < 30 && (await groupState()).total !== 2; i++)
     await new Promise((r) => setTimeout(r, 100));
-  check((await groupState()).total === 2, 'Upload another CSV merges into the selected group');
+  check((await groupState()).total === 2, 'Upload another file merges into the selected group');
   await settingsTab('Indexed accounts').click();
   await options.getByRole('searchbox', { name: 'Search accounts', exact: true }).fill('PERF-2');
   const exportEvent = options.waitForEvent('download');
@@ -1084,7 +1084,7 @@ try {
     'Group purge preserves accounts in other CSV groups',
   );
   await options.getByRole('combobox', { name: 'CSV group', exact: true }).selectOption('default');
-  await settingsTab('Import CSV').click();
+  await settingsTab('Import accounts').click();
   await options.getByLabel('CSV group name', { exact: true }).fill('QA Platform X');
   await options.getByRole('button', { name: 'Save group name', exact: true }).click();
   await options.getByText('Group name saved.', { exact: true }).waitFor();
