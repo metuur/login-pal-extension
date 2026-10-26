@@ -130,11 +130,11 @@
   - verify: `npm run test:browser` with its string expectations updated in the same commit.
   - landed:
 
-- [ ] 6.4 Widen the directory ownership contracts (deps: 5.1, est: ~25m) (mutex: agents-docs)
+- [x] 6.4 Widen the directory ownership contracts (deps: 5.1, est: ~25m) (mutex: agents-docs)
   - why: Two `AGENTS.md` files grant the password carve-out in CSV-only terms, so as written neither authorizes Settings or the worker to handle exported JSON containing passwords. The grant has to be widened explicitly, not inherited.
   - acceptance: LLD "Documentation ownership" — `src/options/AGENTS.md` and `src/background/AGENTS.md` carve-outs cover exported text in any account format; `src/domain/AGENTS.md` no longer reads "Pure CSV/…"; `docs/ears/account-login-assistant.md:45` Unit 2 heading becomes format-neutral; `src/domain/json.ts` carries `@spec R-JS-1.1..R-JS-3.8`.
-  - verify: Grep all four `AGENTS.md` files for CSV-exclusive wording in the password and parser clauses.
-  - landed:
+  - verify: Done — `grep -rn "CSV" src/*/AGENTS.md` now returns zero hits. `src/shared`, `src/content`, `preview`, `tests/browser` and the root `AGENTS.md` contain no CSV wording at all, so none needed changing. **Found one file the story did not list:** `src/background/AGENTS.md` carries its own copy of the same carve-out, so two files granted the exception in CSV-only terms, not one.
+  - landed: 69407a9 — src/options/AGENTS.md, src/background/AGENTS.md, src/domain/AGENTS.md, docs/ears/account-login-assistant.md
 
 ## Round-trip fidelity
 
