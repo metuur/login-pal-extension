@@ -43,7 +43,7 @@ Status: Planning baseline accepted through the user’s request to continue plan
 | R-1.9 | IF decryption or format validation fails, THE SYSTEM SHALL preserve the stored vault and return a safe error containing no secrets. |
 | R-1.10 | WHEN the user explicitly confirms destructive reset, THE SYSTEM SHALL delete the vault, profile, session state, dynamic registrations, and granted profile host permission. |
 
-## Unit 2: CSV validation and import modes
+## Unit 2: Import validation and modes
 
 **Why:** Import evolving account datasets without ambiguous identities or accidental partial replacement.
 
