@@ -43,6 +43,21 @@ async function preview(service: AssistantService, name = 'A') {
     format: 'csv',
   });
 }
+async function previewJson(service: AssistantService, name = 'A') {
+  return command<ImportPreview>(service, {
+    type: 'PREVIEW_IMPORT',
+    bytes: [
+      ...new TextEncoder().encode(
+        JSON.stringify([
+          { account_id: name, username: 'test@example.invalid', password: 'synthetic-only' },
+        ]),
+      ),
+    ],
+    rule: 'https://qa.example.com/*',
+    mode: 'replace',
+    format: 'json',
+  });
+}
 async function importAccount(service: AssistantService, name = 'A') {
   const p = await preview(service, name);
   await command(service, { type: 'COMMIT_IMPORT', token: p.token });
@@ -839,5 +854,40 @@ describe('migrating records written before multi-environment support', () => {
     const state = await command<AppState>(service, { type: 'STATE' });
     expect(state.profile).toBeNull();
     expect(state.rules).toEqual([]);
+  });
+});
+describe('JSON import', () => {
+  it('previews a valid JSON account document', async () => {
+    const service = await setup();
+    const result = await previewJson(service);
+    expect(result.format).toBe('json');
+    expect(result.found).toBe(1);
+    expect(result.valid).toBe(1);
+    expect(result.invalid).toBe(0);
+    expect(result.diagnostics).toEqual([]);
+  });
+  it('reports each JSON rejection cause verbatim, not the generic failure text', async () => {
+    const service = await setup();
+    const cases: Array<[string, string]> = [
+      ['not json at all', 'File is not valid JSON.'],
+      [JSON.stringify({ account_id: 'A' }), 'JSON must be an array of account records.'],
+      [
+        JSON.stringify([Object.fromEntries(Array.from({ length: 101 }, (_, i) => [`k${i}`, 'v']))]),
+        'JSON records are limited to 100 fields.',
+      ],
+    ];
+    for (const [body, message] of cases) {
+      const result = await service.handle(
+        {
+          type: 'PREVIEW_IMPORT',
+          bytes: [...new TextEncoder().encode(body)],
+          rule: 'https://qa.example.com/*',
+          mode: 'replace',
+          format: 'json',
+        },
+        sender,
+      );
+      expect(result).toEqual({ ok: false, error: message });
+    }
   });
 });

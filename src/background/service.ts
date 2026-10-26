@@ -39,6 +39,7 @@ import {
   isAuthorizedPageUrl,
 } from '../domain/rules';
 import { parseCsv, exportCsv } from '../domain/csv';
+import { parseJson } from '../domain/json';
 import { planImport } from '../domain/import';
 import { searchAccounts } from '../domain/search';
 
@@ -149,6 +150,13 @@ const SAFE_ERRORS = new Set<string>([
   'CSV exceeds 10,000 rows or 100 columns.',
   'Catalog unavailable. Migrate the previous catalog or reset it.',
   'Profile could not be saved.',
+  'JSON exceeds the 2 MiB file limit.',
+  'JSON must use valid UTF-8.',
+  'File is not valid JSON.',
+  'JSON must be an array of account records.',
+  'JSON exceeds 10,000 records.',
+  'JSON records are limited to 100 fields.',
+  'Choose a supported file format.',
 ]);
 /**
  * Commands that may only arrive from one extension page, keyed by command type.
@@ -458,6 +466,8 @@ export class AssistantService {
       if (command.format !== 'csv' && command.format !== 'json')
         throw new Error('Choose a supported file format.');
       if (command.format === 'csv') return exportCsv(this.payload!.accounts);
+      // exportJson does not exist yet — held for story 8.1 behind Chrome Web
+      // Store approval of v1 (see docs/tasks/json-account-import-export.md).
       throw new Error();
     }
     // User-authorized exception, same shape as EXPORT_ACCOUNTS: the password is
@@ -504,8 +514,10 @@ export class AssistantService {
         (command.format !== 'csv' && command.format !== 'json')
       )
         throw new Error();
-      if (command.format === 'json') throw new Error();
-      const parsed = parseCsv(new Uint8Array(command.bytes));
+      const parsed =
+        command.format === 'json'
+          ? parseJson(new Uint8Array(command.bytes))
+          : parseCsv(new Uint8Array(command.bytes));
       const rules = parseDomainRules(command.rule);
       const planned = planImport(this.payload!, parsed, rules, command.mode);
       const preview: ImportPreview = {
