@@ -150,6 +150,17 @@ const SAFE_ERRORS = new Set<string>([
   'Catalog unavailable. Migrate the previous catalog or reset it.',
   'Profile could not be saved.',
 ]);
+/**
+ * Commands that may only arrive from one extension page, keyed by command type.
+ * `satisfies` makes a key outside the Command union a compile error, so a
+ * renamed command cannot silently leave its pin behind: the comparison in
+ * handle() runs before the Command cast, where message.type is still a bare
+ * string and a stale literal would otherwise typecheck forever.
+ */
+const PAGE_PINS = {
+  EXPORT_CSV: { page: 'options.html', error: 'Export accounts from Settings.' },
+  FILL: { page: 'popup.html', error: 'Open the popup on the target tab to autofill.' },
+} satisfies Partial<Record<Command['type'], { page: string; error: string }>>;
 export class AssistantService {
   private generation = 0;
   private authorizationRevision = 0;
@@ -311,18 +322,14 @@ export class AssistantService {
       sender.tab?.id !== undefined &&
       sender.frameId === 0 &&
       !!sender.documentId;
+    const pin =
+      message.type in PAGE_PINS ? PAGE_PINS[message.type as keyof typeof PAGE_PINS] : undefined;
     if (
       trusted &&
-      message.type === 'EXPORT_CSV' &&
-      sender.url?.split('?')[0]?.split('#')[0] !== chrome.runtime.getURL('options.html')
+      pin &&
+      sender.url?.split('?')[0]?.split('#')[0] !== chrome.runtime.getURL(pin.page)
     )
-      return { ok: false, error: 'Export accounts from Settings.' };
-    if (
-      trusted &&
-      message.type === 'FILL' &&
-      sender.url?.split('?')[0]?.split('#')[0] !== chrome.runtime.getURL('popup.html')
-    )
-      return { ok: false, error: 'Open the popup on the target tab to autofill.' };
+      return { ok: false, error: pin.error };
     if (
       !trusted &&
       !(content && ['CONTENT_CONTEXT', 'SUCCESS_OBSERVED', 'CANCEL_ATTEMPT'].includes(message.type))
