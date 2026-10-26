@@ -92,7 +92,10 @@ describe('worker credential and transaction boundary', () => {
     const service = await setup();
     const tabSender = { ...sender, tab: { id: 1 } } as chrome.runtime.MessageSender;
     expect((await service.handle({ type: 'STATE' }, tabSender)).ok).toBe(true);
-    expect((await service.handle({ type: 'FILL', accountId: 'A' }, tabSender)).ok).toBe(false);
+    expect(await service.handle({ type: 'FILL', accountId: 'A' }, tabSender)).toEqual({
+      ok: false,
+      error: 'Open the popup on the target tab to autofill.',
+    });
   });
   it('rejects content scripts and forged extension URLs requesting account data', async () => {
     const service = await setup();
@@ -450,25 +453,24 @@ describe('named CSV groups', () => {
     const rows = parseCsv(new TextEncoder().encode(exported));
     expect(rows.valid).toBe(1);
     expect(rows.accounts[0].accountId).toBe('A');
+    // Assert the pin's own message, not merely that the call failed: a pin that
+    // stops matching lets the command fall through to the generic dispatch
+    // error, which is also ok:false.
     expect(
-      (
-        await service.handle(
-          { type: 'EXPORT_CSV', groupId: group.id },
-          { ...sender, url: 'chrome-extension://test/popup.html' },
-        )
-      ).ok,
-    ).toBe(false);
+      await service.handle(
+        { type: 'EXPORT_CSV', groupId: group.id },
+        { ...sender, url: 'chrome-extension://test/popup.html' },
+      ),
+    ).toEqual({ ok: false, error: 'Export accounts from Settings.' });
     expect(
-      (
-        await service.handle({ type: 'EXPORT_CSV', groupId: group.id }, {
-          id: 'test',
-          url: 'https://qa.example.com',
-          tab: { id: 1 },
-          frameId: 0,
-          documentId: 'doc',
-        } as chrome.runtime.MessageSender)
-      ).ok,
-    ).toBe(false);
+      await service.handle({ type: 'EXPORT_CSV', groupId: group.id }, {
+        id: 'test',
+        url: 'https://qa.example.com',
+        tab: { id: 1 },
+        frameId: 0,
+        documentId: 'doc',
+      } as chrome.runtime.MessageSender),
+    ).toEqual({ ok: false, error: 'Request not authorized.' });
 
     expect((await run(service, { type: 'STATE', groupId: group.id })).total).toBe(1);
     expect((await run(service, { type: 'STATE', groupId: group.id })).rules).toEqual([
