@@ -1,4 +1,4 @@
-import type { CatalogRule } from '../shared/types';
+import type { CatalogRule, Account, ImportResult } from '../shared/types';
 import { exportCsv as serializeAccounts } from './csv';
 import { describe, it, expect } from 'vitest';
 import {
@@ -597,6 +597,149 @@ it('ignores arbitrary query data on observed URLs without accepting it in policy
   expect(
     matchesRule(parseRule('https://qa.example.com/*'), 'https://qa.example.com/login?filter=*'),
   ).toBe(true);
+});
+
+describe('round-trip fidelity between import formats (stories 7.1-7.3)', () => {
+  it('proves planImport is format-neutral: a hand-built ImportResult literal drives merge and replace without either parser (story 7.1)', () => {
+    // Neither csv() nor json() appears below. planImport only ever reads
+    // parsed.accounts (verified in the LLD against :38, :49, :58, :69), so
+    // found/valid/invalid/diagnostics below are deliberately nonsensical —
+    // if planImport ever started inspecting them, this test would start failing.
+    const rule = parseRule('https://qa.example.com/*');
+    const literal: ImportResult = {
+      accounts: [
+        { accountId: 'x', username: 'u', password: 'p', metadata: { note: 'literal' } },
+        { accountId: 'y', username: 'u2', password: 'p2', metadata: {} },
+      ],
+      found: 999,
+      valid: 0,
+      invalid: 999,
+      diagnostics: [{ at: -1, unit: 'record', code: 'EMPTY_USERNAME' }],
+    };
+    const merged = planImport(emptyVault(), literal, [rule], 'merge');
+    expect(merged.counts).toEqual({ added: 2, updated: 0, unchanged: 0, removed: 0 });
+    expect(merged.payload.accounts).toHaveLength(2);
+
+    const replacement: ImportResult = {
+      accounts: [{ accountId: 'x', username: 'u', password: 'changed', metadata: {} }],
+      found: 0,
+      valid: 0,
+      invalid: 0,
+      diagnostics: [],
+    };
+    const replaced = planImport(merged.payload, replacement, [rule], 'replace');
+    expect(replaced.counts).toEqual({ added: 0, updated: 1, unchanged: 0, removed: 1 });
+    expect(replaced.payload.accounts).toEqual([
+      { accountId: 'x', username: 'u', password: 'changed', metadata: {} },
+    ]);
+  });
+
+  it('produces identical accounts, counts and diagnostic codes from equivalent CSV and JSON documents, except the two documented exceptions (story 7.2, R-JS-6.2)', () => {
+    const csvDoc = csv(
+      'account_id,username,password,company,ref\n' +
+        'a,userA,passA,Acme,0042\n' +
+        'b,userB,passB,Beta,0099\n' +
+        'dup,u1,p1,CsvCo,0001\n' +
+        'dup,u2,p2,CsvCo,0002\n' +
+        'e,,p,CsvCo,0003\n' +
+        'c,userC,passC,,0004\n' +
+        'd,userD,passD,CsvCo,0042\n',
+    );
+    const jsonDoc = json(
+      JSON.stringify([
+        { account_id: 'a', username: 'userA', password: 'passA', company: 'Acme', ref: '0042' },
+        { account_id: 'b', username: 'userB', password: 'passB', company: 'Beta', ref: '0099' },
+        { account_id: 'dup', username: 'u1', password: 'p1', company: 'CsvCo', ref: '0001' },
+        { account_id: 'dup', username: 'u2', password: 'p2', company: 'CsvCo', ref: '0002' },
+        { account_id: 'e', username: '', password: 'p', company: 'CsvCo', ref: '0003' },
+        // `company` is absent here, not padded, which is exception 1.
+        { account_id: 'c', username: 'userC', password: 'passC', ref: '0004' },
+        // `ref` is a JSON number here, not the text "0042", which is exception 2.
+        { account_id: 'd', username: 'userD', password: 'passD', company: 'CsvCo', ref: 42 },
+      ]),
+    );
+
+    // Same counts and the same diagnostic codes, in the same order. Positions
+    // ('at') are not compared: CSV counts physical file lines with the header
+    // at 1, JSON counts 1-based array indices, and the two are disjoint by design.
+    expect(jsonDoc.found).toBe(csvDoc.found);
+    expect(jsonDoc.valid).toBe(csvDoc.valid);
+    expect(jsonDoc.invalid).toBe(csvDoc.invalid);
+    expect(jsonDoc.diagnostics.map((d) => d.code)).toEqual([
+      'DUPLICATE_ACCOUNT_ID',
+      'DUPLICATE_ACCOUNT_ID',
+      'EMPTY_USERNAME',
+    ]);
+    expect(csvDoc.diagnostics.map((d) => d.code)).toEqual(jsonDoc.diagnostics.map((d) => d.code));
+
+    // Same accounts: identical identities, usernames, passwords and shared metadata.
+    for (const id of ['a', 'b', 'c', 'd']) {
+      const fromCsv = csvDoc.accounts.find((account) => account.accountId === id)!;
+      const fromJson = jsonDoc.accounts.find((account) => account.accountId === id)!;
+      expect(fromJson.username).toBe(fromCsv.username);
+      expect(fromJson.password).toBe(fromCsv.password);
+    }
+    expect(csvDoc.accounts.find((a) => a.accountId === 'a')?.metadata.company).toBe('Acme');
+    expect(jsonDoc.accounts.find((a) => a.accountId === 'a')?.metadata.company).toBe('Acme');
+    expect(csvDoc.accounts.find((a) => a.accountId === 'd')?.metadata.company).toBe('CsvCo');
+    expect(jsonDoc.accounts.find((a) => a.accountId === 'd')?.metadata.company).toBe('CsvCo');
+
+    // Exception 1: CSV pads the metadata key absent from record "c" with '';
+    // JSON simply omits the key rather than padding it.
+    expect(csvDoc.accounts.find((a) => a.accountId === 'c')?.metadata.company).toBe('');
+    expect(
+      Object.hasOwn(jsonDoc.accounts.find((a) => a.accountId === 'c')!.metadata, 'company'),
+    ).toBe(false);
+
+    // Exception 2 (R-JS-3.4): CSV carries record "d"'s numeric-looking text
+    // verbatim; JSON coerces its numeric literal through String(value) and
+    // loses the leading zero.
+    expect(csvDoc.accounts.find((a) => a.accountId === 'd')?.metadata.ref).toBe('0042');
+    expect(jsonDoc.accounts.find((a) => a.accountId === 'd')?.metadata.ref).toBe('42');
+  });
+
+  it('preserves commas, quotes, newlines, non-ASCII metadata and an awkward password through a CSV export/re-import round trip (story 7.3, R-JS-6.3)', () => {
+    const accounts: Account[] = [
+      {
+        accountId: 'RT-1',
+        username: 'rt@example.test',
+        password: '  pass"word\nwith newline  ',
+        metadata: {
+          notes: 'line one, line two\nwith "quotes" and 日本語 ümlaut',
+        },
+      },
+    ];
+    const reimported = parseCsv(new TextEncoder().encode(serializeAccounts(accounts)));
+    expect(reimported.valid).toBe(1);
+    expect(reimported.accounts[0]?.password).toBe(accounts[0]!.password);
+    expect(reimported.accounts[0]?.metadata.notes).toBe(accounts[0]!.metadata.notes);
+  });
+
+  it('preserves the same awkward values through a JSON parse round trip; exportJson does not exist yet (story 8.1), so the JSON half of export-then-re-import cannot be exercised here (story 7.3, R-JS-6.3)', () => {
+    const password = '  pass"word\nwith newline  ';
+    const notes = 'line one, line two\nwith "quotes" and 日本語 ümlaut';
+    const first = json(
+      JSON.stringify([{ account_id: 'RT-1', username: 'rt@example.test', password, notes }]),
+    );
+    expect(first.accounts[0]?.password).toBe(password);
+    expect(first.accounts[0]?.metadata.notes).toBe(notes);
+    // Re-serialize what parseJson produced and parse it again. This exercises
+    // parseJson's half of the round trip only — JSON.stringify/JSON.parse are
+    // lossless for strings, so it does not and cannot stand in for exportJson,
+    // which story 8.1 adds once the Chrome Web Store has approved v1.
+    const second = json(
+      JSON.stringify(
+        first.accounts.map((account) => ({
+          account_id: account.accountId,
+          username: account.username,
+          password: account.password,
+          ...account.metadata,
+        })),
+      ),
+    );
+    expect(second.accounts[0]?.password).toBe(password);
+    expect(second.accounts[0]?.metadata.notes).toBe(notes);
+  });
 });
 
 describe('CSV group export', () => {
