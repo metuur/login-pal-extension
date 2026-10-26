@@ -86,6 +86,100 @@ describe('JSON validation', () => {
   it('rejects invalid UTF-8', () => {
     expect(() => parseJson(new Uint8Array([255]))).toThrow();
   });
+  it('rejects a document with a record over 100 own keys as a whole-document failure', () => {
+    const wide: Record<string, string> = {};
+    for (let index = 0; index < 101; index++) wide[`k${index}`] = 'v';
+    expect(() => json(JSON.stringify([wide]))).toThrow('JSON records are limited to 100 fields.');
+  });
+  it('treats a long array element as a bad record, not a wide one', () => {
+    // Arrays are typeof 'object', so the width check must exclude them or a
+    // long array would reject the whole document instead of reporting itself.
+    const r = json(JSON.stringify([Array.from({ length: 101 }, (_, i) => i)]));
+    expect(r.diagnostics).toEqual([{ at: 1, unit: 'record', code: 'RECORD_NOT_OBJECT' }]);
+  });
+  it('reports RECORD_NOT_OBJECT for non-object elements', () => {
+    const r = json('[1, "two", true, null, ["array"]]');
+    expect(r.found).toBe(5);
+    expect(r.invalid).toBe(5);
+    expect(r.valid).toBe(0);
+    expect(r.diagnostics).toEqual(
+      [1, 2, 3, 4, 5].map((at) => ({ at, unit: 'record', code: 'RECORD_NOT_OBJECT' })),
+    );
+  });
+  it('reports REQUIRED_FIELD_NOT_STRING when a reserved field is absent or not a string', () => {
+    const r = json(
+      JSON.stringify([
+        { username: 'u', password: 'p' },
+        { account_id: 1, username: 'u', password: 'p' },
+      ]),
+    );
+    expect(r.diagnostics).toEqual([
+      { at: 1, unit: 'record', code: 'REQUIRED_FIELD_NOT_STRING' },
+      { at: 2, unit: 'record', code: 'REQUIRED_FIELD_NOT_STRING' },
+    ]);
+  });
+  it('reports EMPTY_ACCOUNT_ID for a blank trimmed account_id', () => {
+    const r = json(JSON.stringify([{ account_id: '  ', username: 'u', password: 'p' }]));
+    expect(r.diagnostics).toEqual([{ at: 1, unit: 'record', code: 'EMPTY_ACCOUNT_ID' }]);
+  });
+  it('reports EMPTY_USERNAME for a blank trimmed username', () => {
+    const r = json(JSON.stringify([{ account_id: 'a', username: ' ', password: 'p' }]));
+    expect(r.diagnostics).toEqual([{ at: 1, unit: 'record', code: 'EMPTY_USERNAME' }]);
+  });
+  it('reports EMPTY_PASSWORD only for the exact empty string, preserving other whitespace', () => {
+    const r = json(JSON.stringify([{ account_id: 'a', username: 'u', password: '' }]));
+    expect(r.diagnostics).toEqual([{ at: 1, unit: 'record', code: 'EMPTY_PASSWORD' }]);
+    const preserved = json(JSON.stringify([{ account_id: 'a', username: 'u', password: ' p ' }]));
+    expect(preserved.accounts[0]?.password).toBe(' p ');
+  });
+  it('reports DUPLICATE_ACCOUNT_ID for repeated trimmed account_id values', () => {
+    const r = json(
+      JSON.stringify([
+        { account_id: ' a ', username: 'u', password: 'p' },
+        { account_id: 'a', username: 'u2', password: 'p2' },
+      ]),
+    );
+    expect(r.diagnostics).toEqual([
+      { at: 1, unit: 'record', code: 'DUPLICATE_ACCOUNT_ID' },
+      { at: 2, unit: 'record', code: 'DUPLICATE_ACCOUNT_ID' },
+    ]);
+  });
+  it('reports the duplicate ahead of a later ladder code, and resolves non-object records independently', () => {
+    // A single record cannot be both duplicate (requires a readable string
+    // account_id, hence an object) and RECORD_NOT_OBJECT. This instead proves
+    // ladder order against the next achievable code (REQUIRED_FIELD_NOT_STRING)
+    // while a sibling non-object element reports its own cause untouched.
+    const r = json(
+      JSON.stringify([
+        { account_id: 'dup', username: 'u', password: 'p' },
+        { account_id: 'dup', username: 123, password: 'p' },
+        'not-an-object',
+      ]),
+    );
+    expect(r.diagnostics).toEqual([
+      { at: 1, unit: 'record', code: 'DUPLICATE_ACCOUNT_ID' },
+      { at: 2, unit: 'record', code: 'DUPLICATE_ACCOUNT_ID' },
+      { at: 3, unit: 'record', code: 'RECORD_NOT_OBJECT' },
+    ]);
+  });
+  it('counts only non-empty trimmed identifiers as duplicates (story 4.2)', () => {
+    const blankIds = json(
+      JSON.stringify(
+        Array.from({ length: 3 }, () => ({ account_id: '', username: 'u', password: 'p' })),
+      ),
+    );
+    expect(blankIds.diagnostics.every((d) => d.code === 'EMPTY_ACCOUNT_ID')).toBe(true);
+    const absentIds = json(
+      JSON.stringify(Array.from({ length: 3 }, () => ({ username: 'u', password: 'p' }))),
+    );
+    expect(absentIds.diagnostics.every((d) => d.code === 'REQUIRED_FIELD_NOT_STRING')).toBe(true);
+    const numericIds = json(
+      JSON.stringify(
+        Array.from({ length: 3 }, () => ({ account_id: 1, username: 'u', password: 'p' })),
+      ),
+    );
+    expect(numericIds.diagnostics.every((d) => d.code === 'REQUIRED_FIELD_NOT_STRING')).toBe(true);
+  });
 });
 describe('authorization rules', () => {
   it('matches domains regardless of path and hash, keeping success routes exact', () => {

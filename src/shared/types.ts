@@ -90,6 +90,8 @@ export type AccountFormat = 'csv' | 'json';
 export type ImportDiagnosticCode =
   | 'DUPLICATE_ACCOUNT_ID'
   | 'FIELD_COUNT_MISMATCH'
+  | 'RECORD_NOT_OBJECT'
+  | 'REQUIRED_FIELD_NOT_STRING'
   | 'EMPTY_ACCOUNT_ID'
   | 'EMPTY_USERNAME'
   | 'EMPTY_PASSWORD';
