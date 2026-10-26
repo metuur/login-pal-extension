@@ -21,11 +21,11 @@
   - verify: A key outside the `Command` union fails `npm run typecheck` — TS2353 for an unrelated name, TS2561 for a near-miss that TypeScript offers a suggestion for. Export requested from `popup.html` and from a web origin are both refused. Confirm `src/background/groups.ts:209-216`, which shares the `{ type: string }` cast, routes through the same declaration.
   - landed: 9ae4a5b — src/background/service.ts
 
-- [ ] 1.2 Assert pin refusals by message (deps: 1.1, est: ~20m) (mutex: worker-tests)
+- [x] 1.2 Assert pin refusals by message (deps: 1.1, est: ~20m) (mutex: worker-tests)
   - why: `src/background/service.test.ts:453-460` asserts only `.ok === false`, which a broken pin also satisfies, because a stale type falls through to the bare `throw` at `src/background/service.ts:609`. The test passes on the exact defect it exists to catch.
   - acceptance: R-JS-7.3 — Every page-pin test asserts that pin's own error string.
-  - verify: Break the pin deliberately and confirm the suite fails; restore and confirm it passes.
-  - landed:
+  - verify: Break the pin deliberately and confirm the suite fails; restore and confirm it passes. Done — mutating the lookup to never match failed 2 tests. Under the old `.ok` assertions the fill case would still have been caught (it returned `ok: true`), but the export case would not: it returned `ok: false` with the generic dispatch error. The export pin, the one guarding plaintext passwords, was the unprotected half.
+  - landed: 96aae89 — src/background/service.test.ts
 
 ## Import contracts
 
