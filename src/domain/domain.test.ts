@@ -11,6 +11,7 @@ import {
   migrateVaultPayload,
 } from './crypto';
 import { parseCsv } from './csv';
+import { parseJson } from './json';
 import {
   parseRule,
   parseDomainRule,
@@ -29,6 +30,7 @@ import {
 import { emptyVault, planImport } from './import';
 import { searchAccounts, searchAccountsAcrossGroups } from './search';
 const csv = (s: string) => parseCsv(new TextEncoder().encode(s));
+const json = (s: string) => parseJson(new TextEncoder().encode(s));
 const header = 'account_id,username,password,company';
 describe('CSV validation', () => {
   it('preserves quoted fields, whitespace and BOM', () => {
@@ -56,6 +58,33 @@ describe('CSV validation', () => {
   it('preserves metadata keys without prototype mutation', () => {
     const r = csv('account_id,username,password,__proto__\nx,u,p,text');
     expect(Object.hasOwn(r.accounts[0]!.metadata, '__proto__')).toBe(true);
+  });
+});
+describe('JSON validation', () => {
+  it('parses a BOM-prefixed valid document', () => {
+    const r = json('﻿[{"account_id":"a"}]');
+    expect(r.found).toBe(1);
+  });
+  it('rejects malformed JSON as a single whole-document failure', () => {
+    expect(() => json('{not json')).toThrow('File is not valid JSON.');
+  });
+  it('rejects a top-level object', () => {
+    expect(() => json('{"accounts": []}')).toThrow('JSON must be an array of account records.');
+  });
+  it('rejects a top-level string', () => {
+    expect(() => json('"a string"')).toThrow('JSON must be an array of account records.');
+  });
+  it('reports found: 0 for an empty array', () => {
+    expect(json('[]').found).toBe(0);
+  });
+  it('reports found: 3 for a valid 3-element array', () => {
+    expect(json('[{"a":1},{"b":2},{"c":3}]').found).toBe(3);
+  });
+  it('rejects a document over the 2 MiB file limit', () => {
+    expect(() => parseJson(new Uint8Array(2097153))).toThrow('2 MiB');
+  });
+  it('rejects invalid UTF-8', () => {
+    expect(() => parseJson(new Uint8Array([255]))).toThrow();
   });
 });
 describe('authorization rules', () => {
