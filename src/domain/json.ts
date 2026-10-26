@@ -111,3 +111,22 @@ export function parseJson(bytes: Uint8Array): ImportResult {
     diagnostics,
   };
 }
+// @spec R-JS-5.3, R-JS-5.4, R-JS-5.5: one object per account in stored order,
+// reserved keys first then that account's own metadata keys sorted, absent keys
+// omitted rather than padded, two-space indentation and a trailing newline.
+// JSON.stringify emits no BOM, which is what the format requires: unlike the CSV
+// export, where the BOM is there to stop spreadsheets mis-decoding UTF-8.
+export function exportJson(accounts: Account[]): string {
+  const records = accounts.map((account) => ({
+    account_id: account.accountId,
+    username: account.username,
+    password: account.password,
+    ...Object.fromEntries(
+      Object.keys(account.metadata)
+        .filter((key) => !['account_id', 'username', 'password'].includes(key))
+        .sort()
+        .map((key) => [key, account.metadata[key]]),
+    ),
+  }));
+  return JSON.stringify(records, null, 2) + '\n';
+}

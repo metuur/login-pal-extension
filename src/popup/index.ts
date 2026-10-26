@@ -356,7 +356,7 @@ function render(resultsOnly = false) {
         '',
         s.profile
           ? 'Open the configured login page. Its exact URL and approved catalog rule must match before autofill.'
-          : 'Import accounts, then configure login fields for your website.',
+          : 'Import a dataset, then configure login fields for your website.',
       ),
       button('Configure login fields', () => openOptions('profile'), 'text-button'),
     );

@@ -158,36 +158,36 @@
 - [x] 7.3 Preserve awkward values across re-import (deps: 7.2, est: ~25m) (mutex: domain-tests)
   - why: Commas, quotes, newlines and non-ASCII are exactly the values a format conversion loses, and passwords are the field where a silent loss is unrecoverable.
   - acceptance: R-JS-6.3 — Metadata containing commas, double quotes, newlines and non-ASCII survives an export and re-import in either format.
-  - verify: **Partially satisfied.** The CSV export/re-import round trip is covered. The JSON half is not, because `exportJson` does not exist until story 8.1 — only `parseJson`'s leg is exercised. The test name states this, so it is not mistaken for full coverage. R-JS-6.3 is not fully met until 8.1 lands.
-  - landed: f402952 — src/domain/domain.test.ts
+  - verify: **Fully satisfied as of 2026-10-26.** Both halves are covered: the CSV export/re-import round trip, and the JSON one once `exportJson` landed with story 8.1. The JSON test was rewritten from a `parseJson`-only leg into a real export-then-re-import, so R-JS-6.3 is now met in either format.
+  - landed: f402952 — src/domain/domain.test.ts; JSON half completed 2026-10-26
 
 ## Dual-format export
 
-> Hold this section until the Chrome Web Store has approved v1. Submitting a new
-> version while one is in review replaces the pending item and forfeits accrued
-> queue time, and `docs/store-listing.md` describes the single purpose as
-> "importing and exporting the CSV" — true for as long as export stays CSV-only.
+> Built on 2026-10-26 at the user's request. The hold was on *submitting*, not on
+> building: a new version must still not be submitted while another is in review.
+> `docs/store-listing.md` now names both formats, so the listing and the product
+> agree the moment this is published.
 
-- [ ] 8.1 Serialize a group as JSON (deps: 2.2, est: ~35m) (mutex: domain-parsers)
+- [x] 8.1 Serialize a group as JSON (deps: 2.2, est: ~35m) (mutex: domain-parsers)
   - why: Let a group feed a tool that reads JSON without a conversion step, and preserve each record as stored rather than padding it into a rectangle.
   - acceptance: R-JS-5.3, R-JS-5.4, R-JS-5.5, R-JS-5.7 — `exportJson(accounts)` emits a top-level array in stored order, reserved keys then own metadata keys sorted, absent keys omitted rather than padded, two-space indentation, a trailing newline and no BOM; `exportCsv` output is unchanged byte for byte.
   - verify: Assert CSV export bytes against a stored expectation. Assert a JSON export omits a key absent from one account while the CSV export pads it.
-  - landed:
+  - landed: 2026-10-26 — `exportJson` in `src/domain/json.ts`. Reserved keys then own metadata keys sorted, absent keys omitted, two-space indent, trailing newline, no BOM. CSV export bytes are now pinned by a stored-expectation test, so a second format cannot reshape the first.
 
-- [ ] 8.2 Offer both export formats in Settings (deps: 8.1, est: ~40m) (mutex: options-export)
+- [x] 8.2 Offer both export formats in Settings (deps: 8.1, est: ~40m) (mutex: options-export)
   - why: The user picks the shape at the moment of export, not in a setting configured beforehand.
   - acceptance: R-JS-5.1, R-JS-5.2, R-JS-5.6 — Two buttons each send `EXPORT_ACCOUNTS` with their format and reuse the download mechanics at `src/options/index.ts:1104-1136`; the filename extension matches the format; the 2026-10-05 export amendment's filter independence, group isolation, exclusions and transient handling apply to both.
   - verify: `npm run test:browser` exports both formats and parses each back. `tests/browser/run.mjs:1023` uses `exact: true`, so it survives the second button unchanged — do not "fix" it.
-  - landed:
+  - landed: 2026-10-26 — Settings builds one button per entry in `FORMATS`, so both share the single download path, and the filename extension and blob MIME type come from the same descriptor. Export remains Settings-only, filter-independent and group-isolated. `tests/browser/run.mjs` exports both and compares them account for account.
 
-- [ ] 8.3 Round-trip an exported JSON group (deps: 8.1, est: ~25m) (mutex: domain-tests)
+- [x] 8.3 Round-trip an exported JSON group (deps: 8.1, est: ~25m) (mutex: domain-tests)
   - why: An export that cannot be imported back is a dead end, and this is the requirement that makes the guarantee testable rather than assumed.
   - acceptance: R-JS-6.1 — A group exported as JSON and imported into an empty group reproduces every account with byte-identical passwords, identical identifiers and usernames, and the same metadata keys and values.
   - verify: Export, re-import, compare account by account, including a password with leading and trailing whitespace, an embedded newline and a quote.
-  - landed:
+  - landed: 2026-10-26 — `exportJson` → `parseJson` reproduces every account exactly (`toEqual` on the whole array), including a password with leading/trailing whitespace, an embedded newline and a quote. The story 7.3 test that could only exercise parseJson's half is now a real export round trip.
 
-- [ ] 8.4 Update the store listing for the second format (deps: 8.2, est: ~15m) (mutex: store-listing)
+- [x] 8.4 Update the store listing for the second format (deps: 8.2, est: ~15m) (mutex: store-listing)
   - why: `docs/store-listing.md` states the single purpose as "importing and exporting the CSV", which stops being true, and the single-purpose field is the one reviewers read first.
   - acceptance: Single-purpose and detailed descriptions name both formats; data-usage disclosures re-checked against the unchanged answer, since no new data type is handled.
   - verify: Submit as an update, never while another version is in review.
-  - landed:
+  - landed: 2026-10-26 — Single-purpose, short and detailed descriptions, the storage justification and the PII disclosure all name both formats. No new data type is handled, so the data-usage answers are unchanged. Not yet submitted.

@@ -1,5 +1,6 @@
 import type { CatalogRule, Account, ImportResult } from '../shared/types';
 import { exportCsv as serializeAccounts } from './csv';
+import { exportJson } from './json';
 import { describe, it, expect } from 'vitest';
 import {
   deriveVaultKey,
@@ -715,34 +716,102 @@ describe('round-trip fidelity between import formats (stories 7.1-7.3)', () => {
     expect(reimported.accounts[0]?.metadata.notes).toBe(accounts[0]!.metadata.notes);
   });
 
-  it('preserves the same awkward values through a JSON parse round trip; exportJson does not exist yet (story 8.1), so the JSON half of export-then-re-import cannot be exercised here (story 7.3, R-JS-6.3)', () => {
-    const password = '  pass"word\nwith newline  ';
-    const notes = 'line one, line two\nwith "quotes" and 日本語 ümlaut';
-    const first = json(
-      JSON.stringify([{ account_id: 'RT-1', username: 'rt@example.test', password, notes }]),
-    );
-    expect(first.accounts[0]?.password).toBe(password);
-    expect(first.accounts[0]?.metadata.notes).toBe(notes);
-    // Re-serialize what parseJson produced and parse it again. This exercises
-    // parseJson's half of the round trip only — JSON.stringify/JSON.parse are
-    // lossless for strings, so it does not and cannot stand in for exportJson,
-    // which story 8.1 adds once the Chrome Web Store has approved v1.
-    const second = json(
-      JSON.stringify(
-        first.accounts.map((account) => ({
-          account_id: account.accountId,
-          username: account.username,
-          password: account.password,
-          ...account.metadata,
-        })),
-      ),
-    );
-    expect(second.accounts[0]?.password).toBe(password);
-    expect(second.accounts[0]?.metadata.notes).toBe(notes);
+  it('preserves the same awkward values through a JSON export and re-import round trip (story 7.3, R-JS-6.3)', () => {
+    const accounts: Account[] = [
+      {
+        accountId: 'RT-1',
+        username: 'rt@example.test',
+        password: '  pass"word\nwith newline  ',
+        metadata: { notes: 'line one, line two\nwith "quotes" and 日本語 ümlaut' },
+      },
+    ];
+    const reimported = json(exportJson(accounts));
+    expect(reimported.valid).toBe(1);
+    expect(reimported.accounts[0]?.password).toBe(accounts[0]!.password);
+    expect(reimported.accounts[0]?.metadata.notes).toBe(accounts[0]!.metadata.notes);
+  });
+});
+
+describe('JSON group export (stories 8.1, 8.3)', () => {
+  const mixed: Account[] = [
+    {
+      accountId: 'JX-1',
+      username: 'one@example.test',
+      password: 'synthetic-one',
+      metadata: { role: 'Tester', company: 'Acme' },
+    },
+    {
+      accountId: 'JX-2',
+      username: 'two@example.test',
+      password: 'synthetic-two',
+      metadata: { company: 'Contoso' },
+    },
+  ];
+
+  it('emits stored order, reserved keys first, own metadata keys sorted (R-JS-5.3)', () => {
+    const records = JSON.parse(exportJson(mixed)) as Record<string, string>[];
+    expect(records.map((record) => record.account_id)).toEqual(['JX-1', 'JX-2']);
+    expect(Object.keys(records[0]!)).toEqual([
+      'account_id',
+      'username',
+      'password',
+      'company',
+      'role',
+    ]);
+  });
+
+  it('omits a key an account lacks while CSV pads it (R-JS-5.4)', () => {
+    const records = JSON.parse(exportJson(mixed)) as Record<string, string>[];
+    expect('role' in records[1]!).toBe(false);
+    // The same group through CSV gains the column back as an empty value.
+    expect(
+      parseCsv(new TextEncoder().encode(serializeAccounts(mixed))).accounts[1]?.metadata.role,
+    ).toBe('');
+  });
+
+  it('uses two-space indentation and a trailing newline with no BOM (R-JS-5.5)', () => {
+    const text = exportJson(mixed);
+    expect(text.startsWith('[\n  {\n    "account_id"')).toBe(true);
+    expect(text.endsWith('\n')).toBe(true);
+    expect(text.charCodeAt(0)).not.toBe(0xfeff);
+  });
+
+  it('reproduces every account when an exported group is imported back (R-JS-6.1)', () => {
+    const accounts: Account[] = [
+      ...mixed,
+      {
+        accountId: 'JX-3',
+        username: 'three@example.test',
+        password: '  syn"thetic\nthree  ',
+        metadata: { notes: 'commas, "quotes", 日本語', env: 'QA' },
+      },
+    ];
+    const reimported = json(exportJson(accounts));
+    expect(reimported.valid).toBe(accounts.length);
+    expect(reimported.invalid).toBe(0);
+    expect(reimported.accounts).toEqual(accounts);
   });
 });
 
 describe('CSV group export', () => {
+  // Pins the bytes so adding a second export format cannot quietly reshape the
+  // first one (R-JS-5.7).
+  it('emits unchanged bytes: BOM, quoted fields, CRLF and a trailing CRLF', () => {
+    expect(
+      serializeAccounts([
+        {
+          accountId: 'BY-1',
+          username: 'byte@example.test',
+          password: 'synthetic-byte',
+          metadata: { role: 'Tester' },
+        },
+      ]),
+    ).toBe(
+      '\uFEFF"account_id","username","password","role"\r\n' +
+        '"BY-1","byte@example.test","synthetic-byte","Tester"\r\n',
+    );
+  });
+
   it('round trips quotes, commas, Unicode, newlines and password whitespace', () => {
     const accounts: import('../shared/types').Account[] = [
       {

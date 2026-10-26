@@ -39,7 +39,7 @@ import {
   isAuthorizedPageUrl,
 } from '../domain/rules';
 import { parseCsv, exportCsv } from '../domain/csv';
-import { parseJson } from '../domain/json';
+import { parseJson, exportJson } from '../domain/json';
 import { planImport } from '../domain/import';
 import { searchAccounts } from '../domain/search';
 
@@ -98,13 +98,13 @@ const RULE_UNCHANGED = "That is already this group's authorized domain.";
 // page cannot already read, and a bare failure leaves the user guessing.
 const FILL_NO_PROFILE = 'Save a login profile in Settings before autofill.';
 const FILL_STALE_PROFILE =
-  "The group's domains changed. Open Login page setup and save the profile again.";
+  "The group's domains changed. Open Login page rules and save the profile again.";
 const FILL_NO_PERMISSION =
-  'Website permission is missing. Open Login page setup and save the profile again to grant it.';
+  'Website permission is missing. Open Login page rules and save the profile again to grant it.';
 const FILL_TAB_INACTIVE = 'Open the popup on the tab you want to fill.';
 const FILL_OFF_CATALOG = 'That tab is not on a domain this CSV group authorizes.';
 const FILL_OFF_PROFILE =
-  'That tab is not on a login domain saved in this profile. Open Login page setup, add the domain and save.';
+  'That tab is not on a login domain saved in this profile. Open Login page rules, add the domain and save.';
 const FILL_NO_FIELDS =
   'The login fields were not found on that page. Check the match values, or detect them again.';
 const FILL_ALREADY_SUCCESS =
@@ -465,10 +465,9 @@ export class AssistantService {
     if (command.type === 'EXPORT_ACCOUNTS') {
       if (command.format !== 'csv' && command.format !== 'json')
         throw new Error('Choose a supported file format.');
-      if (command.format === 'csv') return exportCsv(this.payload!.accounts);
-      // exportJson does not exist yet — held for story 8.1 behind Chrome Web
-      // Store approval of v1 (see docs/tasks/json-account-import-export.md).
-      throw new Error();
+      return command.format === 'csv'
+        ? exportCsv(this.payload!.accounts)
+        : exportJson(this.payload!.accounts);
     }
     // User-authorized exception, same shape as EXPORT_ACCOUNTS: the password is
     // returned only to satisfy an explicit copy gesture from a trusted

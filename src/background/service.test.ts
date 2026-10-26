@@ -505,6 +505,13 @@ describe('named CSV groups', () => {
     const rows = parseCsv(new TextEncoder().encode(exported));
     expect(rows.valid).toBe(1);
     expect(rows.accounts[0].accountId).toBe('A');
+    // The format only chooses the serializer; group isolation is the same pin.
+    const exportedJson = await run<string>(service, {
+      type: 'EXPORT_ACCOUNTS',
+      format: 'json',
+      groupId: group.id,
+    });
+    expect(JSON.parse(exportedJson)).toEqual([expect.objectContaining({ account_id: 'A' })]);
     // Assert the pin's own message, not merely that the call failed: a pin that
     // stops matching lets the command fall through to the generic dispatch
     // error, which is also ok:false.
