@@ -279,7 +279,8 @@ export class AssistantService {
     next.snapshotRevision = this.payload!.snapshotRevision + 1;
     if (accountMutation) next.revision = this.payload!.revision + 1;
     const envelope = await encryptVault(next, this.session!.key, this.envelope!.salt);
-    if (bytes(envelope) > 5 * 1024 * 1024) throw new Error('Vault size limit.');
+    if (bytes(envelope) > 5 * 1024 * 1024)
+      throw new Error('Vault exceeds the 5 MiB encrypted storage limit.');
     this.assert(generation);
     if (!stillValid()) throw new Error('Cancelled.');
     await this.saveLocal({ vault: envelope, ...localUpdates });

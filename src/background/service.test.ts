@@ -129,6 +129,35 @@ describe('worker credential and transaction boundary', () => {
     await command(service, { type: 'COMMIT_IMPORT', token: p.token });
     expect((await state(service)).accounts[0].accountId).toBe('B');
   });
+  it('names the cause when the encrypted catalog exceeds the 5 MiB vault limit', async () => {
+    const service = await setup();
+    // Each password is kept just under the 2 MiB CSV file limit so the oversize
+    // rejection comes from the encrypted envelope, not the CSV parser. Two such
+    // accounts base64-encode to over 5 MiB of ciphertext, so the first commits
+    // and the second is the one that must name its cause.
+    const bulky = (id: string) => [
+      ...new TextEncoder().encode(`account_id,username,password\n${id},u,${'x'.repeat(2_000_000)}`),
+    ];
+    const first = await command<ImportPreview>(service, {
+      type: 'PREVIEW_IMPORT',
+      bytes: bulky('A'),
+      rule: 'https://qa.example.com/*',
+      mode: 'merge',
+      format: 'csv',
+    });
+    await command(service, { type: 'COMMIT_IMPORT', token: first.token });
+    const second = await command<ImportPreview>(service, {
+      type: 'PREVIEW_IMPORT',
+      bytes: bulky('B'),
+      rule: 'https://qa.example.com/*',
+      mode: 'merge',
+      format: 'csv',
+    });
+    expect(await service.handle({ type: 'COMMIT_IMPORT', token: second.token }, sender)).toEqual({
+      ok: false,
+      error: 'Vault exceeds the 5 MiB encrypted storage limit.',
+    });
+  });
   it('persists encrypted delete Undo across worker suspension and consumes it', async () => {
     let service = await setup();
     await importAccount(service);
