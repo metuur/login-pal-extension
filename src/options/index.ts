@@ -999,9 +999,15 @@ function showPreview() {
     );
   if (p.diagnostics.length) {
     const details = el('details');
-    details.append(el('summary', '', `Row diagnostics (${p.diagnostics.length})`));
+    details.append(el('summary', '', `Diagnostics (${p.diagnostics.length})`));
     const codes = el('ul', 'diagnostics');
-    p.diagnostics.forEach((d) => codes.append(el('li', 'mono', `Row ${d.row}: ${d.code}`)));
+    // The unit travels with the position, so this renders both formats without
+    // branching on which one produced the preview.
+    p.diagnostics.forEach((d) =>
+      codes.append(
+        el('li', 'mono', `${d.unit[0]!.toUpperCase()}${d.unit.slice(1)} ${d.at}: ${d.code}`),
+      ),
+    );
     details.append(codes);
     previewBox.append(details);
   }

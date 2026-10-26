@@ -86,16 +86,30 @@ export interface Envelope {
   iv: string;
   ciphertext: string;
 }
-export interface RowDiagnostic {
-  row: number;
-  code: string;
+export type AccountFormat = 'csv' | 'json';
+export type ImportDiagnosticCode =
+  | 'DUPLICATE_ACCOUNT_ID'
+  | 'FIELD_COUNT_MISMATCH'
+  | 'EMPTY_ACCOUNT_ID'
+  | 'EMPTY_USERNAME'
+  | 'EMPTY_PASSWORD';
+export interface ImportDiagnostic {
+  /**
+   * Position in the source document, counted in that format's own unit: a CSV
+   * row is a physical line with the header at 1, while a JSON record is a
+   * 1-based index into the top-level array. The two are disjoint, so the unit
+   * travels with the position instead of being inferred by the reader.
+   */
+  at: number;
+  unit: 'row' | 'record';
+  code: ImportDiagnosticCode;
 }
-export interface CsvResult {
+export interface ImportResult {
   accounts: Account[];
   found: number;
   valid: number;
   invalid: number;
-  diagnostics: RowDiagnostic[];
+  diagnostics: ImportDiagnostic[];
 }
 export type ImportMode = 'merge' | 'replace';
 export interface ImportCounts {
@@ -109,7 +123,7 @@ export interface ImportPreview extends ImportCounts {
   found: number;
   valid: number;
   invalid: number;
-  diagnostics: RowDiagnostic[];
+  diagnostics: ImportDiagnostic[];
   rule: string;
   mode: ImportMode;
 }
@@ -125,6 +139,11 @@ export interface Attempt {
   expiresAt: number;
   acknowledged?: boolean;
 }
+// @debt A second import format landed; the group concept is no longer
+// CSV-specific. `CsvGroup` and the "CSV group name" label in Settings outlive
+// CSV-only scope. Ceiling: rename in one deliberate pass across types.ts and
+// options/index.ts, traceable to its own reason — not laundered through a
+// feature change.
 export interface CsvGroup {
   id: string;
   name: string;

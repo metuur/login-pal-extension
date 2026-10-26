@@ -1,5 +1,5 @@
 import Papa from 'papaparse';
-import type { Account, CsvResult, RowDiagnostic } from '../shared/types';
+import type { Account, ImportResult, ImportDiagnostic } from '../shared/types';
 
 export function exportCsv(accounts: Account[]): string {
   const required = ['account_id', 'username', 'password'];
@@ -51,7 +51,7 @@ function validateQuotes(text: string): void {
   if (state === 'quoted') throw new Error('CSV has malformed quoting.');
 }
 // @spec R-2.1..R-2.7: parse first, then validate identities without exposing row text.
-export function parseCsv(bytes: Uint8Array): CsvResult {
+export function parseCsv(bytes: Uint8Array): ImportResult {
   if (bytes.byteLength > 2 * 1024 * 1024) throw new Error('CSV exceeds the 2 MiB file limit.');
   let text: string;
   try {
@@ -93,7 +93,7 @@ export function parseCsv(bytes: Uint8Array): CsvResult {
     if (id) frequencies.set(id, (frequencies.get(id) ?? 0) + 1);
   }
   const accounts: Account[] = [],
-    diagnostics: RowDiagnostic[] = [];
+    diagnostics: ImportDiagnostic[] = [];
   for (const { cells, row } of records) {
     const accountId = cells[idIndex]?.trim() ?? '',
       username = cells[userIndex]?.trim() ?? '',
@@ -111,7 +111,7 @@ export function parseCsv(bytes: Uint8Array): CsvResult {
                 ? 'EMPTY_PASSWORD'
                 : null;
     if (code) {
-      diagnostics.push({ row, code });
+      diagnostics.push({ at: row, unit: 'row', code });
       continue;
     }
     const metadata: Record<string, string> = Object.fromEntries(

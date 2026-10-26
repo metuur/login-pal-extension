@@ -329,7 +329,8 @@ describe('strict import regressions', () => {
   });
   it('counts logical rows with multiline metadata and all duplicate occurrences', () => {
     const r = csv(header + '\na,u,p,"line1\nline2"\na,u,p,c\nb,u,p,c');
-    expect(r.diagnostics.map((d) => d.row)).toEqual([2, 3]);
+    expect(r.diagnostics.map((d) => d.at)).toEqual([2, 3]);
+    expect(r.diagnostics.map((d) => d.unit)).toEqual(['row', 'row']);
     expect(r.found).toBe(3);
   });
   it('rejects empty/missing headers and excess row/column limits', () => {
