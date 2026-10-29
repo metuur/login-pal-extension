@@ -35,7 +35,7 @@ export default function App() {
         <div className="header-line">
           <div className="brand">
             <div className="logo" aria-hidden="true" />
-            <strong>Login Pal</strong>
+            <strong>Login Pal DEV</strong>
           </div>
           <div className="header-actions">
             {settings ? (

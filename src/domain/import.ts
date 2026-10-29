@@ -1,6 +1,6 @@
 import type {
   VaultPayload,
-  CsvResult,
+  ImportResult,
   CatalogRule,
   ImportMode,
   ImportCounts,
@@ -31,7 +31,7 @@ function same(a: Account, b: Account): boolean {
 // @spec R-2.8..R-2.20: create an isolated prospective snapshot; the worker commits it atomically.
 export function planImport(
   current: VaultPayload,
-  parsed: CsvResult,
+  parsed: ImportResult,
   rules: CatalogRule[],
   mode: ImportMode,
 ): { payload: VaultPayload; counts: ImportCounts } {

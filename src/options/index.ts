@@ -1,4 +1,5 @@
 import type {
+  AccountFormat,
   AppState,
   ImportMode,
   ImportPreview,
@@ -7,7 +8,9 @@ import type {
   FieldMatch,
   DetectResult,
   DetectTab,
+  TitleRule,
 } from '../shared/types';
+import { FORMATS } from '../shared/formats';
 import {
   parseRule,
   parseDomainRules,
@@ -32,7 +35,6 @@ import {
   request,
   resetButton,
   searchBox,
-  sectionLabel,
   type Tone,
   slashSearch,
   migrationForm,
@@ -40,13 +42,15 @@ import {
 } from '../ui/common';
 
 const app = document.querySelector<HTMLElement>('#app')!;
+const appName = chrome.runtime.getManifest().name;
+document.title = `Manage accounts · ${appName}`;
 const header = el('header', 'app-header');
 const headerLine = el('div', 'header-line');
 const logo = el('div', 'logo');
 logo.setAttribute('aria-hidden', 'true');
 const brand = el('div', 'brand');
 const title = el('div');
-title.append(el('strong', '', 'Login Pal'), el('p', 'subtle', 'Account settings'));
+title.append(el('strong', '', appName), el('p', 'subtle', 'Account settings'));
 brand.append(logo, title);
 const badge = el('span', 'pill authorized');
 const version = el('span', 'version mono', `v${chrome.runtime.getManifest().version}`);
@@ -59,7 +63,44 @@ const groupBar = el('div', 'group-bar');
 const tabs = el('div', 'settings-tabs');
 tabs.setAttribute('role', 'tablist');
 tabs.setAttribute('aria-label', 'Account settings');
-app.replaceChildren(header, groupBar, tabs, status, content, footer);
+tabs.setAttribute('aria-orientation', 'vertical');
+const storageLimit = 5 * 1024 * 1024;
+const storageReading = el('span', 'mono', '0.00 / 5.00 MiB');
+const storagePercent = el('span', 'storage-percent', '0.0%');
+const storageLine = el('div', 'storage-meter-line');
+storageLine.append(storageReading, storagePercent);
+const storageFill = el('div', 'storage-bar-fill');
+const storageBar = el('div', 'storage-bar');
+storageBar.setAttribute('role', 'progressbar');
+storageBar.setAttribute('aria-label', 'Local storage used');
+storageBar.setAttribute('aria-valuemin', '0');
+storageBar.setAttribute('aria-valuemax', '100');
+storageBar.setAttribute('aria-valuenow', '0');
+storageBar.append(storageFill);
+const storageMeter = el('div', 'storage-meter');
+storageMeter.append(
+  el('div', 'sidebar-section-label', 'Local storage'),
+  storageLine,
+  storageBar,
+  el('p', 'subtle', 'Accounts stay in this browser’s local storage and are never sent anywhere.'),
+);
+/** The reset is reachable from every tab, so it lives beside the rail. */
+const sidebarDanger = el('div', 'sidebar-danger');
+const sidebar = el('aside', 'settings-sidebar');
+sidebar.append(
+  el('div', 'sidebar-section-label', 'Configuration'),
+  tabs,
+  el('div', 'sidebar-divider'),
+  storageMeter,
+  el('div', 'sidebar-divider'),
+  sidebarDanger,
+);
+const settingsMain = el('div', 'settings-main');
+settingsMain.append(groupBar, status, content, footer);
+const shell = el('div', 'settings-shell');
+shell.append(sidebar, settingsMain);
+app.replaceChildren(header, shell);
+sidebarDanger.append(resetButton(refresh));
 const rawSource = new URL(location.href).searchParams.get('sourceTab');
 const sourceTab = rawSource !== null && /^\d+$/.test(rawSource) ? Number(rawSource) : undefined;
 let state: AppState | undefined,
@@ -70,6 +111,7 @@ let state: AppState | undefined,
   mounted = false,
   preview: ImportPreview | undefined,
   file: File | undefined,
+  format: AccountFormat | undefined,
   mode: ImportMode = 'merge',
   undoTimer: ReturnType<typeof setTimeout> | undefined,
   deletedId = '',
@@ -97,8 +139,9 @@ groupActions.append(
       chooseGroup(group.id);
       mounted = false;
       file = undefined;
+      format = undefined;
       fileInput.value = '';
-      fileName.textContent = 'Choose an account CSV';
+      fileName.textContent = 'Choose an account file';
       invalidatePreview();
       query = '';
       page = 0;
@@ -106,21 +149,30 @@ groupActions.append(
     }),
   ),
 );
-const importHeading = sectionLabel('↥ Import CSV dataset');
-const step = el('span', 'step', 'Step 1 of 2');
-importHeading.append(step);
+const step = el('span', 'pill step', 'Step 1 of 2');
+const importHeading = el('div', 'panel-heading');
+importHeading.append(
+  el('h2', '', 'Import dataset'),
+  el(
+    'p',
+    'subtle',
+    'Load a CSV or JSON account file into this group and bind it to an authorized domain.',
+  ),
+);
+const importHeader = el('div', 'panel-header');
+importHeader.append(importHeading, step);
 const fileInput = el('input');
 fileInput.type = 'file';
-fileInput.accept = '.csv,text/csv';
+fileInput.accept = '.csv,.json,text/csv,application/json';
 fileInput.id = 'csv-file';
 fileInput.className = 'file-input';
-const fileName = el('strong', '', 'Choose an account CSV'),
+const fileName = el('strong', '', 'Choose an account file'),
   fileInfo = el('p', 'mono subtle', 'UTF-8 · up to 2 MiB');
 const fileCard = el('div', 'file-card');
 const fileText = el('div', 'grow');
 fileText.append(fileName, fileInfo);
 const change = button('Choose file', () => fileInput.click());
-const another = button('Upload another CSV', () => {
+const another = button('Upload another file', () => {
   mode = 'merge';
   modeWrap.querySelectorAll<HTMLInputElement>('input').forEach((radio) => {
     radio.checked = radio.value === 'merge';
@@ -130,7 +182,8 @@ const another = button('Upload another CSV', () => {
   invalidatePreview();
   fileInput.value = '';
   file = undefined;
-  fileName.textContent = 'Choose an account CSV';
+  format = undefined;
+  fileName.textContent = 'Choose an account file';
   change.textContent = 'Choose file';
   fileInput.click();
 });
@@ -265,9 +318,20 @@ importSetup.append(
   modeExplanation,
   verify,
 );
-importPanel.append(importHeading, importError, importSetup, previewBox);
+importPanel.append(importHeader, importError, importSetup, previewBox);
 const accountsPanel = el('section', 'stack');
 accountsPanel.id = 'accounts';
+const accountsHeading = el('div', 'panel-heading');
+accountsHeading.append(
+  el('h2', '', 'Accounts vault'),
+  el(
+    'p',
+    'subtle',
+    'Browse, search, export or remove the synthetic accounts indexed for this group.',
+  ),
+);
+const accountsHeader = el('div', 'panel-header');
+accountsHeader.append(accountsHeading);
 const list = el('div', 'stack'),
   listHeading = el('div', 'section-label'),
   undo = el('div', 'notice info');
@@ -277,22 +341,28 @@ const search = searchBox((value) => {
   page = 0;
   void refresh();
 });
-accountsPanel.append(listHeading, undo, search.wrap, list);
+accountsPanel.append(accountsHeader, listHeading, undo, search.wrap, list);
 slashSearch(search.input, () => !!state && !state.migrationRequired && activeTab === 'accounts');
 const profilePanel = el('section', 'panel profile-panel stack');
 profilePanel.id = 'profile';
-profilePanel.append(el('h2', '', 'Login page setup'));
 
 type SettingsTab = 'import' | 'accounts' | 'profile';
 let activeTab: SettingsTab = 'import';
 const tabPanels = { import: importPanel, accounts: accountsPanel, profile: profilePanel };
 const tabButtons = new Map<SettingsTab, HTMLButtonElement>();
-for (const [id, label] of [
-  ['import', 'Import CSV'],
-  ['accounts', 'Indexed accounts'],
-  ['profile', 'Login page setup'],
+const tabMetas = new Map<SettingsTab, HTMLSpanElement>();
+// Rail order is the reading order of the workspace, not the panel mount order.
+for (const [id, label, glyph] of [
+  ['profile', 'Login page rules', 'settings'],
+  ['accounts', 'Accounts vault', 'key'],
+  ['import', 'Import dataset', 'upload'],
 ] as const) {
-  const tab = button(label, () => selectTab(id), 'settings-tab');
+  const tab = button('', () => selectTab(id), 'settings-tab');
+  const meta = el('span', 'settings-tab-meta');
+  // The trailing chip is decoration, so it must stay out of the accessible name.
+  meta.setAttribute('aria-hidden', 'true');
+  tab.append(icon(glyph), el('span', 'settings-tab-label', label), meta);
+  tabMetas.set(id, meta);
   tab.id = `tab-${id}`;
   tab.setAttribute('role', 'tab');
   tab.setAttribute('aria-controls', id);
@@ -305,14 +375,16 @@ for (const [id, label] of [
   tab.addEventListener('keydown', (event) => {
     const ids = [...tabButtons.keys()];
     const index = ids.indexOf(id);
+    const forward = event.key === 'ArrowDown' || event.key === 'ArrowRight';
+    const backward = event.key === 'ArrowUp' || event.key === 'ArrowLeft';
     const next =
       event.key === 'Home'
         ? 0
         : event.key === 'End'
           ? ids.length - 1
-          : event.key === 'ArrowRight'
+          : forward
             ? (index + 1) % ids.length
-            : event.key === 'ArrowLeft'
+            : backward
               ? (index + ids.length - 1) % ids.length
               : -1;
     if (next < 0 || busy) return;
@@ -362,6 +434,84 @@ const profileName = field('Profile name'),
   passwordSelector = field('Password field CSS selector'),
   successUrl = field('Exact success / observation URL', 'url'),
   successSelector = field('Visible success element CSS selector');
+const titleRulesPanel = el('section', 'stack title-rules');
+titleRulesPanel.append(
+  el('h3', '', 'Application recognition'),
+  el(
+    'p',
+    'subtle',
+    'Optionally distinguish applications that share a domain by the page title. This only suggests a CSV group; it never grants website access or fills an account automatically.',
+  ),
+);
+const titleRuleControls = new Map<
+  string,
+  { enabled: HTMLInputElement; mode: HTMLSelectElement; value: HTMLInputElement }
+>();
+function renderTitleRuleControls(origins: string[], saved: TitleRule[] = []) {
+  const prior = new Map(
+    [...titleRuleControls].map(([origin, control]) => [
+      origin,
+      { enabled: control.enabled.checked, mode: control.mode.value, value: control.value.value },
+    ]),
+  );
+  titleRuleControls.clear();
+  titleRulesPanel.replaceChildren(
+    el('h3', '', 'Application recognition'),
+    el(
+      'p',
+      'subtle',
+      'Optionally distinguish applications that share a domain by the page title. This only suggests a CSV group; it never grants website access or fills an account automatically.',
+    ),
+  );
+  for (const origin of origins) {
+    const existing = saved.find((rule) => rule.origin === origin);
+    const previous = prior.get(origin);
+    const enabled = el('input');
+    enabled.type = 'checkbox';
+    enabled.checked = previous?.enabled ?? !!existing;
+    const toggleLabel = el('label', 'checkbox-label');
+    toggleLabel.append(enabled, el('span', '', `Recognize this application on ${origin}`));
+    const mode = el('select');
+    mode.setAttribute('aria-label', `Title matching mode for ${origin}`);
+    for (const [value, label] of [
+      ['contains', 'Title contains'],
+      ['equals', 'Title equals'],
+    ] as const) {
+      const option = el('option', '', label);
+      option.value = value;
+      mode.append(option);
+    }
+    mode.value = previous?.mode ?? existing?.mode ?? 'contains';
+    const value = el('input');
+    value.type = 'text';
+    value.maxLength = 200;
+    value.placeholder = 'For example, Vite + React';
+    value.setAttribute('aria-label', `Page title for ${origin}`);
+    value.value = previous?.value ?? existing?.value ?? '';
+    const fields = el('div', 'settings-grid');
+    fields.append(mode, value);
+    const row = el('div', 'stack title-rule');
+    row.append(toggleLabel, fields);
+    const update = () => {
+      mode.disabled = value.disabled = !enabled.checked;
+    };
+    enabled.addEventListener('change', update);
+    update();
+    titleRuleControls.set(origin, { enabled, mode, value });
+    titleRulesPanel.append(row);
+  }
+  if (!origins.length)
+    titleRulesPanel.append(
+      el('p', 'subtle', 'Add an authorized login domain to configure title recognition.'),
+    );
+}
+function selectedTitleRules(): TitleRule[] {
+  return [...titleRuleControls].flatMap(([origin, control]) =>
+    control.enabled.checked
+      ? [{ origin, mode: control.mode.value as TitleRule['mode'], value: control.value.value }]
+      : [],
+  );
+}
 for (const f of [profileName, login, usernameSelector, passwordSelector, successUrl])
   f.input.required = true;
 function matchingControl(label: string, target: ReturnType<typeof field>, password: boolean) {
@@ -462,7 +612,7 @@ kind.addEventListener('change', updateSuccessFields);
 const selectorDefaults = el('div', 'actions');
 selectorDefaults.append(
   button(
-    'Use common selectors',
+    'Restore common defaults',
     () => {
       usernameMatch.select.value = 'css';
       passwordMatch.select.value = 'css';
@@ -698,7 +848,7 @@ const detectButton = button(
       'primary',
     );
   },
-  'preset accent',
+  'accent-action',
 );
 /** Chrome ties its prompt to a user gesture, so request before any await. */
 function requestAndDetect(origins: string[]) {
@@ -732,16 +882,30 @@ function requestAndDetect(origins: string[]) {
     }, 'Looking for open tabs…'),
   );
 }
-selectorDefaults.append(detectButton);
-profileForm.append(
+const profileHeading = el('div', 'panel-heading');
+profileHeading.append(
+  el('h2', '', 'Login page rules'),
   el(
     'p',
     'subtle',
     'A login profile tells the extension which website to fill, where its username and password fields are, and how to recognize a successful login. You submit the form yourself.',
   ),
-  profileIdentity,
+);
+const profileHeader = el('div', 'panel-header');
+profileHeader.append(profileHeading, detectButton);
+const selectorsTitle = el('div', 'subpanel-title');
+// Selectors cannot be resolved from this page, so the chip states when they are
+// actually checked rather than claiming a live validation count.
+selectorsTitle.append(
+  el('strong', '', 'Login field selectors'),
+  el('span', 'pill', 'Checked on save'),
+);
+const selectorsHeader = el('div', 'subpanel-header');
+selectorsHeader.append(selectorsTitle, selectorDefaults);
+const selectorsPanel = el('section', 'subpanel stack');
+selectorsPanel.append(
+  selectorsHeader,
   fieldMatching,
-  selectorDefaults,
   tabChoices,
   detectStatus,
   detected,
@@ -751,12 +915,35 @@ profileForm.append(
     'Common username/email and password selectors are prefilled for new profiles. If more than one field matches, narrow the selector to the login form.',
   ),
   matchingHelp,
+);
+// Title recognition carries its own heading, so the box needs no second one.
+const titleRulesBox = el('section', 'subpanel');
+titleRulesBox.append(titleRulesPanel);
+const discard = button(
+  'Discard changes',
+  () => {
+    populateProfile();
+    message(profileStatus, 'Draft reverted to the saved profile.');
+  },
+  'secondary',
+);
+const profileActions = el('div', 'actions');
+profileActions.append(discard, save);
+const profileFooter = el('div', 'panel-footer');
+profileFooter.append(
+  el('span', 'subtle', 'Saving also asks Chrome for permission to access the authorized website.'),
+  profileActions,
+);
+profileForm.append(
+  profileIdentity,
+  selectorsPanel,
+  titleRulesBox,
   successFields,
   successHint,
   profileStatus,
-  save,
+  profileFooter,
 );
-profilePanel.append(profileForm);
+profilePanel.append(profileHeader, profileForm);
 function routeUrl(route: Route) {
   return route.origin + route.pathname + route.hash;
 }
@@ -775,6 +962,14 @@ function populateProfile() {
     matched = false;
   }
   login.input.value = matched ? saved.join(', ') : rules.join(', ');
+  try {
+    renderTitleRuleControls(
+      parseDomainRules(login.input.value).map((rule) => rule.origin),
+      p?.titleRules ?? [],
+    );
+  } catch {
+    renderTitleRuleControls([]);
+  }
   usernameMatch.select.value = p?.usernameMatch ?? 'css';
   passwordMatch.select.value = p?.passwordMatch ?? 'css';
   usernameMatch.update();
@@ -786,6 +981,13 @@ function populateProfile() {
   successSelector.input.value = p?.success?.kind === 'element' ? p.success.selector : '';
   updateSuccessFields();
 }
+login.input.addEventListener('change', () => {
+  try {
+    renderTitleRuleControls(parseDomainRules(login.input.value).map((rule) => rule.origin));
+  } catch {
+    renderTitleRuleControls([]);
+  }
+});
 function invalidatePreview() {
   preview = undefined;
   const wasReviewing = importSetup.hidden;
@@ -798,12 +1000,23 @@ function invalidatePreview() {
   fileInfo.textContent = file
     ? `${(file.size / 1024).toFixed(1)} KiB · not yet validated`
     : 'UTF-8 · up to 2 MiB';
+  updateRailMeta();
+}
+const supportedExtensions = Object.values(FORMATS)
+  .map((d) => d.extension)
+  .join(', ');
+function formatFromFileName(name: string): AccountFormat | undefined {
+  const lower = name.toLowerCase();
+  return (Object.keys(FORMATS) as AccountFormat[]).find((key) =>
+    lower.endsWith(FORMATS[key].extension),
+  );
 }
 target.input.addEventListener('input', invalidatePreview);
 fileInput.addEventListener('change', () => {
   file = fileInput.files?.[0];
+  format = file ? formatFromFileName(file.name) : undefined;
   invalidatePreview();
-  fileName.textContent = file?.name ?? 'Choose an account CSV';
+  fileName.textContent = file?.name ?? 'Choose an account file';
   change.textContent = file ? 'Change' : 'Choose file';
   message(importError, '');
 });
@@ -811,26 +1024,43 @@ async function verifyImport() {
   if (busy) return;
   message(importError, '');
   if (!file) {
-    message(importError, 'Choose a CSV file first.', true);
+    message(importError, 'Choose an account file first.', true);
+    return;
+  }
+  if (!format) {
+    message(
+      importError,
+      `${file.name} is not a supported account file. Choose a file ending in ${supportedExtensions}.`,
+      true,
+    );
     return;
   }
   if (!groupName.input.value.trim()) {
-    message(importError, 'Enter a name for this CSV group.', true);
+    message(importError, 'Name this CSV group before verifying its accounts.', true);
     groupName.input.focus();
     return;
   }
   if (!target.input.value.trim()) {
-    message(importError, 'Enter the URL to match.', true);
+    message(
+      importError,
+      'Enter the authorized domain these accounts belong to, for example https://qa.example.com.',
+      true,
+    );
     target.input.focus();
     return;
   }
   if (file.size > 2 * 1024 * 1024) {
-    message(importError, 'The CSV exceeds the 2 MiB file limit.', true);
+    message(
+      importError,
+      `${file.name} is ${(file.size / 1024 / 1024).toFixed(1)} MiB. Choose an account file of 2 MiB or less.`,
+      true,
+    );
     return;
   }
   busy = true;
   setBusy(true);
   const chosen = file;
+  const chosenFormat = format;
   try {
     if (groupName.input.value.trim() !== state?.groupName) {
       await request({ type: 'RENAME_GROUP', name: groupName.input.value });
@@ -841,14 +1071,19 @@ async function verifyImport() {
       bytes: Array.from(bytes),
       rule: target.input.value,
       mode,
+      format: chosenFormat,
     });
     bytes.fill(0);
     showPreview();
   } catch (error) {
     invalidatePreview();
+    // Name the file that failed: several can be tried in a row, and the reason
+    // alone does not say which one produced it.
     message(
       importError,
-      error instanceof Error ? error.message : 'Could not validate this file.',
+      error instanceof Error
+        ? `${chosen.name}: ${error.message}`
+        : `${chosen.name} could not be read as ${FORMATS[chosenFormat].label}.`,
       true,
     );
   } finally {
@@ -858,16 +1093,41 @@ async function verifyImport() {
       previewBox.querySelector<HTMLButtonElement>('.primary')?.focus();
   }
 }
+/** Lists only the counts that actually moved, so the line reads differently per file. */
+function changeSummary(p: ImportPreview) {
+  const parts = [
+    [p.added, 'added'],
+    [p.updated, 'updated'],
+    [p.removed, 'removed'],
+    [p.unchanged, 'unchanged'],
+  ] as const;
+  const moved = parts.filter(([count]) => count > 0).map(([count, label]) => `${count} ${label}`);
+  return moved.length ? moved.join(', ') : 'no changes';
+}
 function showPreview() {
   if (!preview) return;
   const p = preview;
+  const unit = FORMATS[p.format].unit;
+  const units = (count: number) => `${count} ${unit}${count === 1 ? '' : 's'}`;
+  const name = file?.name ?? 'This file';
+  // State the outcome of the check itself; the counts below explain it, but the
+  // banner is what a reader looks at first.
+  message(
+    importError,
+    p.valid === 0
+      ? `${name} has no valid ${unit}s to import. Open Diagnostics below to see why each one was rejected.`
+      : p.invalid > 0
+        ? `${name}: ${p.valid} of ${units(p.found)} valid (${changeSummary(p)}). The ${units(p.invalid)} that failed ${p.invalid === 1 ? 'is' : 'are'} listed under Diagnostics.`
+        : `${name}: ${units(p.found)} checked, all valid (${changeSummary(p)}). Review the changes, then import.`,
+    p.valid === 0 ? 'error' : p.invalid > 0 ? 'warning' : 'success',
+  );
   step.textContent = 'Step 2 of 2';
   importSetup.hidden = true;
   verify.hidden = true;
-  fileInfo.textContent = `${((file?.size ?? 0) / 1024).toFixed(1)} KiB · ${p.valid} valid rows`;
+  fileInfo.textContent = `${((file?.size ?? 0) / 1024).toFixed(1)} KiB · ${p.valid} valid entries`;
   previewBox.replaceChildren(
     el('h2', '', `Review import into ${state?.groupName ?? 'this group'}`),
-    el('p', 'wrap', file?.name ?? 'Account CSV'),
+    el('p', 'wrap', `${file?.name ?? 'Account file'} · ${FORMATS[p.format].label}`),
     el('p', 'mono wrap', p.rule),
     el(
       'p',
@@ -897,18 +1157,24 @@ function showPreview() {
       el(
         'p',
         'notice warning',
-        `${p.invalid} invalid rows will be excluded.${p.mode === 'replace' ? ' In Replace mode, existing IDs absent from the valid rows will be removed.' : ''}`,
+        `${p.invalid} invalid entries will be excluded.${p.mode === 'replace' ? ' In Replace mode, existing IDs absent from the valid entries will be removed.' : ''}`,
       ),
     );
   if (p.diagnostics.length) {
     const details = el('details');
-    details.append(el('summary', '', `Row diagnostics (${p.diagnostics.length})`));
+    details.append(el('summary', '', `Diagnostics (${p.diagnostics.length})`));
     const codes = el('ul', 'diagnostics');
-    p.diagnostics.forEach((d) => codes.append(el('li', 'mono', `Row ${d.row}: ${d.code}`)));
+    // The unit travels with the position, so this renders both formats without
+    // branching on which one produced the preview.
+    p.diagnostics.forEach((d) =>
+      codes.append(
+        el('li', 'mono', `${d.unit[0]!.toUpperCase()}${d.unit.slice(1)} ${d.at}: ${d.code}`),
+      ),
+    );
     details.append(codes);
     previewBox.append(details);
   }
-  const importAction = button(`Import ${p.valid} valid accounts`, () => commit(p.token), 'primary');
+  const importAction = button(`Import ${p.valid} valid accounts`, () => commit(p), 'primary');
   const reviewActions = el('div', 'actions review-actions');
   reviewActions.append(
     button('Edit import', () => invalidatePreview()),
@@ -920,26 +1186,49 @@ function showPreview() {
   previewBox.append(importAction, reviewActions);
   content.scrollTop = 0;
 }
-async function commit(token: string) {
+async function commit(p: ImportPreview) {
   let imported = false;
+  // The file is cleared below, so capture what the banner has to name first.
+  const name = file?.name ?? 'the account file';
+  const group = state?.groupName ?? 'this group';
+  // A first import into a new group has no saved rule yet, so fall back to the
+  // one this review was checked against.
+  const domains = state?.rules.length ? state.rules.join(', ') : p.rule;
+  const profiled = !!state?.profile;
   await mutate(async () => {
     // This review is being consumed by our own commit, not invalidated by another view.
     invalidatePreview();
-    await request({ type: 'COMMIT_IMPORT', token });
+    await request({ type: 'COMMIT_IMPORT', token: p.token });
     imported = true;
     file = undefined;
+    format = undefined;
     fileInput.value = '';
-    fileName.textContent = 'Choose an account CSV';
+    fileName.textContent = 'Choose an account file';
     change.textContent = 'Choose file';
     invalidatePreview();
     message(importError, '');
     message(
       status,
-      'Accounts imported. Review and save the login fields for this URL before autofill.',
+      `Imported ${name} into “${group}”: ${changeSummary(p)}.${
+        p.invalid
+          ? ` ${p.invalid} invalid ${FORMATS[p.format].unit}${p.invalid === 1 ? ' was' : 's were'} skipped.`
+          : ''
+      } ${
+        profiled
+          ? `Autofill is ready on ${domains}.`
+          : `Next, save the login fields for ${domains} so autofill can run.`
+      }`,
+      'success',
     );
   }, 'Importing encrypted accounts…');
   if (imported) {
-    if (!login.input.value && state?.rules.length) login.input.value = state.rules.join(', ');
+    if (!login.input.value && state?.rules.length) {
+      login.input.value = state.rules.join(', ');
+      renderTitleRuleControls(
+        parseDomainRules(login.input.value).map((rule) => rule.origin),
+        state?.profile?.titleRules ?? [],
+      );
+    }
     selectTab('profile', true);
   }
 }
@@ -982,6 +1271,7 @@ async function mutate(action: () => Promise<void>, pending = 'Saving your change
 function updateAccounts() {
   if (!state || state.migrationRequired) return;
   const s = state;
+  updateRailMeta();
   listHeading.replaceChildren(el('span', '', `Indexed accounts (${s.total})`));
   const purge = button(
     'Purge group',
@@ -1000,44 +1290,56 @@ function updateAccounts() {
     'danger-small',
   );
   purge.disabled = !s.total || busy;
-  const exportButton = button(
-    'Export CSV',
-    async () => {
-      if (busy) return;
-      busy = true;
-      setBusy(true);
-      let url: string | undefined;
-      try {
-        const csv = await request<string>({ type: 'EXPORT_CSV' });
-        url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-        const link = el('a');
-        link.href = url;
-        link.download = `${(s.groupName ?? 'accounts').replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0, 80) || 'accounts'}.csv`;
-        document.body.append(link);
-        link.click();
-        link.remove();
-        message(
-          status,
-          `CSV download started for ${s.groupName ?? 'this group'} (${s.total} accounts).`,
-        );
-      } catch {
-        message(status, 'Could not export this group. Try again.', true);
-      } finally {
-        if (url) {
-          const downloadUrl = url;
-          setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+  // The user picks the shape at the moment of export, so each format is its own
+  // button sharing one download path rather than a format selector saved first.
+  const exportIn = (format: AccountFormat) =>
+    button(
+      `Export ${FORMATS[format].label}`,
+      async () => {
+        if (busy) return;
+        busy = true;
+        setBusy(true);
+        let url: string | undefined;
+        try {
+          const text = await request<string>({ type: 'EXPORT_ACCOUNTS', format });
+          url = URL.createObjectURL(
+            new Blob([text], { type: `${FORMATS[format].mime};charset=utf-8` }),
+          );
+          const link = el('a');
+          link.href = url;
+          link.download = `${(s.groupName ?? 'accounts').replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0, 80) || 'accounts'}${FORMATS[format].extension}`;
+          document.body.append(link);
+          link.click();
+          link.remove();
+          message(
+            status,
+            `${FORMATS[format].label} download started for ${s.groupName ?? 'this group'} (${s.total} accounts).`,
+          );
+        } catch {
+          message(
+            status,
+            `Could not export this group as ${FORMATS[format].label}. Try again.`,
+            true,
+          );
+        } finally {
+          if (url) {
+            const downloadUrl = url;
+            setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+          }
+          busy = false;
+          setBusy(false);
         }
-        busy = false;
-        setBusy(false);
-      }
-    },
-    'secondary',
-  );
-  exportButton.disabled = !s.total || busy;
-  exportButton.title =
-    'Download all accounts in this group, including synthetic passwords and metadata.';
+      },
+      'secondary',
+    );
+  const exportButtons = (Object.keys(FORMATS) as AccountFormat[]).map((format) => {
+    const node = exportIn(format);
+    node.disabled = !s.total || busy;
+    node.title = `Download all accounts in this group as ${FORMATS[format].label}, including synthetic passwords and metadata.`;
+    return node;
+  });
   const actions = el('div', 'actions');
-  actions.append(exportButton, purge);
+  actions.append(...exportButtons, purge);
   listHeading.append(actions);
   list.replaceChildren();
   if (query) list.append(el('p', 'mono subtle', `${s.matches} matches of ${s.total} accounts`));
@@ -1057,21 +1359,61 @@ function updateAccounts() {
           : 'No accounts indexed. Open Import CSV to begin.',
       ),
     );
-  for (const account of s.accounts)
-    list.append(
-      accountRow(
-        account,
-        () =>
-          mutate(async () => {
-            await request({ type: 'DELETE', accountId: account.accountId });
-            deletedId = account.accountId;
-            invalidatePreview();
-            message(status, `Deleted ${account.accountId}.`);
-          }),
-        true,
-        origin,
-      ),
+  for (const account of s.accounts) {
+    const row = accountRow(
+      account,
+      () =>
+        mutate(async () => {
+          await request({
+            type: 'DELETE',
+            accountId: account.accountId,
+            groupId: account.groupId,
+          });
+          deletedId = account.accountId;
+          invalidatePreview();
+          message(status, `Deleted ${account.accountId}.`);
+        }),
+      true,
+      origin,
     );
+    if (account.groupName)
+      row
+        .querySelector('.account-content')
+        ?.append(el('p', 'scope mono truncate', `Group · ${account.groupName}`));
+    const identity =
+      account.applicationIdentity ??
+      (!account.groupId || account.groupId === s.applicationIdentity?.groupId
+        ? s.applicationIdentity
+        : undefined);
+    const details = row.querySelector('details.metadata dl');
+    if (identity && details) {
+      const addRow = (label: string, value: string) => {
+        details.append(el('dt', '', label), el('dd', '', value));
+      };
+      addRow('Page title', identity.title?.trim() || 'Unavailable');
+      addRow(
+        'Title rule',
+        identity.rule
+          ? `${identity.rule.mode === 'contains' ? 'Contains' : 'Exactly'} “${identity.rule.value}”`
+          : 'Not configured',
+      );
+      addRow(
+        'Title match',
+        !identity.rule
+          ? 'Not configured'
+          : identity.status === 'unavailable'
+            ? 'Unavailable'
+            : identity.matched
+              ? 'Matched'
+              : identity.status === 'choice-required'
+                ? identity.selected
+                  ? 'No match — selected manually'
+                  : 'Choose an application'
+                : 'No match',
+      );
+    }
+    list.append(row);
+  }
   if (s.matches > 50)
     list.append(
       pagination(s, (p) => {
@@ -1139,6 +1481,7 @@ profileForm.addEventListener('submit', (event) => {
   const profile: ProfileInput = {
     name: profileName.input.value,
     loginUrl: login.input.value,
+    titleRules: selectedTitleRules(),
     usernameMatch: usernameMatch.select.value as FieldMatch,
     passwordMatch: passwordMatch.select.value as FieldMatch,
     usernameSelector: usernameSelector.input.value,
@@ -1225,9 +1568,24 @@ async function done() {
   selectTab('import', true);
   window.scrollTo({ top: 0 });
 }
+/** Keeps the rail chips reporting real state instead of decorative labels. */
+function updateRailMeta() {
+  tabMetas.get('profile')!.textContent = state?.profile ? 'Saved' : 'Not set';
+  tabMetas.get('accounts')!.textContent = String(state?.total ?? 0);
+  tabMetas.get('import')!.textContent = format ? FORMATS[format].label : 'CSV';
+}
+function updateStorage(bytes: number) {
+  const percent = Math.min(100, Math.max(0, (bytes / storageLimit) * 100));
+  storageReading.textContent = `${(bytes / 1024 / 1024).toFixed(2)} / 5.00 MiB`;
+  storagePercent.textContent = `${percent.toFixed(1)}%`;
+  storageFill.style.width = `${percent}%`;
+  storageBar.setAttribute('aria-valuenow', percent.toFixed(1));
+}
 function render() {
   if (!state) return;
   const s = state;
+  if (s.applicationIdentity?.matched && s.applicationIdentity.groupId)
+    chooseGroup(s.applicationIdentity.groupId);
   badge.textContent = s.migrationRequired ? 'Migration needed' : `${s.total} accounts`;
   badge.className = s.migrationRequired ? 'pill' : 'pill authorized';
   groupBar.replaceChildren(
@@ -1238,8 +1596,9 @@ function render() {
         query = '';
         page = 0;
         file = undefined;
+        format = undefined;
         fileInput.value = '';
-        fileName.textContent = 'Choose an account CSV';
+        fileName.textContent = 'Choose an account file';
         invalidatePreview();
         void refresh();
       },
@@ -1247,12 +1606,16 @@ function render() {
     ),
   );
   footer.replaceChildren(versionFooter());
+  updateStorage(s.storageBytes);
+  updateRailMeta();
+  sidebarDanger.hidden = s.migrationRequired;
   if (s.migrationRequired) {
     tabs.hidden = true;
     mounted = false;
     file = undefined;
+    format = undefined;
     fileInput.value = '';
-    fileName.textContent = 'Choose an account CSV';
+    fileName.textContent = 'Choose an account file';
     change.textContent = 'Choose file';
     deletedId = '';
     query = '';
@@ -1279,9 +1642,6 @@ function render() {
         'Synthetic data only. Accounts stay on this device and open without a password. Local storage is not protected by a user password.',
       ),
     );
-    const tools = el('div', 'actions');
-    tools.append(resetButton(refresh));
-    security.append(tools);
     content.replaceChildren(importPanel, accountsPanel, profilePanel, security);
     if (!tabButtons.get(activeTab)?.hasAttribute('aria-selected')) activeTab = tabFromHash();
     selectTab(activeTab);
@@ -1292,14 +1652,7 @@ function render() {
   updatePresets();
   updateChangeDomain();
   updateAccounts();
-  footer.append(
-    el(
-      'span',
-      'mono subtle',
-      `Local: ${(s.storageBytes / 1024 / 1024).toFixed(2)} MiB / 5 MiB limit`,
-    ),
-    button('Done', done, 'dark'),
-  );
+  footer.append(button('Done', done, 'dark'));
 }
 async function refresh() {
   const current = ++sequence;

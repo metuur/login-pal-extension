@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="140 150 976 976">
+  <title>Login Pal DEV — Open Door</title>
+  <desc>Development build icon. Transparent canvas, purple tile, white door and friendly navy face.</desc>
+  <g id="login-pal">
+    <rect id="teal-tile" x="164" y="182" width="928" height="912" rx="210" fill="#7c3aed"/>
+    <path id="open-door" fill="#ffffff" d="M 576,306 C 592,299 609,307 609,327 L 609,966 C 609,984 601,992 585,986 L 345,907 C 333,903 327,894 327,880 L 327,424 C 327,411 333,402 346,397 Z"/>
+    <circle id="door-knob" cx="534" cy="695" r="33" fill="#7c3aed"/>
+    <path id="doorway-pal" fill="#ffffff" d="M 640,374 H 858 C 891,374 914,397 914,431 V 860 C 914,894 893,917 859,917 H 640 V 474 L 855,554 V 469 C 855,449 844,438 824,438 H 640 Z"/>
+    <circle id="left-eye" cx="690" cy="640" r="27" fill="#0b1939"/>
+    <circle id="right-eye" cx="820" cy="640" r="27" fill="#0b1939"/>
+    <path id="smile" fill="#0b1939" d="M 701,701 C 695,692 700,681 709,680 C 716,678 721,684 725,690 C 732,700 741,704 751,704 C 763,704 772,699 778,689 C 782,681 789,678 796,681 C 804,684 806,693 801,702 C 790,722 773,733 752,733 C 731,733 712,722 701,701 Z"/>
+  </g>
+</svg>

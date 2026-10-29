@@ -1,6 +1,8 @@
 import { build } from 'esbuild';
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 
+const development = !process.argv.includes('--production');
+const name = development ? 'Login Pal DEV' : 'Login Pal';
 const { version } = JSON.parse(await readFile('package.json', 'utf8'));
 if (
   typeof version !== 'string' ||
@@ -12,11 +14,13 @@ if (
     'package.json version must be a Chrome-compatible numeric version (1–4 components, 0–65535, not all zero).',
   );
 }
-const icons = Object.fromEntries([16, 32, 48, 128].map((size) => [size, `icon-${size}.png`]));
+const icons = Object.fromEntries(
+  [16, 32, 48, 128].map((size) => [size, `icon-${development ? 'dev-' : ''}${size}.png`]),
+);
 const manifest = {
   manifest_version: 3,
   icons,
-  name: 'Login Pal',
+  name,
   description:
     'Switch accounts. Keep moving. A local account catalog for authorized QA login pages.',
   // 121 is the first version with tabs.lastAccessed, used to offer the most
@@ -30,7 +34,7 @@ const manifest = {
     service_worker: 'background.js',
   },
   action: {
-    default_title: 'Login Pal',
+    default_title: name,
     default_icon: icons,
     default_popup: 'popup.html',
   },

@@ -12,7 +12,7 @@ The repository's `dist` folder is also directly loadable after building. This is
 
 1. Open the extension. A local catalog is created automatically, ready for CSV import.
 2. Open Settings, name the selected CSV group (or choose **Create new group**), and choose a CSV. Use **Download sample CSV (3 rows)** for the supported format. Enter the required **Authorized HTTPS domain**, for example `https://qa.example.com/*`. This example is illustrative; use your own authorized site.
-3. Keep **Merge & Update** to add/update accounts by ID while preserving omitted accounts in that group. **Upload another CSV** automatically selects Merge for the same group. Choose **Wipe & Replace** to replace only the selected group’s dataset. Verify the file, review counts and errors, then confirm the import. Invalid rows are excluded; Replace can therefore remove existing accounts corresponding to invalid rows.
+3. Keep **Merge & Update** to add/update accounts by ID while preserving omitted accounts in that group. **Upload another file** automatically selects Merge for the same group. Choose **Wipe & Replace** to replace only the selected group’s dataset. Verify the file, review counts and errors, then confirm the import. Invalid rows are excluded; Replace can therefore remove existing accounts corresponding to invalid rows.
 4. Configure the login profile: a name, authorized HTTPS login domain, username/password matching rules, and a reliable success URL or visible element at its configured URL. Save and authorize the requested host permission. Importing alone does not authorize autofill.
 5. Visit a login form on the authorized domain, open the popup, search by account ID, username, or metadata, select an account, review it, and choose Autofill. Submit the site's Login button yourself.
 
@@ -51,7 +51,9 @@ Run `npm run dev` for the React + TypeScript localhost SPA at http://127.0.0.1:5
 
 Run `npm run build:web` to compile the SPA into `dist-web/`, then `npm run start` to serve that compiled app at http://127.0.0.1:4174. `start` does not watch or compile source files.
 
-`npm run build` builds the Chrome extension into `dist/`. `npm run dev-ext` watches and rebuilds that extension; reload it manually in Chrome after changes.
+`npm run build` builds the Chrome extension into `dist/`. `npm run dev-ext` watches and rebuilds that extension; reload it manually in Chrome after changes. Both identify the extension as **Login Pal DEV** in Chrome, the toolbar tooltip, and the popup/settings titles, with a **purple icon** in the toolbar and extension list. The local web preview also displays **Login Pal DEV**.
+
+`npm run build-to-publish` builds and packages the store version as **Login Pal**, with the original teal icon and without the DEV label. It replaces `dist/` with that release build and writes the ZIP to `artifacts/`. Run `npm run build` again to restore the local DEV build.
 
 Use Node.js 22 or newer and npm. The lockfile pins dependencies; the validated environment is recorded in [verification](docs/verification/account-login-assistant.md).
 

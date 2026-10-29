@@ -5,6 +5,7 @@ import type {
   LoginProfile,
   DetectedInput,
   FieldMatch,
+  TitleRule,
 } from '../shared/types';
 const invalid = () => new Error('Enter a valid authorized http:// or https:// URL.');
 /** Loopback hosts may use plain http so a local development server can be authorized. */
@@ -119,6 +120,29 @@ export function matchesAnyRule(rules: CatalogRule[], value: string): boolean {
 export function matchesAnyOrigin(routes: Pick<Route, 'origin'>[], value: string): boolean {
   return routes.some((route) => matchesOrigin(route, value));
 }
+/** Normalize application titles for stable, locale-independent profile matching. */
+export function normalizeApplicationTitle(title: string): string {
+  return typeof title === 'string' ? title.normalize('NFKC').trim().toLowerCase() : '';
+}
+/**
+ * Compare a configured application title rule with an observed document title.
+ * Matching is literal; empty values and unsupported modes never match.
+ */
+export function matchesTitleRule(
+  rule: { mode: 'contains' | 'equals'; value: string } | null | undefined,
+  title: string,
+): boolean {
+  if (
+    !rule ||
+    (rule.mode !== 'contains' && rule.mode !== 'equals') ||
+    typeof rule.value !== 'string'
+  )
+    return false;
+  const configured = normalizeApplicationTitle(rule.value);
+  const observed = normalizeApplicationTitle(title);
+  if (!configured || !observed) return false;
+  return rule.mode === 'equals' ? observed === configured : observed.includes(configured);
+}
 export function validateProfile(
   input: ProfileInput,
   rules: CatalogRule[],
@@ -136,6 +160,28 @@ export function validateProfile(
   const login = parseRoute(input.loginUrl.split(/[\s,]+/u).filter(Boolean)[0] ?? input.loginUrl);
   if (!logins.every((l) => matchesAnyRule(rules, l.origin)))
     throw new Error('Login domain must match the imported catalog domain.');
+  const configuredTitleRules = input.titleRules === undefined ? [] : input.titleRules;
+  if (!Array.isArray(configuredTitleRules))
+    throw new Error('Enter valid application title rules.');
+  const titleRuleKeys = new Set<string>();
+  const titleRules: TitleRule[] = configuredTitleRules.map((candidate) => {
+    if (
+      !candidate ||
+      typeof candidate.origin !== 'string' ||
+      !logins.some((allowed) => allowed.origin === candidate.origin)
+    )
+      throw new Error('Application title rule origin must match a login origin.');
+    if (candidate.mode !== 'contains' && candidate.mode !== 'equals')
+      throw new Error('Choose a supported application title matching mode.');
+    if (typeof candidate.value !== 'string' || !normalizeApplicationTitle(candidate.value))
+      throw new Error('Enter a non-empty application title.');
+    const value = candidate.value.trim();
+    const key = `${candidate.origin}\u0000${normalizeApplicationTitle(value)}`;
+    if (titleRuleKeys.has(key))
+      throw new Error('Remove duplicate application title rules for the same origin.');
+    titleRuleKeys.add(key);
+    return { origin: candidate.origin, mode: candidate.mode, value };
+  });
   if (!['none', 'url', 'element'].includes(input.successKind))
     throw new Error('Choose a supported success condition.');
   const tracking = input.successKind !== 'none';
@@ -172,6 +218,7 @@ export function validateProfile(
     approvedCatalogRuleRevision: ruleRevision,
     name: input.name.trim(),
     logins,
+    titleRules,
     usernameSelector,
     passwordSelector,
     usernameMatch,

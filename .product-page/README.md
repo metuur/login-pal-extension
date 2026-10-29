@@ -48,6 +48,8 @@ Without JavaScript the sample picker remains readable, numbered setup instructio
 
 ## Source and generation
 
+All page logo images and browser/touch icons use the local `favicon.jpg` (512 × 512) and `apple-touch-icon.jpg` (180 × 180) assets, including the alternate homepage, documentation, and privacy policy. They preserve the original artwork with transparency composited over white, saved at JPEG quality 95 without chroma subsampling. The original SVG, PNG, and ICO assets remain available as source material; page markup references the JPG versions.
+
 Edit `main.ts`, then validate and regenerate `main.js` from the repository root:
 
 ```sh

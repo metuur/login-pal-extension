@@ -118,7 +118,8 @@ export function iconButton(name: Parameters<typeof icon>[0], label: string, acti
 export async function request<T = void>(command: Command): Promise<T> {
   let reply: Reply<T>;
   try {
-    reply = (await chrome.runtime.sendMessage({ ...command, groupId: selectedGroup })) as Reply<T>;
+    const groupId = 'groupId' in command && command.groupId ? command.groupId : selectedGroup;
+    reply = (await chrome.runtime.sendMessage({ ...command, groupId })) as Reply<T>;
   } catch {
     throw new Error('The extension is unavailable. Reopen it and try again.');
   }

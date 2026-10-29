@@ -61,7 +61,7 @@ body.options {
   display: flex;
   flex-direction: column;
   max-height: calc(100dvh - 48px);
-  max-width: 880px;
+  max-width: 1180px;
   margin: 0 auto;
   background: white;
   border: 1px solid #e2e8f0;
@@ -244,6 +244,33 @@ svg {
   color: #64748b;
   font-size: 11px;
   cursor: pointer;
+}
+.title-rules {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 12px;
+}
+.title-rules h3 {
+  margin: 0;
+  font-size: 13px;
+}
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.checkbox-label input {
+  width: auto;
+  margin: 0;
+}
+.title-rule {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px;
+}
+.title-rule select:disabled,
+.title-rule input:disabled {
+  opacity: 0.55;
 }
 .settings-help[open] > :not(summary) {
   margin-top: 8px;
@@ -1139,4 +1166,291 @@ input::placeholder {
   color: #b91c1c;
   border-color: #fecaca;
   background: #fef2f2;
+}
+
+/* ---------------------------------------------------------------------------
+   Settings workspace (options page only)
+   Two columns: a sticky configuration rail and a scrolling content card.
+   Every layout override is scoped to .options so the popup keeps the flat
+   single-column shell and the horizontal tab strip above.
+   --------------------------------------------------------------------------- */
+.options .settings-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 260px) minmax(0, 1fr);
+  gap: 14px;
+  padding: 14px;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+.options .settings-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  align-self: start;
+  position: sticky;
+  top: 0;
+  padding: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+}
+.options .settings-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+}
+/* The card is the scroller now; the body inside it just grows. */
+.options .settings-main > .options-body {
+  overflow: visible;
+  flex-shrink: 0;
+}
+.options .settings-main > .group-bar,
+.options .settings-main > .app-footer {
+  background: #fcfdff;
+}
+.options .settings-main > .notice:not([hidden]) {
+  margin: 10px 12px 0;
+}
+
+/* Vertical navigation rail. */
+.options .settings-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0;
+  background: transparent;
+  border-bottom: 0;
+}
+.options .settings-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+}
+.options .settings-tab > svg {
+  color: #94a3b8;
+}
+.options .settings-tab-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.options .settings-tab-meta {
+  flex-shrink: 0;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 600;
+}
+.options .settings-tab:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+/* An inset left bar follows the 10px radius and reads as a stray crescent at the
+   corners, so the selected row is carried by the tinted pill alone. */
+.options .settings-tab[aria-selected='true'] {
+  background: #eef2ff;
+  color: #4338ca;
+  border-bottom-color: transparent;
+}
+.options .settings-tab[aria-selected='true'] > svg {
+  color: #4f46e5;
+}
+.options .settings-tab[aria-selected='true'] .settings-tab-meta {
+  background: #fff;
+  border: 1px solid #c7d2fe;
+  color: #4338ca;
+}
+.options .settings-tab:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: -2px;
+}
+
+/* Sidebar blocks. */
+.sidebar-section-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 10px;
+  font-weight: 600;
+  color: #64748b;
+}
+.sidebar-divider {
+  height: 1px;
+  background: #e2e8f0;
+}
+.storage-meter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.storage-meter-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.storage-percent {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  color: #047857;
+}
+.storage-bar {
+  height: 4px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+.storage-bar-fill {
+  height: 100%;
+  max-width: 100%;
+  border-radius: 999px;
+  background: #4f46e5;
+}
+.sidebar-danger {
+  display: flex;
+  align-items: center;
+}
+.sidebar-danger > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Right-card panel furniture. */
+.panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+.panel-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  /* Claim the row so a long subtitle wraps instead of pushing the action
+     below the heading. */
+  flex: 1 1 320px;
+}
+.accent-action {
+  flex-shrink: 0;
+  background: #eef2ff;
+  color: #4338ca;
+  border: 1px solid #c7d2fe;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.accent-action:hover:not(:disabled) {
+  background: #e0e7ff;
+}
+/* The box already draws the separation this section used to draw itself. */
+.subpanel > .title-rules {
+  border-top: 0;
+  padding-top: 0;
+}
+.subpanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  background: #fcfdff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  min-width: 0;
+}
+.subpanel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+.subpanel-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+.subpanel-title strong {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.panel-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+.panel-footer > .actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* Collapse to one column: sidebar on top, rail turns horizontal. */
+@media (max-width: 860px) {
+  .options .settings-shell {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+  .options .settings-sidebar {
+    position: static;
+  }
+  .options .settings-tabs {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .options .settings-tab {
+    width: auto;
+    flex: 1 1 160px;
+  }
+}
+@media (max-width: 370px) {
+  .options .settings-shell {
+    padding: 8px;
+    gap: 8px;
+  }
+  .options .settings-sidebar {
+    padding: 10px;
+    gap: 10px;
+  }
+  .options .settings-tab {
+    flex-basis: 100%;
+  }
 }

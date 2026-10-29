@@ -4,7 +4,17 @@ export interface Account {
   password: string;
   metadata: Record<string, string>;
 }
-export type AccountSummary = Omit<Account, 'password'>;
+export type AccountSummary = Omit<Account, 'password'> & {
+  groupId?: string;
+  groupName?: string;
+  applicationIdentity?: {
+    status: 'matched' | 'choice-required' | 'unavailable';
+    title: string | null;
+    rule: TitleRule | null;
+    matched: boolean;
+    selected?: boolean;
+  };
+};
 export interface Route {
   origin: string;
   pathname: string;
@@ -15,6 +25,11 @@ export interface CatalogRule extends Route {
 }
 export type FieldMatch =
   'css' | 'id' | 'name' | 'autocomplete' | 'placeholder' | 'label' | 'aria-label';
+export interface TitleRule {
+  origin: string;
+  mode: 'contains' | 'equals';
+  value: string;
+}
 export interface LoginProfile {
   id: string;
   revision: number;
@@ -22,6 +37,8 @@ export interface LoginProfile {
   name: string;
   /** Every authorized origin shares one set of field selectors. */
   logins: Route[];
+  /** Optional application identity hints; persisted inside the encrypted vault. */
+  titleRules?: TitleRule[];
   usernameSelector: string;
   passwordSelector: string;
   usernameMatch?: FieldMatch;
@@ -32,6 +49,8 @@ export interface LoginProfile {
 export interface ProfileInput {
   name: string;
   loginUrl: string;
+  /** Omitted by legacy callers; no title recognition is configured. */
+  titleRules?: TitleRule[];
   usernameSelector: string;
   passwordSelector: string;
   usernameMatch?: FieldMatch;
@@ -53,6 +72,8 @@ export interface VaultPayload {
   catalogRule?: CatalogRule | null;
   /** Origins this group's accounts may be filled on, e.g. prod and staging. */
   catalogRules: CatalogRule[];
+  /** Optional for backwards compatibility; encrypted with this group's vault. */
+  titleRules?: TitleRule[];
   catalogRuleRevision: number;
   accounts: Account[];
   history: Record<string, ProfileHistory>;
@@ -65,16 +86,33 @@ export interface Envelope {
   iv: string;
   ciphertext: string;
 }
-export interface RowDiagnostic {
-  row: number;
-  code: string;
+export type AccountFormat = 'csv' | 'json';
+export type ImportDiagnosticCode =
+  | 'DUPLICATE_ACCOUNT_ID'
+  | 'FIELD_COUNT_MISMATCH'
+  | 'RECORD_NOT_OBJECT'
+  | 'REQUIRED_FIELD_NOT_STRING'
+  | 'EMPTY_ACCOUNT_ID'
+  | 'EMPTY_USERNAME'
+  | 'EMPTY_PASSWORD'
+  | 'METADATA_VALUE_NOT_SCALAR';
+export interface ImportDiagnostic {
+  /**
+   * Position in the source document, counted in that format's own unit: a CSV
+   * row is a physical line with the header at 1, while a JSON record is a
+   * 1-based index into the top-level array. The two are disjoint, so the unit
+   * travels with the position instead of being inferred by the reader.
+   */
+  at: number;
+  unit: 'row' | 'record';
+  code: ImportDiagnosticCode;
 }
-export interface CsvResult {
+export interface ImportResult {
   accounts: Account[];
   found: number;
   valid: number;
   invalid: number;
-  diagnostics: RowDiagnostic[];
+  diagnostics: ImportDiagnostic[];
 }
 export type ImportMode = 'merge' | 'replace';
 export interface ImportCounts {
@@ -88,9 +126,10 @@ export interface ImportPreview extends ImportCounts {
   found: number;
   valid: number;
   invalid: number;
-  diagnostics: RowDiagnostic[];
+  diagnostics: ImportDiagnostic[];
   rule: string;
   mode: ImportMode;
+  format: AccountFormat;
 }
 export interface Attempt {
   token: string;
@@ -104,6 +143,11 @@ export interface Attempt {
   expiresAt: number;
   acknowledged?: boolean;
 }
+// @debt A second import format landed; the group concept is no longer
+// CSV-specific. `CsvGroup` and the "CSV group name" label in Settings outlive
+// CSV-only scope. Ceiling: rename in one deliberate pass across types.ts and
+// options/index.ts, traceable to its own reason — not laundered through a
+// feature change.
 export interface CsvGroup {
   id: string;
   name: string;
@@ -112,6 +156,15 @@ export interface AppState {
   groups?: CsvGroup[];
   groupId?: string;
   groupName?: string;
+  applicationIdentity?: {
+    status: 'matched' | 'choice-required' | 'unavailable';
+    title: string | null;
+    groupId: string | null;
+    groupName: string | null;
+    rule: TitleRule | null;
+    matched: boolean;
+    selected: boolean;
+  };
   initialized: boolean;
   migrationRequired: boolean;
   profile: LoginProfile | null;
@@ -134,12 +187,28 @@ export type Command =
   | { type: 'CREATE_GROUP'; name: string }
   | { type: 'RENAME_GROUP'; name: string }
   | { type: 'STATE'; query?: string; page?: number; tabId?: number }
+  | { type: 'CHOOSE_GROUP'; groupId: string; tabId: number }
   | { type: 'MIGRATE'; password: string }
-  | { type: 'RESET' | 'UNDO' | 'PURGE' | 'EXPORT_CSV' }
-  | { type: 'PREVIEW_IMPORT'; bytes: number[]; rule: string; mode: ImportMode }
+  | { type: 'RESET' | 'UNDO' | 'PURGE' }
+  | { type: 'EXPORT_ACCOUNTS'; format: AccountFormat }
+  | {
+      type: 'PREVIEW_IMPORT';
+      bytes: number[];
+      rule: string;
+      mode: ImportMode;
+      format: AccountFormat;
+    }
   | { type: 'COMMIT_IMPORT'; token: string }
   | { type: 'SAVE_PROFILE'; profile: ProfileInput }
-  | { type: 'DELETE' | 'FILL'; accountId: string; tabId?: number }
+  | {
+      type: 'DELETE' | 'FILL';
+      accountId: string;
+      tabId?: number;
+      groupId?: string;
+      fromSearch?: boolean;
+      /** Background-only snapshot passed to the owning service before delivery. */
+      expectedPage?: { documentId: string; url: string; title: string | null };
+    }
   | { type: 'COPY_PASSWORD'; accountId: string }
   | { type: 'DETECT_FIELDS'; tabId?: number }
   | { type: 'DETECT_TABS' }

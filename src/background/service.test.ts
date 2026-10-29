@@ -40,6 +40,22 @@ async function preview(service: AssistantService, name = 'A') {
     ],
     rule: 'https://qa.example.com/*',
     mode: 'replace',
+    format: 'csv',
+  });
+}
+async function previewJson(service: AssistantService, name = 'A') {
+  return command<ImportPreview>(service, {
+    type: 'PREVIEW_IMPORT',
+    bytes: [
+      ...new TextEncoder().encode(
+        JSON.stringify([
+          { account_id: name, username: 'test@example.invalid', password: 'synthetic-only' },
+        ]),
+      ),
+    ],
+    rule: 'https://qa.example.com/*',
+    mode: 'replace',
+    format: 'json',
   });
 }
 async function importAccount(service: AssistantService, name = 'A') {
@@ -92,7 +108,10 @@ describe('worker credential and transaction boundary', () => {
     const service = await setup();
     const tabSender = { ...sender, tab: { id: 1 } } as chrome.runtime.MessageSender;
     expect((await service.handle({ type: 'STATE' }, tabSender)).ok).toBe(true);
-    expect((await service.handle({ type: 'FILL', accountId: 'A' }, tabSender)).ok).toBe(false);
+    expect(await service.handle({ type: 'FILL', accountId: 'A' }, tabSender)).toEqual({
+      ok: false,
+      error: 'Open the popup on the target tab to autofill.',
+    });
   });
   it('rejects content scripts and forged extension URLs requesting account data', async () => {
     const service = await setup();
@@ -124,6 +143,35 @@ describe('worker credential and transaction boundary', () => {
     failWrite = false;
     await command(service, { type: 'COMMIT_IMPORT', token: p.token });
     expect((await state(service)).accounts[0].accountId).toBe('B');
+  });
+  it('names the cause when the encrypted catalog exceeds the 5 MiB vault limit', async () => {
+    const service = await setup();
+    // Each password is kept just under the 2 MiB CSV file limit so the oversize
+    // rejection comes from the encrypted envelope, not the CSV parser. Two such
+    // accounts base64-encode to over 5 MiB of ciphertext, so the first commits
+    // and the second is the one that must name its cause.
+    const bulky = (id: string) => [
+      ...new TextEncoder().encode(`account_id,username,password\n${id},u,${'x'.repeat(2_000_000)}`),
+    ];
+    const first = await command<ImportPreview>(service, {
+      type: 'PREVIEW_IMPORT',
+      bytes: bulky('A'),
+      rule: 'https://qa.example.com/*',
+      mode: 'merge',
+      format: 'csv',
+    });
+    await command(service, { type: 'COMMIT_IMPORT', token: first.token });
+    const second = await command<ImportPreview>(service, {
+      type: 'PREVIEW_IMPORT',
+      bytes: bulky('B'),
+      rule: 'https://qa.example.com/*',
+      mode: 'merge',
+      format: 'csv',
+    });
+    expect(await service.handle({ type: 'COMMIT_IMPORT', token: second.token }, sender)).toEqual({
+      ok: false,
+      error: 'Vault exceeds the 5 MiB encrypted storage limit.',
+    });
   });
   it('persists encrypted delete Undo across worker suspension and consumes it', async () => {
     let service = await setup();
@@ -225,6 +273,7 @@ describe('worker credential and transaction boundary', () => {
           bytes: [...new TextEncoder().encode(csv)],
           rule: 'https://qa.example.com/*',
           mode: 'merge',
+          format: 'csv',
         },
         sender,
       );
@@ -244,6 +293,7 @@ describe('worker credential and transaction boundary', () => {
         ],
         rule: 'https://another.example.com/*',
         mode: 'merge',
+        format: 'csv',
       },
       sender,
     );
@@ -413,6 +463,7 @@ describe('named CSV groups', () => {
       groupId,
       mode,
       rule,
+      format: 'csv',
       bytes: [
         ...new TextEncoder().encode(
           'account_id,username,password\n' +
@@ -421,6 +472,21 @@ describe('named CSV groups', () => {
       ],
     });
     await run(service, { type: 'COMMIT_IMPORT', groupId, token: p.token });
+  }
+  async function saveTitleProfile(service: GroupService, groupId: string, value: string) {
+    await run(service, {
+      type: 'SAVE_PROFILE',
+      groupId,
+      profile: {
+        name: `${value} profile`,
+        loginUrl: 'http://localhost:5173/login',
+        usernameSelector: '#user',
+        passwordSelector: '#password',
+        successKind: 'none',
+        successUrl: '',
+        titleRules: [{ origin: 'http://localhost:5173', mode: 'contains', value }],
+      },
+    });
   }
   it('isolates duplicate IDs, merge, replace, purge, domains and restart by group', async () => {
     let service = new GroupService();
@@ -431,29 +497,39 @@ describe('named CSV groups', () => {
     await ingest(service, 'default', ['B']);
     expect((await run(service, { type: 'STATE' })).total).toBe(2);
     const { parseCsv } = await import('../domain/csv');
-    const exported = await run<string>(service, { type: 'EXPORT_CSV', groupId: group.id });
+    const exported = await run<string>(service, {
+      type: 'EXPORT_ACCOUNTS',
+      format: 'csv',
+      groupId: group.id,
+    });
     const rows = parseCsv(new TextEncoder().encode(exported));
     expect(rows.valid).toBe(1);
     expect(rows.accounts[0].accountId).toBe('A');
+    // The format only chooses the serializer; group isolation is the same pin.
+    const exportedJson = await run<string>(service, {
+      type: 'EXPORT_ACCOUNTS',
+      format: 'json',
+      groupId: group.id,
+    });
+    expect(JSON.parse(exportedJson)).toEqual([expect.objectContaining({ account_id: 'A' })]);
+    // Assert the pin's own message, not merely that the call failed: a pin that
+    // stops matching lets the command fall through to the generic dispatch
+    // error, which is also ok:false.
     expect(
-      (
-        await service.handle(
-          { type: 'EXPORT_CSV', groupId: group.id },
-          { ...sender, url: 'chrome-extension://test/popup.html' },
-        )
-      ).ok,
-    ).toBe(false);
+      await service.handle(
+        { type: 'EXPORT_ACCOUNTS', format: 'csv', groupId: group.id },
+        { ...sender, url: 'chrome-extension://test/popup.html' },
+      ),
+    ).toEqual({ ok: false, error: 'Export accounts from Settings.' });
     expect(
-      (
-        await service.handle({ type: 'EXPORT_CSV', groupId: group.id }, {
-          id: 'test',
-          url: 'https://qa.example.com',
-          tab: { id: 1 },
-          frameId: 0,
-          documentId: 'doc',
-        } as chrome.runtime.MessageSender)
-      ).ok,
-    ).toBe(false);
+      await service.handle({ type: 'EXPORT_ACCOUNTS', format: 'csv', groupId: group.id }, {
+        id: 'test',
+        url: 'https://qa.example.com',
+        tab: { id: 1 },
+        frameId: 0,
+        documentId: 'doc',
+      } as chrome.runtime.MessageSender),
+    ).toEqual({ ok: false, error: 'Request not authorized.' });
 
     expect((await run(service, { type: 'STATE', groupId: group.id })).total).toBe(1);
     expect((await run(service, { type: 'STATE', groupId: group.id })).rules).toEqual([
@@ -470,6 +546,205 @@ describe('named CSV groups', () => {
     await service.ready;
     expect((await run(service, { type: 'STATE', groupId: group.id })).total).toBe(1);
     expect((await run(service, { type: 'STATE' })).total).toBe(0);
+  });
+  it('resolves a unique current-page title to its owning group and searches with group context', async () => {
+    const service = new GroupService();
+    await service.ready;
+    const group = await run<{ id: string }>(service, { type: 'CREATE_GROUP', name: 'Vite App' });
+    await ingest(service, 'default', ['same'], 'merge', 'http://localhost:5173/*');
+    await ingest(service, group.id, ['same'], 'merge', 'http://localhost:5173/*');
+    await saveTitleProfile(service, 'default', 'Legacy Portal');
+    await saveTitleProfile(service, group.id, 'Vite + React');
+    vi.mocked(chrome.scripting.executeScript).mockResolvedValue([
+      {
+        frameId: 0,
+        documentId: 'vite-document',
+        result: { url: 'http://localhost:5173/', title: 'Vite + React — Local' },
+      },
+    ] as never);
+    const popup = { ...sender, url: 'chrome-extension://test/popup.html' };
+    const matched = await service.handle({ type: 'STATE', tabId: 1 }, popup);
+    expect(matched.ok).toBe(true);
+    const app = (matched as { ok: true; data: AppState }).data;
+    expect(app.groupId).toBe(group.id);
+    expect(app.applicationIdentity).toMatchObject({
+      status: 'matched',
+      groupId: group.id,
+      selected: true,
+      matched: true,
+    });
+    vi.mocked(chrome.scripting.executeScript).mockResolvedValue([
+      {
+        frameId: 0,
+        documentId: 'vite-document',
+        result: { url: 'http://localhost:5173/', title: '   ' },
+      },
+    ] as never);
+    const unavailable = await service.handle({ type: 'STATE', tabId: 1 }, popup);
+    const unavailableState = (unavailable as { ok: true; data: AppState }).data;
+    expect(unavailableState.applicationIdentity).toMatchObject({
+      status: 'unavailable',
+      title: null,
+      matched: false,
+      selected: false,
+    });
+    expect(unavailableState.accounts).toEqual([]);
+    vi.mocked(chrome.scripting.executeScript).mockResolvedValue([
+      {
+        frameId: 0,
+        documentId: 'vite-document',
+        result: { url: 'http://localhost:5173/', title: 'Vite + React — Local' },
+      },
+    ] as never);
+    const searched = await service.handle({ type: 'STATE', tabId: 1, query: 'vite same' }, popup);
+    expect(searched.ok).toBe(true);
+    const searchState = (searched as { ok: true; data: AppState }).data;
+    expect(searchState.accounts.map((account) => [account.groupId, account.accountId])).toEqual([
+      [group.id, 'same'],
+    ]);
+    expect(searchState.accounts[0]).not.toHaveProperty('password');
+    expect(searchState.accounts[0]?.applicationIdentity).toMatchObject({
+      rule: { value: 'Vite + React' },
+      matched: true,
+    });
+    const duplicates = await service.handle({ type: 'STATE', tabId: 1, query: 'same' }, popup);
+    const duplicateResults = (duplicates as { ok: true; data: AppState }).data.accounts;
+    expect(duplicateResults.map((account) => [account.groupId, account.groupName])).toEqual([
+      ['default', 'Imported accounts'],
+      [group.id, 'Vite App'],
+    ]);
+    const titleSearch = await service.handle({ type: 'STATE', tabId: 1, query: 'legacy' }, popup);
+    expect((titleSearch as { ok: true; data: AppState }).data.accounts[0]?.groupId).toBe('default');
+  });
+  it('withholds page-scoped accounts until an ambiguous title has a document-bound choice', async () => {
+    const service = new GroupService();
+    await service.ready;
+    const group = await run<{ id: string }>(service, {
+      type: 'CREATE_GROUP',
+      name: 'Second local',
+    });
+    await ingest(service, 'default', ['A'], 'merge', 'http://localhost:5173/*');
+    await ingest(service, group.id, ['B'], 'merge', 'http://localhost:5173/*');
+    await saveTitleProfile(service, 'default', 'Local');
+    await saveTitleProfile(service, group.id, 'Local App');
+    vi.mocked(chrome.scripting.executeScript).mockResolvedValue([
+      {
+        frameId: 0,
+        documentId: 'same-document',
+        result: { url: 'http://localhost:5173/', title: 'Local App - Dev' },
+      },
+    ] as never);
+    const popup = { ...sender, url: 'chrome-extension://test/popup.html' };
+    const unresolved = await service.handle({ type: 'STATE', tabId: 1 }, popup);
+    expect(unresolved.ok).toBe(true);
+    const before = (unresolved as { ok: true; data: AppState }).data;
+    expect(before.applicationIdentity).toMatchObject({
+      status: 'choice-required',
+      selected: false,
+    });
+    expect(before.accounts).toEqual([]);
+    const chosen = await service.handle(
+      { type: 'CHOOSE_GROUP', groupId: group.id, tabId: 1 },
+      popup,
+    );
+    expect(chosen.ok).toBe(true);
+    const after = await service.handle({ type: 'STATE', groupId: group.id, tabId: 1 }, popup);
+    expect(after.ok).toBe(true);
+    const selected = (after as { ok: true; data: AppState }).data;
+    expect(selected.applicationIdentity).toMatchObject({
+      status: 'choice-required',
+      groupId: group.id,
+      selected: true,
+      matched: false,
+    });
+    expect(selected.accounts.map((account) => account.accountId)).toEqual(['B']);
+    vi.mocked(chrome.scripting.executeScript).mockResolvedValue([
+      {
+        frameId: 0,
+        documentId: 'same-document',
+        result: { url: 'http://localhost:5173/', title: 'Local Portal' },
+      },
+    ] as never);
+    const changedTitle = await service.handle({ type: 'STATE', tabId: 1 }, popup);
+    expect((changedTitle as { ok: true; data: AppState }).data.applicationIdentity).toMatchObject({
+      status: 'matched',
+      groupId: 'default',
+      selected: true,
+    });
+    expect((changedTitle as { ok: true; data: AppState }).data.accounts[0]?.accountId).toBe('A');
+    vi.mocked(chrome.scripting.executeScript).mockResolvedValue([
+      {
+        frameId: 0,
+        documentId: 'reloaded-document',
+        result: { url: 'http://localhost:5173/', title: 'Local App - Dev' },
+      },
+    ] as never);
+    const reloaded = await service.handle({ type: 'STATE', groupId: group.id, tabId: 1 }, popup);
+    expect((reloaded as { ok: true; data: AppState }).data.accounts).toEqual([]);
+  });
+  it('rejects a search result from another uniquely matched same-origin group', async () => {
+    const service = new GroupService();
+    await service.ready;
+    const group = await run<{ id: string }>(service, {
+      type: 'CREATE_GROUP',
+      name: 'Different app',
+    });
+    await ingest(service, 'default', ['A'], 'merge', 'http://localhost:5173/*');
+    await ingest(service, group.id, ['B'], 'merge', 'http://localhost:5173/*');
+    await saveTitleProfile(service, 'default', 'First App');
+    await saveTitleProfile(service, group.id, 'Second App');
+    vi.mocked(chrome.scripting.executeScript).mockResolvedValue([
+      {
+        frameId: 0,
+        documentId: 'first-app-document',
+        result: { url: 'http://localhost:5173/', title: 'First App' },
+      },
+    ] as never);
+    const result = await service.handle(
+      { type: 'FILL', groupId: group.id, accountId: 'B', tabId: 1, fromSearch: true },
+      { ...sender, url: 'chrome-extension://test/popup.html' },
+    );
+    expect(result.ok).toBe(false);
+    expect(chrome.tabs.sendMessage).not.toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({ type: 'FILL_FIELDS' }),
+      expect.anything(),
+    );
+  });
+  it('withholds credentials if the document title changes after group resolution', async () => {
+    const service = new GroupService();
+    await service.ready;
+    await ingest(service, 'default', ['A'], 'merge', 'http://localhost:5173/*');
+    await saveTitleProfile(service, 'default', 'First App');
+    vi.mocked(chrome.scripting.executeScript)
+      .mockResolvedValueOnce([
+        {
+          frameId: 0,
+          documentId: 'same-document',
+          result: { url: 'http://localhost:5173/', title: 'First App' },
+        },
+      ] as never)
+      .mockResolvedValueOnce([
+        {
+          frameId: 0,
+          documentId: 'same-document',
+          result: { url: 'http://localhost:5173/', title: 'Spoofed Other App' },
+        },
+      ] as never);
+    const result = await service.handle(
+      { type: 'FILL', groupId: 'default', accountId: 'A', tabId: 1 },
+      { ...sender, url: 'chrome-extension://test/popup.html' },
+    );
+    expect(result).toEqual({
+      ok: false,
+      error:
+        'This page changed while the application was being checked. Review the selected application and try again.',
+    });
+    expect(chrome.tabs.sendMessage).not.toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({ type: 'FILL_FIELDS' }),
+      expect.anything(),
+    );
   });
   it('preserves a shared host permission when another group still uses it', async () => {
     const service = new GroupService();
@@ -505,6 +780,7 @@ describe('named CSV groups', () => {
       groupId: 'default',
       mode: 'merge',
       rule: 'https://qa.example.com/*',
+      format: 'csv',
       bytes: [
         ...new TextEncoder().encode('account_id,username,password\nA,demo@example.test,synthetic'),
       ],
@@ -551,6 +827,33 @@ describe('migrating records written before multi-environment support', () => {
     const state = await command<AppState>(service, { type: 'STATE' });
     expect(state.profile?.logins.map((l) => l.origin)).toEqual(['https://legacy.example.test']);
     expect(state.profile && 'login' in state.profile).toBe(false);
+    expect(state.profile?.titleRules).toEqual([]);
+  });
+  it('stores title rules only inside the encrypted per-group vault and reloads them', async () => {
+    const service = await setup();
+    await importAccount(service);
+    await command(service, {
+      type: 'SAVE_PROFILE',
+      profile: {
+        name: 'QA',
+        loginUrl: 'https://qa.example.com/login',
+        usernameSelector: '#u',
+        passwordSelector: '#p',
+        successKind: 'none',
+        successUrl: '',
+        titleRules: [{ origin: 'https://qa.example.com', mode: 'contains', value: 'QA Console' }],
+      },
+    });
+    expect(JSON.stringify(local.profile)).not.toContain('QA Console');
+    const { decryptVault } = await import('../domain/crypto');
+    const envelope = local.vault as import('../shared/types').Envelope;
+    const encryptedPayload = await decryptVault(envelope, local.catalogKey as string);
+    expect(encryptedPayload.titleRules).toEqual([
+      { origin: 'https://qa.example.com', mode: 'contains', value: 'QA Console' },
+    ]);
+    const restarted = new AssistantService();
+    await restarted.ready;
+    expect((await state(restarted)).profile?.titleRules).toEqual(encryptedPayload.titleRules);
   });
   it('discards a stored profile with no usable origin instead of breaking state', async () => {
     local.profile = { id: 'broken', revision: 1, name: 'broken' };
@@ -558,5 +861,40 @@ describe('migrating records written before multi-environment support', () => {
     const state = await command<AppState>(service, { type: 'STATE' });
     expect(state.profile).toBeNull();
     expect(state.rules).toEqual([]);
+  });
+});
+describe('JSON import', () => {
+  it('previews a valid JSON account document', async () => {
+    const service = await setup();
+    const result = await previewJson(service);
+    expect(result.format).toBe('json');
+    expect(result.found).toBe(1);
+    expect(result.valid).toBe(1);
+    expect(result.invalid).toBe(0);
+    expect(result.diagnostics).toEqual([]);
+  });
+  it('reports each JSON rejection cause verbatim, not the generic failure text', async () => {
+    const service = await setup();
+    const cases: Array<[string, string]> = [
+      ['not json at all', 'File is not valid JSON.'],
+      [JSON.stringify({ account_id: 'A' }), 'JSON must be an array of account records.'],
+      [
+        JSON.stringify([Object.fromEntries(Array.from({ length: 101 }, (_, i) => [`k${i}`, 'v']))]),
+        'JSON records are limited to 100 fields.',
+      ],
+    ];
+    for (const [body, message] of cases) {
+      const result = await service.handle(
+        {
+          type: 'PREVIEW_IMPORT',
+          bytes: [...new TextEncoder().encode(body)],
+          rule: 'https://qa.example.com/*',
+          mode: 'replace',
+          format: 'json',
+        },
+        sender,
+      );
+      expect(result).toEqual({ ok: false, error: message });
+    }
   });
 });

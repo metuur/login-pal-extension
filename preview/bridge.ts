@@ -54,7 +54,7 @@ export function createBridge(): PreviewBridge {
       id: 'account-login-assistant-preview',
       getURL: (path: string) =>
         path === 'sample-accounts.csv' ? sampleCsv : new URL(path, location.origin + '/').href,
-      getManifest: () => ({ version }),
+      getManifest: () => ({ name: 'Login Pal DEV', version }),
       async sendMessage(event: unknown) {
         for (const listener of listeners) listener(event);
       },

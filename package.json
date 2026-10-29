@@ -1,6 +1,6 @@
 {
   "name": "login-pal",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,7 +9,7 @@
     "build": "node scripts/build.mjs",
     "build-to-publish": "node scripts/publish.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --root .",
+    "test": "vitest run --root . --dir src",
     "test:browser": "node tests/browser/run.mjs",
     "check": "npm run typecheck && npm test && npm run build",
     "lint": "prettier --check src scripts tests public package.json tsconfig.json preview vite.config.ts",
@@ -39,7 +39,7 @@
     "playwright": "1.63.0",
     "prettier": "3.9.9",
     "typescript": "7.0.2",
-    "vite": "8.3.2",
-    "vitest": "4.1.11"
+    "vite": "8.3.5",
+    "vitest": "4.1.12"
   }
 }

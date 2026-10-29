@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseCsv } from './csv';
+import { parseJson } from './json';
 import { encryptVault, randomSalt } from './crypto';
 import { emptyVault, planImport } from './import';
 import { parseRule } from './rules';
@@ -43,6 +44,40 @@ describe('accepted limits and first rejected sizes', () => {
     expect(() => parseCsv(encode(`${columns.join(',')},extra\n${values.join(',')},text`))).toThrow(
       '100 columns',
     );
+  });
+
+  it('accepts exactly 10,000 JSON records and rejects the next record', () => {
+    const records = Array.from({ length: 10_000 }, (_, index) => ({
+      account_id: `${index}`,
+      username: 'test@example.test',
+      password: 'fixture',
+    }));
+    const parsed = parseJson(encode(JSON.stringify(records)));
+    expect(parsed.valid).toBe(10_000);
+    expect(() =>
+      parseJson(
+        encode(
+          JSON.stringify([
+            ...records,
+            { account_id: 'extra', username: 'test@example.test', password: 'fixture' },
+          ]),
+        ),
+      ),
+    ).toThrow('10,000');
+  });
+
+  it('accepts exactly 100 own keys in a JSON record and rejects the next key', () => {
+    const base: Record<string, unknown> = {
+      account_id: 'A',
+      username: 'test@example.test',
+      password: 'fixture',
+    };
+    for (let index = 0; index < 97; index++) base[`metadata_${index}`] = 'text';
+    expect(Object.keys(base).length).toBe(100);
+    expect(parseJson(encode(JSON.stringify([base]))).valid).toBe(1);
+    const over = { ...base, extra: 'text' };
+    expect(Object.keys(over).length).toBe(101);
+    expect(() => parseJson(encode(JSON.stringify([over])))).toThrow('100 fields');
   });
 
   it('accepts exactly 2 MiB of UTF-8 CSV bytes and rejects one extra byte', () => {

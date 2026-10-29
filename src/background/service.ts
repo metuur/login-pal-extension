@@ -15,6 +15,7 @@ import type {
   ProfileHistory,
   Reply,
   Route,
+  TitleRule,
   VaultPayload,
 } from '../shared/types';
 import {
@@ -33,10 +34,12 @@ import {
   matchesAnyRule,
   matchesRoute,
   matchesAnyOrigin,
+  matchesTitleRule,
   validateProfile,
   isAuthorizedPageUrl,
 } from '../domain/rules';
 import { parseCsv, exportCsv } from '../domain/csv';
+import { parseJson, exportJson } from '../domain/json';
 import { planImport } from '../domain/import';
 import { searchAccounts } from '../domain/search';
 
@@ -63,6 +66,12 @@ type Undo = {
 };
 type Session = { key: string; attempts: Attempt[]; undo: Undo | null };
 type Preview = { public: ImportPreview; payload: VaultPayload; revision: number };
+export interface CurrentPage {
+  tabId: number;
+  documentId: string;
+  url: string;
+  title: string | null;
+}
 // @spec R-1.1..R-1.9, R-3.1..R-3.6: worker owns the encrypted vault and session.
 /**
  * Profiles are stored outside the encrypted vault, so they need their own
@@ -89,17 +98,19 @@ const RULE_UNCHANGED = "That is already this group's authorized domain.";
 // page cannot already read, and a bare failure leaves the user guessing.
 const FILL_NO_PROFILE = 'Save a login profile in Settings before autofill.';
 const FILL_STALE_PROFILE =
-  "The group's domains changed. Open Login page setup and save the profile again.";
+  "The group's domains changed. Open Login page rules and save the profile again.";
 const FILL_NO_PERMISSION =
-  'Website permission is missing. Open Login page setup and save the profile again to grant it.';
+  'Website permission is missing. Open Login page rules and save the profile again to grant it.';
 const FILL_TAB_INACTIVE = 'Open the popup on the tab you want to fill.';
 const FILL_OFF_CATALOG = 'That tab is not on a domain this CSV group authorizes.';
 const FILL_OFF_PROFILE =
-  'That tab is not on a login domain saved in this profile. Open Login page setup, add the domain and save.';
+  'That tab is not on a login domain saved in this profile. Open Login page rules, add the domain and save.';
 const FILL_NO_FIELDS =
   'The login fields were not found on that page. Check the match values, or detect them again.';
 const FILL_ALREADY_SUCCESS =
   'That page already shows the success condition, so no credentials were sent.';
+const FILL_APP_CHANGED =
+  'This page changed while the application was being checked. Review the selected application and try again.';
 const SAFE_ERRORS = new Set<string>([
   FILL_NO_PROFILE,
   FILL_STALE_PROFILE,
@@ -109,6 +120,7 @@ const SAFE_ERRORS = new Set<string>([
   FILL_OFF_PROFILE,
   FILL_NO_FIELDS,
   FILL_ALREADY_SUCCESS,
+  FILL_APP_CHANGED,
   ACCOUNT_NOT_IN_GROUP,
   DETECT_OFF_DOMAIN,
   DETECT_NO_TAB,
@@ -138,7 +150,25 @@ const SAFE_ERRORS = new Set<string>([
   'CSV exceeds 10,000 rows or 100 columns.',
   'Catalog unavailable. Migrate the previous catalog or reset it.',
   'Profile could not be saved.',
+  'JSON exceeds the 2 MiB file limit.',
+  'JSON must use valid UTF-8.',
+  'File is not valid JSON.',
+  'JSON must be an array of account records.',
+  'JSON exceeds 10,000 records.',
+  'JSON records are limited to 100 fields.',
+  'Choose a supported file format.',
 ]);
+/**
+ * Commands that may only arrive from one extension page, keyed by command type.
+ * `satisfies` makes a key outside the Command union a compile error, so a
+ * renamed command cannot silently leave its pin behind: the comparison in
+ * handle() runs before the Command cast, where message.type is still a bare
+ * string and a stale literal would otherwise typecheck forever.
+ */
+const PAGE_PINS = {
+  EXPORT_ACCOUNTS: { page: 'options.html', error: 'Export accounts from Settings.' },
+  FILL: { page: 'popup.html', error: 'Open the popup on the target tab to autofill.' },
+} satisfies Partial<Record<Command['type'], { page: string; error: string }>>;
 export class AssistantService {
   private generation = 0;
   private authorizationRevision = 0;
@@ -200,6 +230,8 @@ export class AssistantService {
     const key = typeof local.catalogKey === 'string' ? local.catalogKey : previous?.key;
     if (this.envelope && key) {
       this.payload = await decryptVault(this.envelope, key);
+      if (this.profile)
+        this.profile = { ...this.profile, titleRules: this.payload.titleRules ?? [] };
       this.session = { key, attempts: previous?.attempts ?? [], undo: previous?.undo ?? null };
       await this.saveLocal({ catalogKey: key });
       await this.persistSession();
@@ -216,6 +248,7 @@ export class AssistantService {
     await this.saveLocal({ vault: envelope, catalogKey: key });
     this.envelope = envelope;
     this.payload = payload;
+    if (this.profile) this.profile = { ...this.profile, titleRules: [] };
     this.session = { key, attempts: [], undo: null };
     await this.persistSession();
   }
@@ -239,19 +272,35 @@ export class AssistantService {
     await chrome.storage.session.remove(this.sessionKey);
   }
   // Serialized callers publish one authenticated snapshot; reset can invalidate work mid-flight.
-  private async write(next: VaultPayload, accountMutation = false, stillValid = () => true) {
+  private async write(
+    next: VaultPayload,
+    accountMutation = false,
+    stillValid = () => true,
+    localUpdates: Record<string, unknown> = {},
+  ) {
     this.assert();
     const generation = this.generation;
     const oldEnvelope = this.envelope;
+    const oldLocalUpdates = Object.keys(localUpdates).length
+      ? await this.readLocal(Object.keys(localUpdates))
+      : {};
     next.snapshotRevision = this.payload!.snapshotRevision + 1;
     if (accountMutation) next.revision = this.payload!.revision + 1;
     const envelope = await encryptVault(next, this.session!.key, this.envelope!.salt);
-    if (bytes(envelope) > 5 * 1024 * 1024) throw new Error('Vault size limit.');
+    if (bytes(envelope) > 5 * 1024 * 1024)
+      throw new Error('Vault exceeds the 5 MiB encrypted storage limit.');
     this.assert(generation);
     if (!stillValid()) throw new Error('Cancelled.');
-    await this.saveLocal({ vault: envelope });
+    await this.saveLocal({ vault: envelope, ...localUpdates });
     if (generation !== this.generation || !this.session || !stillValid()) {
-      await this.saveLocal({ vault: oldEnvelope });
+      const restore = Object.fromEntries(
+        Object.entries(oldLocalUpdates).filter(([, value]) => value !== undefined),
+      );
+      await this.saveLocal({ vault: oldEnvelope, ...restore });
+      const missing = Object.entries(oldLocalUpdates)
+        .filter(([, value]) => value === undefined)
+        .map(([name]) => name);
+      if (missing.length) await this.removeLocal(missing);
       throw new Error('Cancelled.');
     }
     this.envelope = envelope;
@@ -282,18 +331,14 @@ export class AssistantService {
       sender.tab?.id !== undefined &&
       sender.frameId === 0 &&
       !!sender.documentId;
+    const pin =
+      message.type in PAGE_PINS ? PAGE_PINS[message.type as keyof typeof PAGE_PINS] : undefined;
     if (
       trusted &&
-      message.type === 'EXPORT_CSV' &&
-      sender.url?.split('?')[0]?.split('#')[0] !== chrome.runtime.getURL('options.html')
+      pin &&
+      sender.url?.split('?')[0]?.split('#')[0] !== chrome.runtime.getURL(pin.page)
     )
-      return { ok: false, error: 'Export accounts from Settings.' };
-    if (
-      trusted &&
-      message.type === 'FILL' &&
-      sender.url?.split('?')[0]?.split('#')[0] !== chrome.runtime.getURL('popup.html')
-    )
-      return { ok: false, error: 'Open the popup on the target tab to autofill.' };
+      return { ok: false, error: pin.error };
     if (
       !trusted &&
       !(content && ['CONTENT_CONTEXT', 'SUCCESS_OBSERVED', 'CANCEL_ATTEMPT'].includes(message.type))
@@ -417,8 +462,14 @@ export class AssistantService {
       return;
     }
     this.assert();
-    if (command.type === 'EXPORT_CSV') return exportCsv(this.payload!.accounts);
-    // User-authorized exception, same shape as EXPORT_CSV: the password is
+    if (command.type === 'EXPORT_ACCOUNTS') {
+      if (command.format !== 'csv' && command.format !== 'json')
+        throw new Error('Choose a supported file format.');
+      return command.format === 'csv'
+        ? exportCsv(this.payload!.accounts)
+        : exportJson(this.payload!.accounts);
+    }
+    // User-authorized exception, same shape as EXPORT_ACCOUNTS: the password is
     // returned only to satisfy an explicit copy gesture from a trusted
     // extension page, which writes it straight to the clipboard. Never
     // rendered, never logged.
@@ -458,10 +509,14 @@ export class AssistantService {
         command.bytes.length > 2 * 1024 * 1024 ||
         command.bytes.some((b) => !Number.isInteger(b) || b < 0 || b > 255) ||
         !['merge', 'replace'].includes(command.mode) ||
-        typeof command.rule !== 'string'
+        typeof command.rule !== 'string' ||
+        (command.format !== 'csv' && command.format !== 'json')
       )
         throw new Error();
-      const parsed = parseCsv(new Uint8Array(command.bytes));
+      const parsed =
+        command.format === 'json'
+          ? parseJson(new Uint8Array(command.bytes))
+          : parseCsv(new Uint8Array(command.bytes));
       const rules = parseDomainRules(command.rule);
       const planned = planImport(this.payload!, parsed, rules, command.mode);
       const preview: ImportPreview = {
@@ -473,6 +528,7 @@ export class AssistantService {
         diagnostics: parsed.diagnostics,
         rule: rules.map(formatRule).join(', '),
         mode: command.mode,
+        format: command.format,
       };
       this.preview = {
         public: preview,
@@ -574,7 +630,7 @@ export class AssistantService {
       return;
     }
     if (command.type === 'FILL') {
-      await this.fill(command.accountId, command.tabId);
+      await this.fill(command.accountId, command.tabId, command.expectedPage);
       return;
     }
     throw new Error();
@@ -627,7 +683,11 @@ export class AssistantService {
       },
     ]);
     this.assert(generation);
-    await this.saveLocal({ profile: next });
+    const nextPayload = structuredClone(this.payload!);
+    nextPayload.titleRules = next.titleRules ?? [];
+    const storedProfile = { ...next };
+    delete storedProfile.titleRules;
+    await this.write(nextPayload, false, () => true, { profile: storedProfile });
     this.assert(generation);
     this.profile = next;
     if (previous)
@@ -647,11 +707,72 @@ export class AssistantService {
   private async probe(tabId: number) {
     const results = await chrome.scripting.executeScript({
       target: { tabId, frameIds: [0] },
-      func: () => location.href,
+      func: () => ({ url: location.href, title: document.title }),
     });
     const top = results.find((r) => r.frameId === 0);
-    if (!top?.documentId || typeof top.result !== 'string') throw new Error();
-    return { documentId: top.documentId, url: top.result };
+    if (!top?.documentId) throw new Error();
+    const page =
+      typeof top.result === 'string'
+        ? { url: top.result, title: null }
+        : (top.result as { url?: unknown; title?: unknown } | undefined);
+    if (!page || typeof page.url !== 'string') throw new Error();
+    return {
+      documentId: top.documentId,
+      url: page.url,
+      title: typeof page.title === 'string' && page.title.trim() ? page.title : null,
+    };
+  }
+  /** Read only the explicitly targeted top-level page under current access. */
+  async currentPage(tabId?: number): Promise<CurrentPage> {
+    await this.ready;
+    const tab = await this.targetTab(tabId);
+    const current = await this.probe(tab.id!);
+    return { tabId: tab.id!, ...current };
+  }
+  /** Return the profile's rule and match signal only for its authorized origin. */
+  async titleIdentity(url: string, title: string | null) {
+    await this.ready;
+    if (!this.profile || !this.payload || !matchesAnyRule(this.payload.catalogRules, url))
+      return null;
+    if (
+      this.profile.approvedCatalogRuleRevision !== this.payload.catalogRuleRevision ||
+      !matchesAnyOrigin(this.profile.logins, url) ||
+      !(await chrome.permissions.contains({ origins: this.hosts(this.profile) }))
+    )
+      return null;
+    const origin = new URL(url).origin;
+    const rule = this.profile.titleRules?.find((candidate) => candidate.origin === origin) ?? null;
+    return { rule, matched: !!rule && !!title && matchesTitleRule(rule, title) };
+  }
+  async fillContextError(url: string): Promise<string | null> {
+    await this.ready;
+    if (!this.profile || !this.payload?.catalogRules.length) return FILL_NO_PROFILE;
+    if (this.profile.approvedCatalogRuleRevision !== this.payload.catalogRuleRevision)
+      return FILL_STALE_PROFILE;
+    if (!(await chrome.permissions.contains({ origins: this.hosts(this.profile) })))
+      return FILL_NO_PERMISSION;
+    if (!matchesAnyRule(this.payload.catalogRules, url)) return FILL_OFF_CATALOG;
+    if (!matchesAnyOrigin(this.profile.logins, url)) return FILL_OFF_PROFILE;
+    return null;
+  }
+  /** Worker-only source data for a password-free cross-group search. */
+  async searchableAccounts(groupName: string) {
+    await this.ready;
+    const payload = this.payload;
+    if (!this.session || !payload) return null;
+    return payload.accounts.map((account) => ({
+      account,
+      groupId: this.groupId,
+      groupName,
+      profileName: this.profile?.name ?? '',
+      authorizedOrigins: [
+        ...new Set([
+          ...payload.catalogRules.map((rule) => rule.origin),
+          ...(this.profile?.logins.map((login) => login.origin) ?? []),
+        ]),
+      ],
+      titleRules: this.profile?.titleRules ?? [],
+    }));
   }
   /**
    * Lists the recently used tabs already on the approved catalog domain so the
@@ -745,7 +866,11 @@ export class AssistantService {
     return { inputs: result?.inputs ?? [], frames: result?.frames ?? [] };
   }
   // @spec R-6.1..R-6.8: explicit account delivery is bound to a current top-frame document.
-  private async fill(accountId: string, tabId?: number) {
+  private async fill(
+    accountId: string,
+    tabId?: number,
+    expectedPage?: { documentId: string; url: string; title: string | null },
+  ) {
     const generation = this.generation;
     const authorization = this.authorizationRevision;
     const profile = this.profile;
@@ -760,6 +885,13 @@ export class AssistantService {
     const tab = await this.targetTab(tabId);
     if (!tab.active) throw new Error(FILL_TAB_INACTIVE);
     const current = await this.probe(tab.id!);
+    if (
+      expectedPage &&
+      (current.documentId !== expectedPage.documentId ||
+        current.url !== expectedPage.url ||
+        current.title !== expectedPage.title)
+    )
+      throw new Error(FILL_APP_CHANGED);
     if (!matchesAnyRule(rules, current.url)) throw new Error(FILL_OFF_CATALOG);
     if (!matchesAnyOrigin(profile.logins, current.url)) throw new Error(FILL_OFF_PROFILE);
     await chrome.scripting.executeScript({

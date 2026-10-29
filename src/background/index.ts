@@ -11,6 +11,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 });
 chrome.tabs.onUpdated.addListener((tabId, change) => {
   if (change.url) void service.navigation(tabId, change.url);
+  if (change.url || change.title) void service.pageChanged();
 });
 chrome.permissions.onRemoved.addListener(() => {
   void service.permissionRemoved();

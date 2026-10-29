@@ -1,5 +1,6 @@
-import type { CatalogRule } from '../shared/types';
+import type { CatalogRule, Account, ImportResult } from '../shared/types';
 import { exportCsv as serializeAccounts } from './csv';
+import { exportJson } from './json';
 import { describe, it, expect } from 'vitest';
 import {
   deriveVaultKey,
@@ -11,6 +12,7 @@ import {
   migrateVaultPayload,
 } from './crypto';
 import { parseCsv } from './csv';
+import { parseJson } from './json';
 import {
   parseRule,
   parseDomainRule,
@@ -23,10 +25,13 @@ import {
   parseDomainRules,
   matchesAnyOrigin,
   matchesAnyRule,
+  normalizeApplicationTitle,
+  matchesTitleRule,
 } from './rules';
 import { emptyVault, planImport } from './import';
-import { searchAccounts } from './search';
+import { searchAccounts, searchAccountsAcrossGroups } from './search';
 const csv = (s: string) => parseCsv(new TextEncoder().encode(s));
+const json = (s: string) => parseJson(new TextEncoder().encode(s));
 const header = 'account_id,username,password,company';
 describe('CSV validation', () => {
   it('preserves quoted fields, whitespace and BOM', () => {
@@ -54,6 +59,204 @@ describe('CSV validation', () => {
   it('preserves metadata keys without prototype mutation', () => {
     const r = csv('account_id,username,password,__proto__\nx,u,p,text');
     expect(Object.hasOwn(r.accounts[0]!.metadata, '__proto__')).toBe(true);
+  });
+});
+describe('JSON validation', () => {
+  it('parses a BOM-prefixed valid document', () => {
+    const r = json('﻿[{"account_id":"a"}]');
+    expect(r.found).toBe(1);
+  });
+  it('rejects malformed JSON as a single whole-document failure', () => {
+    expect(() => json('{not json')).toThrow('File is not valid JSON.');
+  });
+  it('rejects a top-level object', () => {
+    expect(() => json('{"accounts": []}')).toThrow('JSON must be an array of account records.');
+  });
+  it('rejects a top-level string', () => {
+    expect(() => json('"a string"')).toThrow('JSON must be an array of account records.');
+  });
+  it('reports found: 0 for an empty array', () => {
+    expect(json('[]').found).toBe(0);
+  });
+  it('reports found: 3 for a valid 3-element array', () => {
+    expect(json('[{"a":1},{"b":2},{"c":3}]').found).toBe(3);
+  });
+  it('rejects a document over the 2 MiB file limit', () => {
+    expect(() => parseJson(new Uint8Array(2097153))).toThrow('2 MiB');
+  });
+  it('rejects invalid UTF-8', () => {
+    expect(() => parseJson(new Uint8Array([255]))).toThrow();
+  });
+  it('rejects a document with a record over 100 own keys as a whole-document failure', () => {
+    const wide: Record<string, string> = {};
+    for (let index = 0; index < 101; index++) wide[`k${index}`] = 'v';
+    expect(() => json(JSON.stringify([wide]))).toThrow('JSON records are limited to 100 fields.');
+  });
+  it('treats a long array element as a bad record, not a wide one', () => {
+    // Arrays are typeof 'object', so the width check must exclude them or a
+    // long array would reject the whole document instead of reporting itself.
+    const r = json(JSON.stringify([Array.from({ length: 101 }, (_, i) => i)]));
+    expect(r.diagnostics).toEqual([{ at: 1, unit: 'record', code: 'RECORD_NOT_OBJECT' }]);
+  });
+  it('reports RECORD_NOT_OBJECT for non-object elements', () => {
+    const r = json('[1, "two", true, null, ["array"]]');
+    expect(r.found).toBe(5);
+    expect(r.invalid).toBe(5);
+    expect(r.valid).toBe(0);
+    expect(r.diagnostics).toEqual(
+      [1, 2, 3, 4, 5].map((at) => ({ at, unit: 'record', code: 'RECORD_NOT_OBJECT' })),
+    );
+  });
+  it('reports REQUIRED_FIELD_NOT_STRING when a reserved field is absent or not a string', () => {
+    const r = json(
+      JSON.stringify([
+        { username: 'u', password: 'p' },
+        { account_id: 1, username: 'u', password: 'p' },
+      ]),
+    );
+    expect(r.diagnostics).toEqual([
+      { at: 1, unit: 'record', code: 'REQUIRED_FIELD_NOT_STRING' },
+      { at: 2, unit: 'record', code: 'REQUIRED_FIELD_NOT_STRING' },
+    ]);
+  });
+  it('reports EMPTY_ACCOUNT_ID for a blank trimmed account_id', () => {
+    const r = json(JSON.stringify([{ account_id: '  ', username: 'u', password: 'p' }]));
+    expect(r.diagnostics).toEqual([{ at: 1, unit: 'record', code: 'EMPTY_ACCOUNT_ID' }]);
+  });
+  it('reports EMPTY_USERNAME for a blank trimmed username', () => {
+    const r = json(JSON.stringify([{ account_id: 'a', username: ' ', password: 'p' }]));
+    expect(r.diagnostics).toEqual([{ at: 1, unit: 'record', code: 'EMPTY_USERNAME' }]);
+  });
+  it('reports EMPTY_PASSWORD only for the exact empty string, preserving other whitespace', () => {
+    const r = json(JSON.stringify([{ account_id: 'a', username: 'u', password: '' }]));
+    expect(r.diagnostics).toEqual([{ at: 1, unit: 'record', code: 'EMPTY_PASSWORD' }]);
+    const preserved = json(JSON.stringify([{ account_id: 'a', username: 'u', password: ' p ' }]));
+    expect(preserved.accounts[0]?.password).toBe(' p ');
+  });
+  it('reports DUPLICATE_ACCOUNT_ID for repeated trimmed account_id values', () => {
+    const r = json(
+      JSON.stringify([
+        { account_id: ' a ', username: 'u', password: 'p' },
+        { account_id: 'a', username: 'u2', password: 'p2' },
+      ]),
+    );
+    expect(r.diagnostics).toEqual([
+      { at: 1, unit: 'record', code: 'DUPLICATE_ACCOUNT_ID' },
+      { at: 2, unit: 'record', code: 'DUPLICATE_ACCOUNT_ID' },
+    ]);
+  });
+  it('reports the duplicate ahead of a later ladder code, and resolves non-object records independently', () => {
+    // A single record cannot be both duplicate (requires a readable string
+    // account_id, hence an object) and RECORD_NOT_OBJECT. This instead proves
+    // ladder order against the next achievable code (REQUIRED_FIELD_NOT_STRING)
+    // while a sibling non-object element reports its own cause untouched.
+    const r = json(
+      JSON.stringify([
+        { account_id: 'dup', username: 'u', password: 'p' },
+        { account_id: 'dup', username: 123, password: 'p' },
+        'not-an-object',
+      ]),
+    );
+    expect(r.diagnostics).toEqual([
+      { at: 1, unit: 'record', code: 'DUPLICATE_ACCOUNT_ID' },
+      { at: 2, unit: 'record', code: 'DUPLICATE_ACCOUNT_ID' },
+      { at: 3, unit: 'record', code: 'RECORD_NOT_OBJECT' },
+    ]);
+  });
+  it('counts only non-empty trimmed identifiers as duplicates (story 4.2)', () => {
+    const blankIds = json(
+      JSON.stringify(
+        Array.from({ length: 3 }, () => ({ account_id: '', username: 'u', password: 'p' })),
+      ),
+    );
+    expect(blankIds.diagnostics.every((d) => d.code === 'EMPTY_ACCOUNT_ID')).toBe(true);
+    const absentIds = json(
+      JSON.stringify(Array.from({ length: 3 }, () => ({ username: 'u', password: 'p' }))),
+    );
+    expect(absentIds.diagnostics.every((d) => d.code === 'REQUIRED_FIELD_NOT_STRING')).toBe(true);
+    const numericIds = json(
+      JSON.stringify(
+        Array.from({ length: 3 }, () => ({ account_id: 1, username: 'u', password: 'p' })),
+      ),
+    );
+    expect(numericIds.diagnostics.every((d) => d.code === 'REQUIRED_FIELD_NOT_STRING')).toBe(true);
+  });
+  it('coerces each scalar metadata value kind to its expected string (story 5.1)', () => {
+    const r = json(
+      JSON.stringify([
+        {
+          account_id: 'a',
+          username: 'u',
+          password: 'p',
+          str: 'hello',
+          int: 42,
+          float: 3.14,
+          yes: true,
+          no: false,
+          nothing: null,
+        },
+      ]),
+    );
+    expect(r.accounts[0]?.metadata).toEqual({
+      str: 'hello',
+      int: '42',
+      float: '3.14',
+      yes: 'true',
+      no: 'false',
+      nothing: '',
+    });
+  });
+  it('documents the numeric-spelling limitation rather than preserving source spelling (R-JS-3.4)', () => {
+    // Known, accepted limitation: JSON.parse loses integer precision beyond
+    // 2^53, String() renders extreme magnitudes in exponent form, and
+    // String(-0) collapses to '0'. CSV preserves exact spelling because it
+    // never parses the value as a number; JSON does, and this is the cost.
+    // Written as literal JSON text (not JSON.stringify of a JS number
+    // literal), so the source spelling under test is the one a user's file
+    // would actually contain, not one already rounded by the JS parser.
+    const r = json(
+      '[' +
+        '{"account_id":"a","username":"u","password":"p","big":12345678901234567890},' +
+        '{"account_id":"b","username":"u","password":"p","exp":1e21},' +
+        '{"account_id":"c","username":"u","password":"p","negZero":-0}' +
+        ']',
+    );
+    expect(r.accounts[0]?.metadata.big).toBe('12345678901234567000');
+    expect(r.accounts[1]?.metadata.exp).toBe('1e+21');
+    expect(r.accounts[2]?.metadata.negZero).toBe('0');
+  });
+  it('rejects a record whose metadata value is an array or a nested object (story 5.2)', () => {
+    const r = json(
+      JSON.stringify([
+        { account_id: 'a', username: 'u', password: 'p', tags: ['x', 'y'] },
+        { account_id: 'b', username: 'u', password: 'p', nested: { x: 1 } },
+        { account_id: 'c', username: 'u', password: 'p', fine: 'ok' },
+      ]),
+    );
+    expect(r.diagnostics).toEqual([
+      { at: 1, unit: 'record', code: 'METADATA_VALUE_NOT_SCALAR' },
+      { at: 2, unit: 'record', code: 'METADATA_VALUE_NOT_SCALAR' },
+    ]);
+    expect(r.valid).toBe(1);
+    expect(r.accounts).toHaveLength(1);
+    expect(r.accounts[0]?.accountId).toBe('c');
+  });
+  it('preserves a __proto__ metadata key as an own property without mutating the prototype (story 5.3)', () => {
+    // Written as literal JSON text, not an object-literal key: `{ __proto__: v }`
+    // in JS source sets the prototype instead of creating an own property, so
+    // JSON.stringify would never emit it. JSON.parse, unlike object-literal
+    // syntax, builds `__proto__` as an ordinary own property.
+    const r = json('[{"account_id":"a","username":"u","password":"p","__proto__":"text"}]');
+    expect(Object.hasOwn(r.accounts[0]!.metadata, '__proto__')).toBe(true);
+    expect(r.accounts[0]!.metadata.__proto__).toBe('text');
+    expect(({} as Record<string, unknown>).evil).toBeUndefined();
+  });
+  it('does not leak reserved keys into metadata', () => {
+    const r = json(JSON.stringify([{ account_id: 'a', username: 'u', password: 'p', note: 'x' }]));
+    expect(r.accounts[0]?.metadata).toEqual({ note: 'x' });
+    expect(r.accounts[0]?.metadata.account_id).toBeUndefined();
+    expect(r.accounts[0]?.metadata.username).toBeUndefined();
+    expect(r.accounts[0]?.metadata.password).toBeUndefined();
   });
 });
 describe('authorization rules', () => {
@@ -133,6 +336,31 @@ describe('authorization rules', () => {
     ).toThrow();
   });
 });
+describe('application title rules', () => {
+  it('normalizes titles and configured values with trim, NFKC, and case folding', () => {
+    expect(normalizeApplicationTitle('  ＡＣＭＥ　Console  ')).toBe('acme console');
+    expect(
+      matchesTitleRule({ mode: 'equals', value: 'ACME Console' }, '  ＡＣＭＥ　Console  '),
+    ).toBe(true);
+  });
+  it('uses literal contains matching by default-compatible mode and supports exact mode', () => {
+    expect(matchesTitleRule({ mode: 'contains', value: 'dashboard' }, 'QA Dashboard - Local')).toBe(
+      true,
+    );
+    expect(matchesTitleRule({ mode: 'equals', value: 'dashboard' }, 'QA Dashboard - Local')).toBe(
+      false,
+    );
+    expect(matchesTitleRule({ mode: 'contains', value: 'a+b' }, 'QA a+b Local')).toBe(true);
+    expect(matchesTitleRule({ mode: 'contains', value: 'a+b' }, 'QA aaab Local')).toBe(false);
+  });
+  it('does not match empty or malformed rule values', () => {
+    expect(matchesTitleRule({ mode: 'contains', value: '  ' }, 'Any Application')).toBe(false);
+    expect(matchesTitleRule({ mode: 'equals', value: '  ' }, '  ')).toBe(false);
+    expect(matchesTitleRule({ mode: 'regex' as never, value: '.*' }, 'Any Application')).toBe(
+      false,
+    );
+  });
+});
 describe('transaction planning', () => {
   it('merges complete records and invalidates credential history', () => {
     const rule = parseRule('https://qa.example.com/*');
@@ -175,6 +403,36 @@ describe('search', () => {
     expect(searchAccounts(a, 'secretneedle', 0).matches).toBe(0);
     expect(searchAccounts(a, '', 0).accounts.map((a) => a.accountId)).toEqual(['a', 'b']);
     expect(searchAccounts(a, '', 0).accounts[0]).not.toHaveProperty('password');
+  });
+  it('searches group context and title rules across groups without exposing passwords', () => {
+    const accounts = csv(header + '\nA,user,secretneedle,Premium').accounts;
+    const records = [
+      {
+        account: accounts[0]!,
+        groupId: 'z-group',
+        groupName: 'Platform Z',
+        profileName: 'Z staging',
+        authorizedOrigins: ['http://localhost:5173'],
+        titleRules: [{ origin: 'http://localhost:5173', mode: 'contains' as const, value: 'Vite' }],
+      },
+      {
+        account: { ...accounts[0]!, username: 'other-user' },
+        groupId: 'a-group',
+        groupName: 'Platform A',
+        profileName: 'A local',
+        authorizedOrigins: ['http://localhost:5173'],
+        titleRules: [{ origin: 'http://localhost:5173', mode: 'equals' as const, value: 'React' }],
+      },
+    ];
+    const result = searchAccountsAcrossGroups(records, 'platform vite', 0);
+    expect(result.accounts.map((item) => [item.groupId, item.accountId])).toEqual([
+      ['z-group', 'A'],
+    ]);
+    expect(searchAccountsAcrossGroups(records, 'secretneedle', 0).matches).toBe(0);
+    expect(result.accounts[0]).not.toHaveProperty('password');
+    expect(searchAccountsAcrossGroups(records, '5173 React', 0).accounts[0]?.groupId).toBe(
+      'a-group',
+    );
   });
 });
 describe('vault cryptography', () => {
@@ -272,7 +530,8 @@ describe('strict import regressions', () => {
   });
   it('counts logical rows with multiline metadata and all duplicate occurrences', () => {
     const r = csv(header + '\na,u,p,"line1\nline2"\na,u,p,c\nb,u,p,c');
-    expect(r.diagnostics.map((d) => d.row)).toEqual([2, 3]);
+    expect(r.diagnostics.map((d) => d.at)).toEqual([2, 3]);
+    expect(r.diagnostics.map((d) => d.unit)).toEqual(['row', 'row']);
     expect(r.found).toBe(3);
   });
   it('rejects empty/missing headers and excess row/column limits', () => {
@@ -341,7 +600,218 @@ it('ignores arbitrary query data on observed URLs without accepting it in policy
   ).toBe(true);
 });
 
+describe('round-trip fidelity between import formats (stories 7.1-7.3)', () => {
+  it('proves planImport is format-neutral: a hand-built ImportResult literal drives merge and replace without either parser (story 7.1)', () => {
+    // Neither csv() nor json() appears below. planImport only ever reads
+    // parsed.accounts (verified in the LLD against :38, :49, :58, :69), so
+    // found/valid/invalid/diagnostics below are deliberately nonsensical —
+    // if planImport ever started inspecting them, this test would start failing.
+    const rule = parseRule('https://qa.example.com/*');
+    const literal: ImportResult = {
+      accounts: [
+        { accountId: 'x', username: 'u', password: 'p', metadata: { note: 'literal' } },
+        { accountId: 'y', username: 'u2', password: 'p2', metadata: {} },
+      ],
+      found: 999,
+      valid: 0,
+      invalid: 999,
+      diagnostics: [{ at: -1, unit: 'record', code: 'EMPTY_USERNAME' }],
+    };
+    const merged = planImport(emptyVault(), literal, [rule], 'merge');
+    expect(merged.counts).toEqual({ added: 2, updated: 0, unchanged: 0, removed: 0 });
+    expect(merged.payload.accounts).toHaveLength(2);
+
+    const replacement: ImportResult = {
+      accounts: [{ accountId: 'x', username: 'u', password: 'changed', metadata: {} }],
+      found: 0,
+      valid: 0,
+      invalid: 0,
+      diagnostics: [],
+    };
+    const replaced = planImport(merged.payload, replacement, [rule], 'replace');
+    expect(replaced.counts).toEqual({ added: 0, updated: 1, unchanged: 0, removed: 1 });
+    expect(replaced.payload.accounts).toEqual([
+      { accountId: 'x', username: 'u', password: 'changed', metadata: {} },
+    ]);
+  });
+
+  it('produces identical accounts, counts and diagnostic codes from equivalent CSV and JSON documents, except the two documented exceptions (story 7.2, R-JS-6.2)', () => {
+    const csvDoc = csv(
+      'account_id,username,password,company,ref\n' +
+        'a,userA,passA,Acme,0042\n' +
+        'b,userB,passB,Beta,0099\n' +
+        'dup,u1,p1,CsvCo,0001\n' +
+        'dup,u2,p2,CsvCo,0002\n' +
+        'e,,p,CsvCo,0003\n' +
+        'c,userC,passC,,0004\n' +
+        'd,userD,passD,CsvCo,0042\n',
+    );
+    const jsonDoc = json(
+      JSON.stringify([
+        { account_id: 'a', username: 'userA', password: 'passA', company: 'Acme', ref: '0042' },
+        { account_id: 'b', username: 'userB', password: 'passB', company: 'Beta', ref: '0099' },
+        { account_id: 'dup', username: 'u1', password: 'p1', company: 'CsvCo', ref: '0001' },
+        { account_id: 'dup', username: 'u2', password: 'p2', company: 'CsvCo', ref: '0002' },
+        { account_id: 'e', username: '', password: 'p', company: 'CsvCo', ref: '0003' },
+        // `company` is absent here, not padded, which is exception 1.
+        { account_id: 'c', username: 'userC', password: 'passC', ref: '0004' },
+        // `ref` is a JSON number here, not the text "0042", which is exception 2.
+        { account_id: 'd', username: 'userD', password: 'passD', company: 'CsvCo', ref: 42 },
+      ]),
+    );
+
+    // Same counts and the same diagnostic codes, in the same order. Positions
+    // ('at') are not compared: CSV counts physical file lines with the header
+    // at 1, JSON counts 1-based array indices, and the two are disjoint by design.
+    expect(jsonDoc.found).toBe(csvDoc.found);
+    expect(jsonDoc.valid).toBe(csvDoc.valid);
+    expect(jsonDoc.invalid).toBe(csvDoc.invalid);
+    expect(jsonDoc.diagnostics.map((d) => d.code)).toEqual([
+      'DUPLICATE_ACCOUNT_ID',
+      'DUPLICATE_ACCOUNT_ID',
+      'EMPTY_USERNAME',
+    ]);
+    expect(csvDoc.diagnostics.map((d) => d.code)).toEqual(jsonDoc.diagnostics.map((d) => d.code));
+
+    // Same accounts: identical identities, usernames, passwords and shared metadata.
+    for (const id of ['a', 'b', 'c', 'd']) {
+      const fromCsv = csvDoc.accounts.find((account) => account.accountId === id)!;
+      const fromJson = jsonDoc.accounts.find((account) => account.accountId === id)!;
+      expect(fromJson.username).toBe(fromCsv.username);
+      expect(fromJson.password).toBe(fromCsv.password);
+    }
+    expect(csvDoc.accounts.find((a) => a.accountId === 'a')?.metadata.company).toBe('Acme');
+    expect(jsonDoc.accounts.find((a) => a.accountId === 'a')?.metadata.company).toBe('Acme');
+    expect(csvDoc.accounts.find((a) => a.accountId === 'd')?.metadata.company).toBe('CsvCo');
+    expect(jsonDoc.accounts.find((a) => a.accountId === 'd')?.metadata.company).toBe('CsvCo');
+
+    // Exception 1: CSV pads the metadata key absent from record "c" with '';
+    // JSON simply omits the key rather than padding it.
+    expect(csvDoc.accounts.find((a) => a.accountId === 'c')?.metadata.company).toBe('');
+    expect(
+      Object.hasOwn(jsonDoc.accounts.find((a) => a.accountId === 'c')!.metadata, 'company'),
+    ).toBe(false);
+
+    // Exception 2 (R-JS-3.4): CSV carries record "d"'s numeric-looking text
+    // verbatim; JSON coerces its numeric literal through String(value) and
+    // loses the leading zero.
+    expect(csvDoc.accounts.find((a) => a.accountId === 'd')?.metadata.ref).toBe('0042');
+    expect(jsonDoc.accounts.find((a) => a.accountId === 'd')?.metadata.ref).toBe('42');
+  });
+
+  it('preserves commas, quotes, newlines, non-ASCII metadata and an awkward password through a CSV export/re-import round trip (story 7.3, R-JS-6.3)', () => {
+    const accounts: Account[] = [
+      {
+        accountId: 'RT-1',
+        username: 'rt@example.test',
+        password: '  pass"word\nwith newline  ',
+        metadata: {
+          notes: 'line one, line two\nwith "quotes" and 日本語 ümlaut',
+        },
+      },
+    ];
+    const reimported = parseCsv(new TextEncoder().encode(serializeAccounts(accounts)));
+    expect(reimported.valid).toBe(1);
+    expect(reimported.accounts[0]?.password).toBe(accounts[0]!.password);
+    expect(reimported.accounts[0]?.metadata.notes).toBe(accounts[0]!.metadata.notes);
+  });
+
+  it('preserves the same awkward values through a JSON export and re-import round trip (story 7.3, R-JS-6.3)', () => {
+    const accounts: Account[] = [
+      {
+        accountId: 'RT-1',
+        username: 'rt@example.test',
+        password: '  pass"word\nwith newline  ',
+        metadata: { notes: 'line one, line two\nwith "quotes" and 日本語 ümlaut' },
+      },
+    ];
+    const reimported = json(exportJson(accounts));
+    expect(reimported.valid).toBe(1);
+    expect(reimported.accounts[0]?.password).toBe(accounts[0]!.password);
+    expect(reimported.accounts[0]?.metadata.notes).toBe(accounts[0]!.metadata.notes);
+  });
+});
+
+describe('JSON group export (stories 8.1, 8.3)', () => {
+  const mixed: Account[] = [
+    {
+      accountId: 'JX-1',
+      username: 'one@example.test',
+      password: 'synthetic-one',
+      metadata: { role: 'Tester', company: 'Acme' },
+    },
+    {
+      accountId: 'JX-2',
+      username: 'two@example.test',
+      password: 'synthetic-two',
+      metadata: { company: 'Contoso' },
+    },
+  ];
+
+  it('emits stored order, reserved keys first, own metadata keys sorted (R-JS-5.3)', () => {
+    const records = JSON.parse(exportJson(mixed)) as Record<string, string>[];
+    expect(records.map((record) => record.account_id)).toEqual(['JX-1', 'JX-2']);
+    expect(Object.keys(records[0]!)).toEqual([
+      'account_id',
+      'username',
+      'password',
+      'company',
+      'role',
+    ]);
+  });
+
+  it('omits a key an account lacks while CSV pads it (R-JS-5.4)', () => {
+    const records = JSON.parse(exportJson(mixed)) as Record<string, string>[];
+    expect('role' in records[1]!).toBe(false);
+    // The same group through CSV gains the column back as an empty value.
+    expect(
+      parseCsv(new TextEncoder().encode(serializeAccounts(mixed))).accounts[1]?.metadata.role,
+    ).toBe('');
+  });
+
+  it('uses two-space indentation and a trailing newline with no BOM (R-JS-5.5)', () => {
+    const text = exportJson(mixed);
+    expect(text.startsWith('[\n  {\n    "account_id"')).toBe(true);
+    expect(text.endsWith('\n')).toBe(true);
+    expect(text.charCodeAt(0)).not.toBe(0xfeff);
+  });
+
+  it('reproduces every account when an exported group is imported back (R-JS-6.1)', () => {
+    const accounts: Account[] = [
+      ...mixed,
+      {
+        accountId: 'JX-3',
+        username: 'three@example.test',
+        password: '  syn"thetic\nthree  ',
+        metadata: { notes: 'commas, "quotes", 日本語', env: 'QA' },
+      },
+    ];
+    const reimported = json(exportJson(accounts));
+    expect(reimported.valid).toBe(accounts.length);
+    expect(reimported.invalid).toBe(0);
+    expect(reimported.accounts).toEqual(accounts);
+  });
+});
+
 describe('CSV group export', () => {
+  // Pins the bytes so adding a second export format cannot quietly reshape the
+  // first one (R-JS-5.7).
+  it('emits unchanged bytes: BOM, quoted fields, CRLF and a trailing CRLF', () => {
+    expect(
+      serializeAccounts([
+        {
+          accountId: 'BY-1',
+          username: 'byte@example.test',
+          password: 'synthetic-byte',
+          metadata: { role: 'Tester' },
+        },
+      ]),
+    ).toBe(
+      '\uFEFF"account_id","username","password","role"\r\n' +
+        '"BY-1","byte@example.test","synthetic-byte","Tester"\r\n',
+    );
+  });
+
   it('round trips quotes, commas, Unicode, newlines and password whitespace', () => {
     const accounts: import('../shared/types').Account[] = [
       {
@@ -484,6 +954,50 @@ describe('optional success tracking', () => {
     expect(() => validateProfile({ ...base, successKind: 'maybe' as never }, [rule], 1)).toThrow(
       'Choose a supported success condition.',
     );
+  });
+  it('defaults title rules to an empty list and preserves valid per-origin rules', () => {
+    expect(validateProfile(base, [rule], 1).titleRules).toEqual([]);
+    expect(
+      validateProfile(
+        {
+          ...base,
+          titleRules: [
+            { origin: 'https://qa.example.test', mode: 'contains', value: ' ＡＣＭＥ Console ' },
+            { origin: 'https://qa.example.test', mode: 'equals', value: 'QA dashboard' },
+          ],
+        },
+        [rule],
+        1,
+      ).titleRules,
+    ).toEqual([
+      { origin: 'https://qa.example.test', mode: 'contains', value: 'ＡＣＭＥ Console' },
+      { origin: 'https://qa.example.test', mode: 'equals', value: 'QA dashboard' },
+    ]);
+  });
+  it('rejects unsupported modes, empty normalized values, and origins outside login origins', () => {
+    for (const titleRules of [
+      [{ origin: 'https://qa.example.test', mode: 'regex', value: 'QA' }],
+      [{ origin: 'https://qa.example.test', mode: 'contains', value: '　 ' }],
+      [{ origin: 'https://other.example.test', mode: 'contains', value: 'QA' }],
+    ])
+      expect(() =>
+        validateProfile({ ...base, titleRules: titleRules as never }, [rule], 1),
+      ).toThrow();
+  });
+  it('rejects duplicate normalized title values per origin even across modes', () => {
+    expect(() =>
+      validateProfile(
+        {
+          ...base,
+          titleRules: [
+            { origin: 'https://qa.example.test', mode: 'contains', value: ' ACME ' },
+            { origin: 'https://qa.example.test', mode: 'equals', value: 'ＡＣＭＥ' },
+          ],
+        },
+        [rule],
+        1,
+      ),
+    ).toThrow('duplicate');
   });
 });
 

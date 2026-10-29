@@ -23,6 +23,8 @@ import {
 } from '../ui/common';
 
 const app = document.querySelector<HTMLElement>('#app')!;
+const appName = chrome.runtime.getManifest().name;
+document.title = appName;
 const status = liveRegion();
 const body = el('div', 'popup-body stack');
 const header = el('header', 'app-header');
@@ -30,7 +32,7 @@ const top = el('div', 'header-line');
 const brand = el('div', 'brand');
 const logo = el('div', 'logo');
 logo.setAttribute('aria-hidden', 'true');
-brand.append(logo, el('strong', '', 'Login Pal'));
+brand.append(logo, el('strong', '', appName));
 const actions = el('div', 'header-actions');
 let tabId: number | undefined,
   state: AppState | undefined,
@@ -126,13 +128,65 @@ function applyFillFeedback() {
     : 'Could not fill this page.';
   button.replaceChildren(icon(outcome.ok ? 'check' : 'cross'));
 }
+/** Add page identity context only to the account's Account details disclosure. */
+function appendIdentityDetails(details: HTMLElement | null, account: AccountSummary) {
+  const identity =
+    account.applicationIdentity ??
+    (state?.applicationIdentity &&
+    (!account.groupId || account.groupId === state.applicationIdentity.groupId)
+      ? state.applicationIdentity
+      : undefined);
+  if (!details || !identity) return;
+
+  const dl = details.querySelector('dl');
+  if (!dl) return;
+  const addRow = (label: string, value: string) => {
+    dl.append(el('dt', '', label), el('dd', '', value));
+  };
+  addRow('Page title', identity.title?.trim() || 'Unavailable');
+  addRow(
+    'Title rule',
+    identity.rule
+      ? `${identity.rule.mode === 'contains' ? 'Contains' : 'Exactly'} “${identity.rule.value}”`
+      : 'Not configured',
+  );
+  addRow(
+    'Title match',
+    !identity.rule
+      ? 'Not configured'
+      : identity.status === 'unavailable'
+        ? 'Unavailable'
+        : identity.matched
+          ? 'Matched'
+          : identity.status === 'choice-required'
+            ? identity.selected
+              ? 'No match — selected manually'
+              : 'Choose an application'
+            : 'No match',
+  );
+}
+function appendApplicationIdentity(row: HTMLElement, account: AccountSummary) {
+  appendIdentityDetails(row.querySelector('details.metadata'), account);
+}
+function appendGroupLabel(row: HTMLElement, account: AccountSummary) {
+  if (!account.groupName) return;
+  row
+    .querySelector('.account-content')
+    ?.append(el('p', 'scope mono truncate', `Group · ${account.groupName}`));
+}
 async function fill(account: AccountSummary, section: FillSection = 'recent') {
   if (busy) return;
   busy = true;
   body.querySelectorAll('button').forEach((b) => (b.disabled = true));
   message(status, 'Checking this page and filling the selected account…');
   try {
-    await request({ type: 'FILL', accountId: account.accountId, tabId });
+    await request({
+      type: 'FILL',
+      accountId: account.accountId,
+      tabId,
+      groupId: account.groupId ?? currentGroup(),
+      fromSearch: !!query.trim(),
+    });
     markFill(account.accountId, section, true);
     message(status, '');
     await refresh();
@@ -148,13 +202,15 @@ async function fill(account: AccountSummary, section: FillSection = 'recent') {
 function select(account: AccountSummary) {
   const heading = el('div', 'confirm-heading');
   heading.append(el('h2', '', title(account)), copyActions(account));
+  const accountDetails = metadata(account);
+  appendIdentityDetails(accountDetails, account);
   body.replaceChildren(
     button('← Back to accounts', () => render(), 'text-button'),
     sectionLabel('Confirm account'),
     heading,
     el('p', 'mono', account.accountId),
     el('p', '', account.username),
-    metadata(account),
+    accountDetails,
     el(
       'p',
       'subtle',
@@ -162,13 +218,15 @@ function select(account: AccountSummary) {
     ),
   );
   const action = button('Autofill this account', () => fill(account), 'primary');
-  action.disabled = !state?.authorized;
+  action.disabled = !state?.authorized && !(query.trim() && account.groupId);
   body.append(action);
   action.focus();
 }
 function render(resultsOnly = false) {
   if (!state) return;
   const s = state;
+  if (s.applicationIdentity?.matched && s.applicationIdentity.groupId)
+    chooseGroup(s.applicationIdentity.groupId);
   const profileLabel = s.profile
     ? `${s.profile.name} (${s.profile.logins.map((l) => new URL(l.origin).host).join(', ')})`
     : 'No login profile configured';
@@ -219,6 +277,7 @@ function render(resultsOnly = false) {
         () => select(a),
       );
       row.dataset.section = 'recent';
+      appendApplicationIdentity(row, a);
       results.append(row);
     });
   }
@@ -247,6 +306,8 @@ function render(resultsOnly = false) {
       () => select(a),
     );
     row.dataset.section = 'all';
+    appendGroupLabel(row, a);
+    appendApplicationIdentity(row, a);
     results.append(row);
   });
   if (s.matches > 50)
@@ -263,6 +324,30 @@ function render(resultsOnly = false) {
     return;
   }
   body.replaceChildren();
+  if (s.applicationIdentity && !s.applicationIdentity.selected && !s.applicationIdentity.matched) {
+    const selection = el('div', 'notice warning');
+    selection.append(
+      el('p', '', 'Choose which application is open before browsing its accounts.'),
+      button(
+        `Use ${s.groups?.find((group) => group.id === currentGroup())?.name ?? 'selected group'} for this tab`,
+        async () => {
+          if (tabId === undefined) return;
+          try {
+            await request({ type: 'CHOOSE_GROUP', groupId: currentGroup(), tabId });
+            await refresh();
+          } catch (error) {
+            message(
+              status,
+              error instanceof Error ? error.message : 'Choose a different group.',
+              true,
+            );
+          }
+        },
+        'text-button',
+      ),
+    );
+    body.append(selection);
+  }
   if (!s.authorized) {
     const note = el('div', 'notice warning');
     note.append(
@@ -271,7 +356,7 @@ function render(resultsOnly = false) {
         '',
         s.profile
           ? 'Open the configured login page. Its exact URL and approved catalog rule must match before autofill.'
-          : 'Import accounts, then configure login fields for your website.',
+          : 'Import a dataset, then configure login fields for your website.',
       ),
       button('Configure login fields', () => openOptions('profile'), 'text-button'),
     );
@@ -306,7 +391,11 @@ chrome.runtime.onMessage.addListener((event: unknown) => {
 });
 void (async () => {
   try {
-    tabId = (await chrome.tabs.query({ active: true, currentWindow: true }))[0]?.id;
+    const rawSource = new URL(location.href).searchParams.get('sourceTab');
+    tabId =
+      rawSource !== null && /^\d+$/.test(rawSource)
+        ? Number(rawSource)
+        : (await chrome.tabs.query({ active: true, currentWindow: true }))[0]?.id;
   } catch {
     /* An unavailable tab keeps autofill disabled. */
   }

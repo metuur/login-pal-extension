@@ -9,19 +9,19 @@ fenced blocks as-is.
 Option A (119 chars):
 
 ```
-Switch between synthetic QA login accounts. Import a CSV, search it, autofill the login form. Local only, never submits.
+Switch between synthetic QA login accounts. Import a CSV or JSON file, search it, autofill the login form. Local only, never submits.
 ```
 
 Option B (125 chars):
 
 ```
-A local catalog of synthetic QA/test accounts. Import a CSV, search, and autofill authorized login forms. No server, no sync.
+A local catalog of synthetic QA/test accounts. Import CSV or JSON, search, and autofill authorized login forms. No server, no sync.
 ```
 
 ## Detailed description
 
 ```
-Login Pal is a local account catalog for QA, support, and demo work. Import a CSV of synthetic test accounts, bind it to a login page you are authorized to test, then search and autofill that page's username and password fields — without hunting through a spreadsheet or pasting credentials by hand.
+Login Pal is a local account catalog for QA, support, and demo work. Import a CSV or JSON file of synthetic test accounts, bind it to a login page you are authorized to test, then search and autofill that page's username and password fields — without hunting through a spreadsheet or pasting credentials by hand.
 
 Built for one job: switching between many test accounts on the same login page, quickly and repeatably.
 
@@ -34,7 +34,7 @@ WHY INSTALL IT
 
 HOW IT WORKS
 
-1. Import a CSV. Required columns are account_id, username, and password; every extra column is kept and searchable. A 3-row sample CSV is built in.
+1. Import a CSV or JSON file. Required fields are account_id, username, and password; every extra field is kept and searchable. A 3-row sample CSV is built in.
 2. Name a group and set its authorized login origin. Each named group has its own URL rule, login profile, accounts, and history — up to 50 groups.
 3. Configure the login profile. Match the username and password inputs by CSS selector, input ID, input name, autocomplete token, placeholder, visible label, or aria-label. Ambiguous matches are refused rather than guessed.
 4. Open the popup on that login page, search, pick an account, and choose Autofill. You press the site's Login button yourself.
@@ -48,7 +48,7 @@ WHAT IT DOES NOT DO
 
 MANAGING DATA
 
-Export any group back to CSV. Delete an account with a 30-second Undo. Purge a group's accounts while keeping its URL rule and profile, or reset a group entirely. The local snapshot is stored with AES-256-GCM in extension local storage so the catalog opens without a prompt — convenient for QA, and the reason it is not a password manager.
+Export any group back to CSV or JSON. Delete an account with a 30-second Undo. Purge a group's accounts while keeping its URL rule and profile, or reset a group entirely. The local snapshot is stored with AES-256-GCM in extension local storage so the catalog opens without a prompt — convenient for QA, and the reason it is not a password manager.
 
 IMPORTANT
 
@@ -68,13 +68,13 @@ Each field below has a 1,000 character limit. Paste the fenced block only.
 ### Single purpose description
 
 ```
-Login Pal gives QA, support, and demo users a local catalog of synthetic test accounts and fills those accounts into a login form on a site the user has explicitly authorized. The user imports a CSV of test accounts, binds it to one login origin, configures which username and password inputs to match, then searches the catalog and chooses an account to fill. The extension writes the two field values and stops there — it never submits the form and never acts on a site the user has not authorized. Everything else in the product exists to serve that one job: importing and exporting the CSV, searching account metadata, and showing which account was filled most recently.
+Login Pal gives QA, support, and demo users a local catalog of synthetic test accounts and fills those accounts into a login form on a site the user has explicitly authorized. The user imports a CSV or JSON file of test accounts, binds it to one login origin, configures which username and password inputs to match, then searches the catalog and chooses an account to fill. The extension writes the two field values and stops there — it never submits the form and never acts on a site the user has not authorized. Everything else in the product exists to serve that one job: importing and exporting the account catalog as CSV or JSON, searching account metadata, and showing which account was filled most recently.
 ```
 
 ### storage justification
 
 ```
-Stores the user's imported account catalog and its settings on the local device: account groups, each group's authorized URL rule, the login profile describing which inputs to match, and the recent/last-successful fill history shown in the popup. The catalog is held as an AES-256-GCM encrypted snapshot in chrome.storage.local, and both chrome.storage.local and chrome.storage.session are set to TRUSTED_CONTEXTS so no content script or page script can read it. Without this permission the user would have to re-import their CSV on every browser restart. Nothing in storage is transmitted anywhere; the extension makes no network requests.
+Stores the user's imported account catalog and its settings on the local device: account groups, each group's authorized URL rule, the login profile describing which inputs to match, and the recent/last-successful fill history shown in the popup. The catalog is held as an AES-256-GCM encrypted snapshot in chrome.storage.local, and both chrome.storage.local and chrome.storage.session are set to TRUSTED_CONTEXTS so no content script or page script can read it. Without this permission the user would have to re-import their account file on every browser restart. Nothing in storage is transmitted anywhere; the extension makes no network requests.
 ```
 
 ### scripting justification
@@ -113,7 +113,7 @@ Check these three:
 
 | Category | Check | Why |
 | --- | --- | --- |
-| Personally identifiable information | **Yes** | The CSV format ships with email-shaped usernames and a `customer_name` column (`examples/accounts.csv`), and metadata columns are arbitrary, so the extension cannot constrain what the user imports. |
+| Personally identifiable information | **Yes** | Both account formats ship with email-shaped usernames and a `customer_name` field (`examples/accounts.csv`), and metadata fields are arbitrary, so the extension cannot constrain what the user imports. |
 | Health information | No | Never handled. |
 | Financial and payment information | No | Never handled. |
 | Authentication information | **Yes** | Core data type. The extension stores account passwords locally and fills them into a login form. |

@@ -59,6 +59,20 @@ try {
   const packageInfo = JSON.parse(await readFile('package.json', 'utf8'));
   check(manifest.version === packageInfo.version, 'Generated manifest uses the package version');
   check(
+    ['Login Pal', 'Login Pal DEV'].includes(manifest.name) &&
+      manifest.action.default_title === manifest.name,
+    'Extension name and toolbar tooltip identify the same build',
+  );
+  const devBuild = manifest.name === 'Login Pal DEV';
+  check(
+    [16, 32, 48, 128].every(
+      (size) =>
+        manifest.icons[size] === `icon-${devBuild ? 'dev-' : ''}${size}.png` &&
+        manifest.action.default_icon[size] === manifest.icons[size],
+    ),
+    'Extension and toolbar select purple DEV icons only for development builds',
+  );
+  check(
     !manifest.host_permissions &&
       manifest.optional_host_permissions?.join(' ') === 'https://*/* http://*/*',
     'Shipping manifest has optional host access only, over http and https',
@@ -85,6 +99,12 @@ try {
   popup.on('pageerror', (e) => errors.push(e.message));
   await popup.goto(base + 'popup.html');
   for (const page of [popup, options]) {
+    check(
+      (await page.locator('.brand strong').innerText()) === manifest.name &&
+        (await page.title()) ===
+          (page === popup ? manifest.name : `Manage accounts · ${manifest.name}`),
+      `${page === popup ? 'Popup' : 'Settings'} heading and document title match the build name`,
+    );
     const credit = page.locator('.version-footer');
     await credit.waitFor();
     const text = await credit.innerText();
@@ -103,6 +123,10 @@ try {
     check(response?.ok === false, label);
   };
   const state = () => send({ type: 'STATE' });
+  const fillWithGroup = async (accountId, targetTabId = tabId, groupId = 'default') => {
+    await send({ type: 'CHOOSE_GROUP', groupId, tabId: targetTabId }, popup);
+    return send({ type: 'FILL', accountId, tabId: targetTabId, groupId }, popup);
+  };
   check(
     (await state()).initialized && !(await state()).migrationRequired,
     'New installation opens directly without password setup',
@@ -111,17 +135,19 @@ try {
   const settingsTab = (name) => options.getByRole('tab', { name, exact: true });
   check(
     (await options.getByRole('tabpanel').count()) === 1 &&
-      (await settingsTab('Import CSV').getAttribute('aria-selected')) === 'true',
+      (await settingsTab('Import dataset').getAttribute('aria-selected')) === 'true',
     'Settings starts with only the import panel visible',
   );
-  await settingsTab('Import CSV').focus();
-  await options.keyboard.press('ArrowRight');
+  // The rail is vertical now, so Down moves along it; the rail order is
+  // login page rules, accounts vault, import dataset.
+  await settingsTab('Login page rules').focus();
+  await options.keyboard.press('ArrowDown');
   check(
-    (await settingsTab('Indexed accounts').getAttribute('aria-selected')) === 'true' &&
+    (await settingsTab('Accounts vault').getAttribute('aria-selected')) === 'true' &&
       (await options.getByRole('searchbox', { name: 'Search accounts' }).isVisible()),
     'Arrow navigation activates the indexed accounts tab',
   );
-  await options.keyboard.press('End');
+  await options.keyboard.press('Home');
   const defaultUsernameSelector = await options
     .getByLabel('Username field CSS selector', { exact: true })
     .inputValue();
@@ -137,7 +163,7 @@ try {
     .getByRole('combobox', { name: 'Password match method', exact: true })
     .selectOption('id');
   await options.getByLabel('Password match value', { exact: true }).fill('custom-password');
-  await options.getByRole('button', { name: 'Use common selectors', exact: true }).click();
+  await options.getByRole('button', { name: 'Restore common defaults', exact: true }).click();
   check(
     (await options
       .getByRole('combobox', { name: 'Password match method', exact: true })
@@ -150,16 +176,16 @@ try {
     'Restoring common selectors updates only the draft until explicitly saved',
   );
   await options.getByLabel('Profile name', { exact: true }).fill('Unfinished profile');
-  await settingsTab('Login page setup').focus();
-  await options.keyboard.press('Home');
-  await settingsTab('Login page setup').click();
+  await settingsTab('Login page rules').focus();
+  await options.keyboard.press('End');
+  await settingsTab('Login page rules').click();
   check(
     (await options.getByLabel('Profile name', { exact: true }).inputValue()) ===
       'Unfinished profile',
     'Switching tabs preserves unfinished profile edits',
   );
   await options.getByLabel('Profile name', { exact: true }).fill('');
-  await settingsTab('Import CSV').click();
+  await settingsTab('Import dataset').click();
   check(
     (await options.locator('input[type="password"]').count()) === 0,
     'Fresh settings has no master-password inputs',
@@ -171,7 +197,13 @@ try {
   const csv =
     'account_id,username,password,customer_name,account_type,environment\nACC-1234,john@example.test,synthetic-only-one,Acme Corp,Premium,QA\nACC-5678,maria@example.test,synthetic-only-two,Contoso Global,Basic,QA\nACC-9042,qa@example.test,synthetic-only-three,Test Customer,Admin,QA';
   const bytes = [...new TextEncoder().encode(csv)];
-  const preview = await send({ type: 'PREVIEW_IMPORT', bytes, rule: origin + '/*', mode: 'merge' });
+  const preview = await send({
+    type: 'PREVIEW_IMPORT',
+    bytes,
+    rule: origin + '/*',
+    mode: 'merge',
+    format: 'csv',
+  });
   check(
     preview.valid === 3 && preview.added === 3,
     'CSV preview validates accounts without committing',
@@ -188,7 +220,7 @@ try {
     'Password values are excluded from search',
   );
   await reject(
-    { type: 'PREVIEW_IMPORT', bytes, rule: 'https://*.localhost/*', mode: 'merge' },
+    { type: 'PREVIEW_IMPORT', bytes, rule: 'https://*.localhost/*', mode: 'merge', format: 'csv' },
     'Wildcard hosts are rejected',
   );
   const profile = {
@@ -199,7 +231,7 @@ try {
     successKind: 'url',
     successUrl: origin + '/dashboard',
   };
-  await settingsTab('Login page setup').click();
+  await settingsTab('Login page rules').click();
   await options.getByLabel('Profile name', { exact: true }).fill(profile.name);
   await options.getByLabel('Authorized login domain', { exact: true }).fill(profile.loginUrl);
   await options
@@ -229,6 +261,14 @@ try {
     (await options.getByLabel('Exact success URL (after login)', { exact: true }).count()) === 1,
     'Success detection relabels its URL field back for URL mode',
   );
+  await options.getByLabel(`Recognize this application on ${origin}`, { exact: false }).check();
+  await options.getByLabel(`Page title for ${origin}`, { exact: true }).fill('Local synthetic');
+  check(
+    (await options
+      .getByRole('combobox', { name: `Title matching mode for ${origin}` })
+      .inputValue()) === 'contains',
+    'Application recognition defaults to literal title containment',
+  );
   await options.getByRole('button', { name: 'Save & authorize website', exact: true }).click();
   await options.getByText('Website profile saved.', { exact: true }).waitFor();
   check(
@@ -244,7 +284,42 @@ try {
   );
   check(Number.isInteger(tabId), 'Authorized fixture tab is identifiable');
   await site.bringToFront();
-  await send({ type: 'FILL', accountId: 'ACC-1234', tabId }, popup);
+  await popup.evaluate(() => chrome.storage.session.remove('popup-open-details'));
+  await popup.goto(`${base}popup.html?sourceTab=${tabId}`);
+  await popup.getByRole('searchbox', { name: 'Search accounts', exact: true }).fill('ACC-1234');
+  const identityRow = popup.locator('#results .account-row').first();
+  await identityRow.waitFor();
+  check(
+    (await identityRow.innerText()).includes('Group · Imported accounts'),
+    'A uniquely matched group labels its account rows',
+  );
+  check(
+    !(await identityRow.locator('details.metadata').evaluate((details) => details.open)) &&
+      !(await popup.getByText('Page title', { exact: true }).isVisible()),
+    'Title evidence stays out of collapsed account rows',
+  );
+  await identityRow.locator('details.metadata > summary').click();
+  check(
+    (await identityRow.innerText()).includes('Local synthetic login') &&
+      (await identityRow.innerText()).includes('Matched'),
+    'Account details disclose the current page title and match state',
+  );
+  const identitySettings = await context.newPage();
+  await identitySettings.goto(`${base}options.html?sourceTab=${tabId}`);
+  await identitySettings.getByRole('tab', { name: 'Accounts vault', exact: true }).click();
+  const settingsIdentityRow = identitySettings
+    .locator('.account-row')
+    .filter({ hasText: 'ACC-1234' })
+    .first();
+  await settingsIdentityRow.waitFor();
+  await settingsIdentityRow.locator('details.metadata > summary').click();
+  check(
+    (await settingsIdentityRow.innerText()).includes('Local synthetic login') &&
+      (await settingsIdentityRow.innerText()).includes('Matched'),
+    'Settings Account details disclose the current title and match state',
+  );
+  await identitySettings.close();
+  await fillWithGroup('ACC-1234');
   check(
     (await site.locator('#username').inputValue()) === 'john@example.test',
     'Autofill fills the intended username',
@@ -274,7 +349,7 @@ try {
   );
   await site.goto(origin + '/login?flow=fail');
   await site.bringToFront();
-  await send({ type: 'FILL', accountId: 'ACC-5678', tabId }, popup);
+  await fillWithGroup('ACC-5678');
   await site.locator('#login').click();
   check(
     (await state()).lastSuccessful?.accountId === 'ACC-1234',
@@ -282,14 +357,14 @@ try {
   );
   await site.goto(origin + '/unrelated');
   await site.bringToFront();
-  await send({ type: 'FILL', accountId: 'ACC-5678', tabId }, popup);
+  await fillWithGroup('ACC-5678');
   check(
     (await site.locator('#username').inputValue()) === 'maria@example.test',
     'Autofill accepts another path on the authorized domain',
   );
   await site.goto(origin + '/login?flow=spa');
   await site.bringToFront();
-  await send({ type: 'FILL', accountId: 'ACC-5678', tabId }, popup);
+  await fillWithGroup('ACC-5678');
   await site.locator('#login').click();
   await waitState(
     (s) => s.lastSuccessful?.accountId === 'ACC-5678',
@@ -297,7 +372,7 @@ try {
   );
   await site.goto(origin + '/login');
   await site.bringToFront();
-  await send({ type: 'FILL', accountId: 'ACC-1234', tabId }, popup);
+  await fillWithGroup('ACC-1234');
   const cdp = await context.newCDPSession(options);
   const targets = await cdp.send('Target.getTargets');
   const workerTarget = targets.targetInfos.find(
@@ -322,7 +397,7 @@ try {
   });
   await site.goto(origin + '/login?flow=element');
   await site.bringToFront();
-  await send({ type: 'FILL', accountId: 'ACC-9042', tabId }, popup);
+  await fillWithGroup('ACC-9042');
   await site.locator('#login').click();
   await waitState(
     (s) => s.lastSuccessful?.accountId === 'ACC-9042',
@@ -349,6 +424,7 @@ try {
     bytes: [...new TextEncoder().encode(updated)],
     rule: origin + '/*',
     mode: 'merge',
+    format: 'csv',
   });
   check(merge.updated === 1 && merge.removed === 0, 'Merge preview preserves omitted records');
   await send({ type: 'COMMIT_IMPORT', token: merge.token });
@@ -366,7 +442,7 @@ try {
   await send({ type: 'SAVE_PROFILE', profile });
   await site.goto(origin + '/login');
   await site.bringToFront();
-  await send({ type: 'FILL', accountId: 'ACC-1234', tabId }, popup);
+  await fillWithGroup('ACC-1234');
   await site.locator('#login').click();
   await waitState(
     (s) => s.lastSuccessful?.accountId === 'ACC-1234',
@@ -404,8 +480,8 @@ try {
       (await options.getByRole('tabpanel').count()) === 1,
     'Import review replaces setup instead of extending the settings page',
   );
-  await settingsTab('Indexed accounts').click();
-  await settingsTab('Import CSV').click();
+  await settingsTab('Accounts vault').click();
+  await settingsTab('Import dataset').click();
   check(
     await options.getByRole('button', { name: 'Import 3 valid accounts', exact: true }).isVisible(),
     'A verified import survives tab navigation',
@@ -434,12 +510,12 @@ try {
     (s) => s.total === 3 && s.accounts.some((a) => a.metadata.account_type === 'Premium'),
     'Settings import action commits verified account changes',
   );
-  await settingsTab('Login page setup').waitFor();
+  await settingsTab('Login page rules').waitFor();
   check(
-    (await settingsTab('Login page setup').getAttribute('aria-selected')) === 'true',
+    (await settingsTab('Login page rules').getAttribute('aria-selected')) === 'true',
     'Import completion opens website profile setup',
   );
-  await settingsTab('Indexed accounts').click();
+  await settingsTab('Accounts vault').click();
   await options.getByRole('button', { name: 'Delete ACC-9042', exact: true }).click();
   await options.getByRole('button', { name: 'Undo', exact: true }).waitFor();
   check((await state()).total === 2, 'Settings delete action persists account removal');
@@ -447,7 +523,7 @@ try {
   await waitState((s) => s.total === 3, 'Settings Undo action restores the deleted account');
   for (const width of [360, 430, 1000]) {
     await options.setViewportSize({ width, height: 800 });
-    for (const name of ['Import CSV', 'Indexed accounts', 'Login page setup']) {
+    for (const name of ['Import dataset', 'Accounts vault', 'Login page rules']) {
       await settingsTab(name).click();
       check(
         await options.evaluate(() => {
@@ -465,10 +541,10 @@ try {
     }
   }
   await options.screenshot({ path: 'artifacts/settings-profile.png', fullPage: true });
-  await settingsTab('Import CSV').click();
+  await settingsTab('Import dataset').click();
   await options.screenshot({ path: 'artifacts/settings-import.png', fullPage: true });
   await options.setViewportSize({ width: 430, height: 800 });
-  await settingsTab('Indexed accounts').click();
+  await settingsTab('Accounts vault').click();
   await options.screenshot({ path: 'artifacts/settings.png', fullPage: true });
   // Grant only read, so the copy buttons exercise the real write path rather
   // than a pre-authorized one. Read-back is the assertion mechanism.
@@ -576,12 +652,12 @@ try {
   );
   await popup.getByRole('button', { name: '← Back to accounts', exact: true }).click();
   await site.bringToFront();
-  await settingsTab('Import CSV').click();
+  await settingsTab('Import dataset').click();
   check(
     (await options.locator('body').innerText()).includes('Merge'),
     'Settings renders account import modes',
   );
-  await settingsTab('Import CSV').click();
+  await settingsTab('Import dataset').click();
   check(
     await options.locator('.change-domain').isHidden(),
     'The change-domain offer stays hidden while the typed domain matches the group',
@@ -603,7 +679,7 @@ try {
     (await options.locator('.presets button').allInnerTexts()).some((t) => t.includes(origin)),
     'Every authorized domain of the group is offered as a chip',
   );
-  await settingsTab('Login page setup').click();
+  await settingsTab('Login page rules').click();
   await options
     .getByRole('combobox', { name: 'Username match method', exact: true })
     .selectOption('label');
@@ -623,7 +699,7 @@ try {
     'A profile saves with no success condition at all',
   );
   await site.goto(origin + '/login');
-  await send({ type: 'FILL', accountId: 'ACC-1234', tabId }, popup);
+  await fillWithGroup('ACC-1234');
   check(
     (await site.locator('#username').inputValue()) === 'john@example.test' &&
       (await site.locator('#password').inputValue()).length > 0,
@@ -659,7 +735,7 @@ try {
       const tabs = await options.evaluate(() => chrome.tabs.query({}));
       return tabs.find((t) => t.url?.startsWith('https://127.0.0.1'))?.id;
     });
-  await send({ type: 'FILL', accountId: 'ACC-1234', tabId: secondTabId }, popup);
+  await fillWithGroup('ACC-1234', secondTabId);
   check(
     (await secondSite.locator('#username').inputValue()) === 'john@example.test' &&
       (await secondSite.locator('#password').inputValue()).length > 0,
@@ -680,7 +756,7 @@ try {
   // A concurrent refresh can overwrite the global banner, so assert the panel's own notice.
   await options.getByText('Profile saved.', { exact: false }).first().waitFor();
   await site.goto(origin + '/login');
-  await send({ type: 'FILL', accountId: 'ACC-1234', tabId }, popup);
+  await fillWithGroup('ACC-1234');
   check(
     (await site.locator('#username').inputValue()) === 'john@example.test',
     'Label and autocomplete matching configured in Settings fills the browser form',
@@ -909,7 +985,7 @@ try {
   });
   await site.locator('#username').fill('edited@example.test');
   await site.locator('#login').click();
-  await settingsTab('Import CSV').click();
+  await settingsTab('Import dataset').click();
   await options.locator('.options-body').evaluate((node) => {
     node.scrollTop = 0;
   });
@@ -956,8 +1032,8 @@ try {
     'CSV group stores its own URL and duplicate account ID',
   );
   const chooserEvent = options.waitForEvent('filechooser');
-  await settingsTab('Import CSV').click();
-  await options.getByRole('button', { name: 'Upload another CSV', exact: true }).click();
+  await settingsTab('Import dataset').click();
+  await options.getByRole('button', { name: 'Upload another file', exact: true }).click();
   const chooser = await chooserEvent;
   const extraPath = join(temp, 'additional.csv');
   await writeFile(
@@ -969,8 +1045,8 @@ try {
   await options.getByRole('button', { name: 'Import 1 valid accounts', exact: true }).click();
   for (let i = 0; i < 30 && (await groupState()).total !== 2; i++)
     await new Promise((r) => setTimeout(r, 100));
-  check((await groupState()).total === 2, 'Upload another CSV merges into the selected group');
-  await settingsTab('Indexed accounts').click();
+  check((await groupState()).total === 2, 'Upload another file merges into the selected group');
+  await settingsTab('Accounts vault').click();
   await options.getByRole('searchbox', { name: 'Search accounts', exact: true }).fill('PERF-2');
   const exportEvent = options.waitForEvent('download');
   await options.getByRole('button', { name: 'Export CSV', exact: true }).click();
@@ -989,6 +1065,30 @@ try {
       (row) => typeof row.password === 'string' && row.password.startsWith('synthetic-'),
     ),
     'Export preserves synthetic password values for reimport',
+  );
+  // The JSON export is a second button over the same group and the same filter,
+  // so it must agree with the CSV one account for account.
+  const jsonEvent = options.waitForEvent('download');
+  await options.getByRole('button', { name: 'Export JSON', exact: true }).click();
+  const jsonDownload = await jsonEvent;
+  const exportedJsonText = await readFile(await jsonDownload.path(), 'utf8');
+  const exportedRecords = JSON.parse(exportedJsonText);
+  check(
+    jsonDownload.suggestedFilename() === 'Performance.json' &&
+      exportedJsonText.endsWith('\n') &&
+      exportedJsonText.charCodeAt(0) !== 0xfeff &&
+      exportedRecords.length === 2 &&
+      exportedRecords.every((record) => ['ACC-1234', 'PERF-2'].includes(record.account_id)),
+    'Export offers JSON with a matching extension and no byte order mark',
+  );
+  check(
+    exportedRecords.every(
+      (record, index) =>
+        record.account_id === exportedRows[index].account_id &&
+        record.username === exportedRows[index].username &&
+        record.password === exportedRows[index].password,
+    ),
+    'JSON and CSV exports describe the same accounts in the same order',
   );
   await options.getByRole('searchbox', { name: 'Search accounts', exact: true }).fill('');
 
@@ -1010,11 +1110,11 @@ try {
     'Group purge preserves accounts in other CSV groups',
   );
   await options.getByRole('combobox', { name: 'CSV group', exact: true }).selectOption('default');
-  await settingsTab('Import CSV').click();
+  await settingsTab('Import dataset').click();
   await options.getByLabel('CSV group name', { exact: true }).fill('QA Platform X');
   await options.getByRole('button', { name: 'Save group name', exact: true }).click();
   await options.getByText('Group name saved.', { exact: true }).waitFor();
-  await settingsTab('Indexed accounts').click();
+  await settingsTab('Accounts vault').click();
   await options.getByRole('button', { name: 'Purge group', exact: true }).click();
   await options.getByRole('button', { name: 'Cancel', exact: true }).click();
   check((await state()).total === 3, 'Cancelling purge preserves the catalog');
@@ -1039,6 +1139,7 @@ try {
     bytes: [...new TextEncoder().encode(largeCsv)],
     rule: origin + '/*',
     mode: 'replace',
+    format: 'csv',
   });
   await send({ type: 'COMMIT_IMPORT', token: largePreview.token });
   await site.bringToFront();
